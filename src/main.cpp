@@ -1,4 +1,4 @@
-#include "ConfigParser.hpp"
+#include "Config.hpp"
 #include "Error.hpp"
 
 int main (int argc, char *argv[], char *envp[])
@@ -16,7 +16,6 @@ int main (int argc, char *argv[], char *envp[])
 		std::cerr << "Error: " << streamState(file) << std::endl;
 		return 1;
 	}
-	file.close();
-	// ConfigParser configParser(argv[1]);
+	Config config(file);
     return 0;
 }
