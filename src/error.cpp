@@ -1,4 +1,4 @@
-#include "Error.hpp"
+#include "error.hpp"
 
 std::string streamState(const std::fstream& file)
 {

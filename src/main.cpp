@@ -1,5 +1,5 @@
 #include "Config.hpp"
-#include "Error.hpp"
+#include "error.hpp"
 
 int main (int argc, char *argv[], char *envp[])
 {
@@ -9,13 +9,21 @@ int main (int argc, char *argv[], char *envp[])
 		return 1;
 	}
 	(void)envp;
-	std::fstream file;
-	file.open(argv[1]);
-	if (!file.is_open())
-	{
-		std::cerr << "Error: " << streamState(file) << std::endl;
+	Config config(argv[1]);
+	try {
+		config.openConfigFile(config.getFileName());
+	}
+	catch (std::exception &e) {
+		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	Config config(file);
+	std::cout << config;
+	try {
+		config.parseConfigFile();
+	}
+	catch (Config::ConfigException &e) {
+		std::cerr << "Error: " << e.what() << " at row " << e.getRow() << ", column " << e.getColumn() << std::endl;
+		return 1;
+	}
     return 0;
 }
