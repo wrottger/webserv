@@ -12,7 +12,7 @@ Config::Config(const Config &src)
     _configMap = src._configMap;
     _fileName = src._fileName;
     _isLoaded = src._isLoaded;
-    _fileName = src._fileName;
+    _fileContent = src._fileContent;
 }
 
 Config &Config::operator=(const Config &src)
@@ -23,7 +23,7 @@ Config &Config::operator=(const Config &src)
         _configMap = src._configMap;
         _fileName = src._fileName;
         _isLoaded = src._isLoaded;
-        _fileName = src._fileName;
+        _fileContent = src._fileContent;
     }
     return *this;
 }
@@ -31,30 +31,32 @@ Config &Config::operator=(const Config &src)
 Config::~Config()
 {
     std::cout << GBOLD("Config deleted") << std::endl;
-    _fileStream.close();
 }
 
 void Config::openConfigFile(std::string filename)
 {
-	_fileStream.open(filename.c_str(), std::ios::in);
-	if (!_fileStream.is_open())
-        throw std::runtime_error("Error: \"" + filename + "\" could not be opened");
+    std::ifstream _fileStream(filename.c_str());
+    if (!_fileStream.is_open())
+    {
+        throw std::runtime_error("Error: Unable to open file " + filename);
+    }
+    while (!_fileStream.eof())
+    {
+        std::string line;
+        std::getline(_fileStream, line);
+        _fileContent.push_back(line);
+    }
     return ;
+}
+
+std::vector<std::string> Config::getFileContent(void)
+{
+    return _fileContent;
 }
 
 std::string Config::getFileName(void) const
 {
     return _fileName;
-}
-
-std::fstream &Config::getStream(void)
-{
-    return _fileStream;
-}
-
-bool Config::isLoaded(void) const
-{
-    return _isLoaded;
 }
 
 std::ostream &operator<<(std::ostream &os, const Config &src)
@@ -65,11 +67,8 @@ std::ostream &operator<<(std::ostream &os, const Config &src)
 
 void Config::parseConfigFile(void)
 {
-    size_t row = 1;
-    for (std::string line; std::getline(getStream(), line, '\n'); row++)
+    for (std::vector<std::string>::iterator it = _fileContent.begin(); it != _fileContent.end(); it++)
     {
-        if (line.empty())
-            throw Config::ConfigException("Empty line", row, 0);
-        std::cout << line << std::endl;
+        it->
     }
 }

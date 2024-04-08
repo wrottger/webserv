@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 # include <map>
+# include <vector>
 # include <string>
 # include <fstream>
 # include <iostream>
@@ -12,7 +13,7 @@ class Config {
 
         std::map<std::string, std::string> _configMap;
         std::string _fileName;
-        std::fstream _fileStream;
+        std::vector<std::string> _fileContent;
         bool _isLoaded;
 
         Config(const Config& src);  // private copy constructor and assignment operator to prevent dangling references/pointers
@@ -25,7 +26,7 @@ class Config {
 
         void openConfigFile(std::string filename);
         std::string getFileName(void) const;
-        std::fstream& getStream(void);
+        std::vector<std::string> getFileContent(void);
         bool isLoaded(void) const;
         void parseConfigFile(void);
 
