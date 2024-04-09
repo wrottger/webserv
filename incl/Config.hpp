@@ -24,10 +24,14 @@ class Config {
         Config(std::string filename);
         ~Config();
 
-        void openConfigFile(std::string filename);
+        // getters
         std::string getFileName(void) const;
         std::vector<std::string> getFileContent(void);
         bool isLoaded(void) const;
+
+        // config parsing methods
+        void openConfigFile(std::string filename);
+        void tokenizeConfigFile(void);
         void parseConfigFile(void);
 
         class ConfigException : public std::exception {

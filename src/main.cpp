@@ -12,17 +12,10 @@ int main (int argc, char *argv[], char *envp[])
 	Config config(argv[1]);
 	try {
 		config.openConfigFile(config.getFileName());
+		config.tokenizeConfigFile();
 	}
 	catch (std::exception &e) {
-		std::cerr << e.what() << std::endl;
-		return 1;
-	}
-	std::cout << config;
-	try {
-		config.parseConfigFile();
-	}
-	catch (Config::ConfigException &e) {
-		std::cerr << "Error: " << e.what() << " at row " << e.getRow() << ", column " << e.getColumn() << std::endl;
+		std::cerr << "Error: " << e.what() << std::endl;
 		return 1;
 	}
     return 0;
