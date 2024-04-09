@@ -4,14 +4,16 @@
 # include <string>
 
 std::string tokenTypes[] = {
-"Server",
-"Location",
+"server",
+"location",
 };
 
 struct Token {
-    std::string type;
-    std::string value;
-    size_t      offset;
+    std::string _type;
+    std::string _value;
+    size_t      _offset;
+
+    Token(std::string type, size_t off) : _type(type), _offset(off) {}
 };
 
 #endif

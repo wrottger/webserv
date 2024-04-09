@@ -73,6 +73,7 @@ void Config::openConfigFile(std::string filename)
 
 void Config::tokenizeConfigFile(void)
 {
+    std::vector<Token> tokens;
     for (std::vector<std::string>::iterator it = _fileContent.begin(); it != _fileContent.end(); it++)
     {
         // skip whitespaces
@@ -82,9 +83,13 @@ void Config::tokenizeConfigFile(void)
         {
             if (std::string(it2, it2 + std::string(tokenTypes[i]).length()) == tokenTypes[i])
             {
-                std::cout << "token " << tokenTypes[i] << " in line " << it - _fileContent.begin() + 1 << std::endl;
+                tokens.push_back(Token(tokenTypes[i], pos));
             }
         }
+    }
+    for (std::vector<Token>::iterator it = tokens.begin(); it != tokens.end(); it++)
+    {
+        std::cout << it->_type << " " << it->_value << " " << it->_offset << std::endl;
     }
     return ;
 }  
