@@ -1,5 +1,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+# include "tokens.hpp"
 # include <map>
 # include <vector>
 # include <string>
@@ -11,7 +12,6 @@ class Config {
 
     private:
 
-        std::map<std::string, std::string> _configMap;
         std::string _fileName;
         std::vector<std::string> _fileContent;
         bool _isLoaded;
@@ -32,7 +32,11 @@ class Config {
         // config parsing methods
         void openConfigFile(std::string filename);
         void tokenizeConfigFile(void);
-        void parseConfigFile(void);
+        TokenType getNextToken(std::string::iterator it);
+        void checkScopes(void);
+
+        // token map
+        std::map<std::string, TokenType> _tokens;
 
         class ConfigException : public std::exception {
             private:

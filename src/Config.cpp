@@ -10,7 +10,7 @@ Config::Config(std::string filename) : _fileName(filename), _isLoaded(false)
 Config::Config(const Config &src)
 {
     std::cout << GBOLD("Config copied") << std::endl;
-    _configMap = src._configMap;
+    _tokens = src._tokens;
     _fileName = src._fileName;
     _isLoaded = src._isLoaded;
     _fileContent = src._fileContent;
@@ -21,7 +21,7 @@ Config &Config::operator=(const Config &src)
     std::cout << GBOLD("Config assigned") << std::endl;
     if (this != &src)
     {
-        _configMap = src._configMap;
+        _tokens = src._tokens;
         _fileName = src._fileName;
         _isLoaded = src._isLoaded;
         _fileContent = src._fileContent;
@@ -68,33 +68,39 @@ void Config::openConfigFile(std::string filename)
         std::getline(_fileStream, line);
         _fileContent.push_back(line);
     }
+    _tokens["server"] = Server;
+    _tokens["location"] = Location;
+    _tokens["port"] = Port;
+    _tokens["host"] = Host;
+    _tokens["root"] = Root;
+    _tokens["listing"] = Listing;
+    _tokens["index"] = Index;
+    _tokens["redir"] = Redir;
+    _tokens["server_name"] = ServerName;
+    _tokens["allowed_methods"] = AllowedMethods;
+    _tokens["client_max_body_size"] = ClientMaxBodySize;
+    _tokens["default"] = Default;
+    _tokens["cgi"] = CGI;
+    _tokens["{"] = OpenBrace;
+    _tokens["}"] = CloseBrace;
+    _tokens[";"] = Semicolon;
     return ;
 }
 
-void Config::tokenizeConfigFile(void)
+//recursive function to parse the config file
+void Config::tokenizeConfigFile(std::vector<std::string>::iterator it)
 {
-    std::vector<Token> tokens;
-    for (std::vector<std::string>::iterator it = _fileContent.begin(); it != _fileContent.end(); it++)
-    {
-        // skip whitespaces
-        size_t pos = it->find_first_not_of(" \t");
-        std::string::iterator it2 = it->begin() + pos;
-        for (int i = 0; i < 2; i++)
-        {
-            if (std::string(it2, it2 + std::string(tokenTypes[i]).length()) == tokenTypes[i])
-            {
-                tokens.push_back(Token(tokenTypes[i], pos));
-            }
-        }
-    }
-    for (std::vector<Token>::iterator it = tokens.begin(); it != tokens.end(); it++)
-    {
-        std::cout << it->_type << " " << it->_value << " " << it->_offset << std::endl;
-    }
+
     return ;
 }  
 
-void Config::parseConfigFile(void)
+TokenType Config::getNextToken(std::string::iterator it, std::string::iterator end)
+{
+    for (; it != end; it++)
+
+}
+
+void Config::checkScopes(void)
 {
     size_t scopeLevel = 0;
     std::vector<std::pair<size_t, size_t> > scopes; // pair of start and end of scope

@@ -2,18 +2,34 @@
 #define TOKENS_HPP
 
 # include <string>
-
-std::string tokenTypes[] = {
-"server",
-"location",
+# include <vector>
+enum TokenType {
+    OpenBrace,
+    CloseBrace,
+    Semicolon,
+    Server,
+    Location,
+    Port,
+    Host,
+    Root,
+    Listing,
+    Index,
+    Redir,
+    ServerName,
+    AllowedMethods,
+    ClientMaxBodySize,
+    Default,
+    CGI,
 };
 
-struct Token {
-    std::string _type;
+struct Node {
+    TokenType   _token;
     std::string _value;
     size_t      _offset;
+    size_t      _scopeLevel;
+    std::vector<Node> _children;
 
-    Token(std::string type, size_t off) : _type(type), _offset(off) {}
+    Node(TokenType token, std::string value, size_t off) : _token(token), _value(value), _offset(off) {}
 };
 
 #endif
