@@ -13,6 +13,11 @@ int main (int argc, char *argv[], char *envp[])
 	try {
 		config.openConfigFile(config.getFileName());
 		config.scanTokens(config.getFileContent());
+		std::vector<Node> nodes = config.getNodes();
+		for (std::vector<Node>::iterator it = nodes.begin(); it != nodes.end(); it++)
+		{
+			std::cout << "Token: " << it->_token << " Value: " << it->_value << " Offset: " << it->_offset << std::endl;
+		}
 	}
 	catch (std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;

@@ -6,7 +6,6 @@
 enum TokenType {
     OpenBrace,
     CloseBrace,
-    Semicolon,
     Server,
     Location,
     Port,
@@ -28,8 +27,8 @@ struct Node {
     TokenType   _token;
     std::string _value;
     size_t      _offset;
-    size_t      _scopeLevel;
 
+    Node(TokenType token, size_t off) : _token(token), _offset(off) {}
     Node(TokenType token, std::string value, size_t off) : _token(token), _value(value), _offset(off) {}
 };
 

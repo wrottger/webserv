@@ -49,6 +49,11 @@ bool Config::isLoaded(void) const
     return _isLoaded;
 }
 
+std::vector<Node> Config::getNodes(void) const
+{
+    return _nodes;
+}
+
 std::ostream &operator<<(std::ostream &os, const Config &src)
 {
     os << "Config file: " << src.getFileName() << std::endl;
@@ -83,7 +88,6 @@ void Config::openConfigFile(std::string filename)
     _tokens["cgi"] = CGI;
     _tokens["{"] = OpenBrace;
     _tokens["}"] = CloseBrace;
-    _tokens[";"] = Semicolon;
     return ;
 }
 
@@ -97,6 +101,8 @@ void Config::scanTokens(std::vector<std::string> fileContent)
     {
         
         std::vector<std::pair<std::string, size_t> > out = slice(*it, delim);
+        if (out.size() == 0)
+            continue;
         for (std::vector<std::pair<std::string, size_t> >::iterator it2 = out.begin(); it2 != out.end(); it2++)
         {
             bool tokenFound = false;
@@ -105,18 +111,18 @@ void Config::scanTokens(std::vector<std::string> fileContent)
             {
                 if (it3->first == it2->first)
                 {
-                        std::cout << "Token: " << it3->first << " in column " << it2->second << std::endl;
+                        nodes.push_back(Node(it3->second, it2->second));
                         tokenFound = true;
                         break;
                 }
             }
             if (it2->first[0] == '#')
-                std::cout << "Comment: " << it2->first << " in column " << it2->second << std::endl;
+                nodes.push_back(Node(Comment, it2->first, it2->second)); 
             else if (tokenFound == false)
-                std::cout << "Data: " << it2->first << " in column " << it2->second << std::endl;
+                nodes.push_back(Node(Data, it2->first, it2->second));
         }
     }
-    return ;
+    _nodes = nodes;
 }
 
 std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::vector<char> delim)
