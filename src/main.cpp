@@ -12,7 +12,7 @@ int main (int argc, char *argv[], char *envp[])
 	Config config(argv[1]);
 	try {
 		config.openConfigFile(config.getFileName());
-		config.tokenizeConfigFile();
+		config.scanTokens(config.getFileContent());
 	}
 	catch (std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;

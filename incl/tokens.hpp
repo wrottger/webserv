@@ -20,6 +20,8 @@ enum TokenType {
     ClientMaxBodySize,
     Default,
     CGI,
+    Comment,
+    Data,
 };
 
 struct Node {
@@ -27,7 +29,6 @@ struct Node {
     std::string _value;
     size_t      _offset;
     size_t      _scopeLevel;
-    std::vector<Node> _children;
 
     Node(TokenType token, std::string value, size_t off) : _token(token), _value(value), _offset(off) {}
 };

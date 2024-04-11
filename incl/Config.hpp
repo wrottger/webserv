@@ -31,9 +31,10 @@ class Config {
 
         // config parsing methods
         void openConfigFile(std::string filename);
-        void tokenizeConfigFile(void);
-        TokenType getNextToken(std::string::iterator it);
+        void scanTokens(std::vector<std::string> fileContent);
         void checkScopes(void);
+        std::vector<std::string> slice(std::string in, std::vector<char> delim);
+        TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
         // token map
         std::map<std::string, TokenType> _tokens;

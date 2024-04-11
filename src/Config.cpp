@@ -87,18 +87,66 @@ void Config::openConfigFile(std::string filename)
     return ;
 }
 
-//recursive function to parse the config file
-void Config::tokenizeConfigFile(std::vector<std::string>::iterator it)
+void Config::scanTokens(std::vector<std::string> fileContent)
 {
-
+    std::vector<char> delim;
+    delim.push_back(' ');
+    delim.push_back('\t');
+    for (std::vector<std::string>::iterator it = fileContent.begin(); it != fileContent.end(); it++)
+    {
+        
+        std::vector<std::string> out = slice(*it, delim);
+        for (std::vector<std::string>::iterator it2 = out.begin(); it2 != out.end(); it2++)
+        {
+                bool tokenFound = false;
+            std::map<std::string, TokenType>::iterator it3 = _tokens.begin();
+            for (; it3 != _tokens.end(); it3++)
+            {
+                if (*it2 == it3->first)
+                {
+                        std::cout << "Token: " << it3->first << " (" << it3->second << ")" << std::endl;
+                        tokenFound = true;
+                        break;
+                }
+            }
+            if (it2->find("#") == 0)
+                std::cout << "Comment: " << *it2 << std::endl;
+            else if (tokenFound == false)
+                std::cout << "Data: " << *it2 << std::endl;
+        }
+    }
     return ;
 }  
 
-TokenType Config::getNextToken(std::string::iterator it, std::string::iterator end)
+std::vector<std::string> Config::slice(std::string in, std::vector<char> delim)
 {
-    for (; it != end; it++)
-
+    size_t comment = in.find("#");
+    size_t start = 0;
+    std::vector<std::string> out;
+    for (size_t i = 0; i < in.size(); i++)
+    {
+        for (size_t j = 0; j < delim.size(); j++)
+        {
+            if (in[i] == delim[j] && i < comment)
+            {
+                if (i > start) {
+                    out.push_back(in.substr(start, i - start));
+                }
+                start = i + 1;
+                break;
+            }
+        }
+    }
+    if (start < in.size()) {
+        out.push_back(in.substr(start, in.size() - start));
+    }
+    return out;
 }
+
+// TokenType Config::getNextToken(std::string::iterator it, std::string::iterator end, std::vector<Node> &nodes)
+// {
+
+// }
 
 void Config::checkScopes(void)
 {
