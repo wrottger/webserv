@@ -89,40 +89,41 @@ void Config::openConfigFile(std::string filename)
 
 void Config::scanTokens(std::vector<std::string> fileContent)
 {
+    std::vector<Node> nodes;
     std::vector<char> delim;
     delim.push_back(' ');
     delim.push_back('\t');
     for (std::vector<std::string>::iterator it = fileContent.begin(); it != fileContent.end(); it++)
     {
         
-        std::vector<std::string> out = slice(*it, delim);
-        for (std::vector<std::string>::iterator it2 = out.begin(); it2 != out.end(); it2++)
+        std::vector<std::pair<std::string, size_t> > out = slice(*it, delim);
+        for (std::vector<std::pair<std::string, size_t> >::iterator it2 = out.begin(); it2 != out.end(); it2++)
         {
-                bool tokenFound = false;
+            bool tokenFound = false;
             std::map<std::string, TokenType>::iterator it3 = _tokens.begin();
             for (; it3 != _tokens.end(); it3++)
             {
-                if (*it2 == it3->first)
+                if (it3->first == it2->first)
                 {
-                        std::cout << "Token: " << it3->first << " (" << it3->second << ")" << std::endl;
+                        std::cout << "Token: " << it3->first << " in column " << it2->second << std::endl;
                         tokenFound = true;
                         break;
                 }
             }
-            if (it2->find("#") == 0)
-                std::cout << "Comment: " << *it2 << std::endl;
+            if (it2->first[0] == '#')
+                std::cout << "Comment: " << it2->first << " in column " << it2->second << std::endl;
             else if (tokenFound == false)
-                std::cout << "Data: " << *it2 << std::endl;
+                std::cout << "Data: " << it2->first << " in column " << it2->second << std::endl;
         }
     }
     return ;
-}  
+}
 
-std::vector<std::string> Config::slice(std::string in, std::vector<char> delim)
+std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::vector<char> delim)
 {
     size_t comment = in.find("#");
     size_t start = 0;
-    std::vector<std::string> out;
+    std::vector<std::pair<std::string, size_t> > out;
     for (size_t i = 0; i < in.size(); i++)
     {
         for (size_t j = 0; j < delim.size(); j++)
@@ -130,7 +131,7 @@ std::vector<std::string> Config::slice(std::string in, std::vector<char> delim)
             if (in[i] == delim[j] && i < comment)
             {
                 if (i > start) {
-                    out.push_back(in.substr(start, i - start));
+                    out.push_back(std::make_pair(in.substr(start, i - start), start));
                 }
                 start = i + 1;
                 break;
@@ -138,15 +139,10 @@ std::vector<std::string> Config::slice(std::string in, std::vector<char> delim)
         }
     }
     if (start < in.size()) {
-        out.push_back(in.substr(start, in.size() - start));
+        out.push_back(std::make_pair(in.substr(start, in.size() - start), start));
     }
     return out;
 }
-
-// TokenType Config::getNextToken(std::string::iterator it, std::string::iterator end, std::vector<Node> &nodes)
-// {
-
-// }
 
 void Config::checkScopes(void)
 {

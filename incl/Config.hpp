@@ -33,7 +33,7 @@ class Config {
         void openConfigFile(std::string filename);
         void scanTokens(std::vector<std::string> fileContent);
         void checkScopes(void);
-        std::vector<std::string> slice(std::string in, std::vector<char> delim);
+        std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
         TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
         // token map
