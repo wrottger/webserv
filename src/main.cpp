@@ -9,15 +9,9 @@ int main (int argc, char *argv[], char *envp[])
 		return 1;
 	}
 	(void)envp;
-	Config config(argv[1]);
+	Config config;
 	try {
-		config.openConfigFile(config.getFileName());
-		config.scanTokens(config.getFileContent());
-		std::vector<Node> nodes = config.getNodes();
-		for (std::vector<Node>::iterator it = nodes.begin(); it != nodes.end(); it++)
-		{
-			std::cout << "Token: " << it->_token << " Value: " << it->_value << " Offset: " << it->_offset << std::endl;
-		}
+		config.parseConfigFile(argv[1]);
 	}
 	catch (std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;

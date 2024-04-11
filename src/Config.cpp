@@ -2,7 +2,7 @@
 #include "colors.hpp"
 #include "tokens.hpp"
 
-Config::Config(std::string filename) : _fileName(filename), _isLoaded(false)
+Config::Config(void) : _isLoaded(false)
 {
     std::cout << GBOLD("Config created") << std::endl;
 }
@@ -11,9 +11,7 @@ Config::Config(const Config &src)
 {
     std::cout << GBOLD("Config copied") << std::endl;
     _tokens = src._tokens;
-    _fileName = src._fileName;
     _isLoaded = src._isLoaded;
-    _fileContent = src._fileContent;
 }
 
 Config &Config::operator=(const Config &src)
@@ -22,9 +20,7 @@ Config &Config::operator=(const Config &src)
     if (this != &src)
     {
         _tokens = src._tokens;
-        _fileName = src._fileName;
         _isLoaded = src._isLoaded;
-        _fileContent = src._fileContent;
     }
     return *this;
 }
@@ -34,73 +30,27 @@ Config::~Config()
     std::cout << GBOLD("Config deleted") << std::endl;
 }
 
-std::vector<std::string> Config::getFileContent(void)
-{
-    return _fileContent;
-}
-
-std::string Config::getFileName(void) const
-{
-    return _fileName;
-}
 
 bool Config::isLoaded(void) const
 {
     return _isLoaded;
 }
 
-std::vector<Node> Config::getNodes(void) const
+const std::vector<Node>& Config::getNodes(void) const
 {
     return _nodes;
 }
 
-std::ostream &operator<<(std::ostream &os, const Config &src)
+void Config::scanTokens(std::ifstream &file)
 {
-    os << "Config file: " << src.getFileName() << std::endl;
-    return os;
-}
-
-void Config::openConfigFile(std::string filename)
-{
-    std::ifstream _fileStream(filename.c_str());
-    if (!_fileStream.is_open())
-    {
-        throw std::runtime_error(RBOLD("Error: Unable to open file " + filename));
-    }
-    while (!_fileStream.eof())
-    {
-        std::string line;
-        std::getline(_fileStream, line);
-        _fileContent.push_back(line);
-    }
-    _tokens["server"] = Server;
-    _tokens["location"] = Location;
-    _tokens["port"] = Port;
-    _tokens["host"] = Host;
-    _tokens["root"] = Root;
-    _tokens["listing"] = Listing;
-    _tokens["index"] = Index;
-    _tokens["redir"] = Redir;
-    _tokens["server_name"] = ServerName;
-    _tokens["allowed_methods"] = AllowedMethods;
-    _tokens["client_max_body_size"] = ClientMaxBodySize;
-    _tokens["default"] = Default;
-    _tokens["cgi"] = CGI;
-    _tokens["{"] = OpenBrace;
-    _tokens["}"] = CloseBrace;
-    return ;
-}
-
-void Config::scanTokens(std::vector<std::string> fileContent)
-{
-    std::vector<Node> nodes;
     std::vector<char> delim;
+    std::string line;
+    std::vector<std::pair<std::string, size_t> > out;
     delim.push_back(' ');
     delim.push_back('\t');
-    for (std::vector<std::string>::iterator it = fileContent.begin(); it != fileContent.end(); it++)
+    while (std::getline(file, line))
     {
-        
-        std::vector<std::pair<std::string, size_t> > out = slice(*it, delim);
+        out = slice(line, delim);
         if (out.size() == 0)
             continue;
         for (std::vector<std::pair<std::string, size_t> >::iterator it2 = out.begin(); it2 != out.end(); it2++)
@@ -111,18 +61,17 @@ void Config::scanTokens(std::vector<std::string> fileContent)
             {
                 if (it3->first == it2->first)
                 {
-                        nodes.push_back(Node(it3->second, it2->second));
+                        _nodes.push_back(Node(it3->second, it2->second));
                         tokenFound = true;
                         break;
                 }
             }
             if (it2->first[0] == '#')
-                nodes.push_back(Node(Comment, it2->first, it2->second)); 
+                _nodes.push_back(Node(Comment, it2->first, it2->second)); 
             else if (tokenFound == false)
-                nodes.push_back(Node(Data, it2->first, it2->second));
+                _nodes.push_back(Node(Data, it2->first, it2->second));
         }
     }
-    _nodes = nodes;
 }
 
 std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::vector<char> delim)
@@ -150,31 +99,57 @@ std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::
     return out;
 }
 
-void Config::checkScopes(void)
+void Config::parseConfigFile(std::string filename)
 {
-    size_t scopeLevel = 0;
-    std::vector<std::pair<size_t, size_t> > scopes; // pair of start and end of scope
-    for (std::vector<std::string>::iterator it = _fileContent.begin(); it != _fileContent.end(); it++)
+    std::ifstream _fileStream(filename.c_str());
+    if (!_fileStream.is_open())
     {
-        if (it->find("{") != std::string::npos)
-        {
-            scopes.push_back(std::make_pair(it - _fileContent.begin(), 0));
-            scopeLevel++;
-        }
-        else if (it->find("}") != std::string::npos)
-        {
-            if (scopeLevel == 0)
-                std::cout << RBOLD("Syntax error: unexpected '}' at row ") << it - _fileContent.begin() + 1 << RBOLD(", column ") << it->find("}") + 1 << std::endl;
-            else
-            {
-                scopes[scopeLevel - 1].second = it - _fileContent.begin();
-                scopeLevel--;
-            }
-        }
+        throw std::runtime_error(RBOLD("Error: Unable to open file " + filename));
     }
-    for (std::vector<std::pair<size_t, size_t> >::iterator it = scopes.begin(); it != scopes.end(); it++)
-    {
-        if (it->second == 0)
-            std::cout << RBOLD("Syntax error: missing '}' at row ") << it->first + 1 << RBOLD(", column ") << _fileContent[it->first].find("{") + 1 << std::endl;
-    }
+    _tokens["server"] = Server;
+    _tokens["location"] = Location;
+    _tokens["port"] = Port;
+    _tokens["host"] = Host;
+    _tokens["root"] = Root;
+    _tokens["listing"] = Listing;
+    _tokens["index"] = Index;
+    _tokens["redir"] = Redir;
+    _tokens["server_name"] = ServerName;
+    _tokens["allowed_methods"] = AllowedMethods;
+    _tokens["client_max_body_size"] = ClientMaxBodySize;
+    _tokens["default"] = Default;
+    _tokens["cgi"] = CGI;
+    _tokens["{"] = OpenBrace;
+    _tokens["}"] = CloseBrace;
+
+    this->scanTokens(_fileStream);
 }
+
+// void Config::checkScopes(void)
+// {
+//     size_t scopeLevel = 0;
+//     std::vector<std::pair<size_t, size_t> > scopes; // pair of start and end of scope
+//     for (std::vector<std::string>::iterator it = _fileContent.begin(); it != _fileContent.end(); it++)
+//     {
+//         if (it->find("{") != std::string::npos)
+//         {
+//             scopes.push_back(std::make_pair(it - _fileContent.begin(), 0));
+//             scopeLevel++;
+//         }
+//         else if (it->find("}") != std::string::npos)
+//         {
+//             if (scopeLevel == 0)
+//                 std::cout << RBOLD("Syntax error: unexpected '}' at row ") << it - _fileContent.begin() + 1 << RBOLD(", column ") << it->find("}") + 1 << std::endl;
+//             else
+//             {
+//                 scopes[scopeLevel - 1].second = it - _fileContent.begin();
+//                 scopeLevel--;
+//             }
+//         }
+//     }
+//     for (std::vector<std::pair<size_t, size_t> >::iterator it = scopes.begin(); it != scopes.end(); it++)
+//     {
+//         if (it->second == 0)
+//             std::cout << RBOLD("Syntax error: missing '}' at row ") << it->first + 1 << RBOLD(", column ") << _fileContent[it->first].find("{") + 1 << std::endl;
+//     }
+// }

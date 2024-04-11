@@ -11,9 +11,6 @@
 class Config {
 
     private:
-
-        std::string _fileName;
-        std::vector<std::string> _fileContent;
         std::vector<Node> _nodes;
         bool _isLoaded;
 
@@ -22,19 +19,17 @@ class Config {
 
     public:
 
-        Config(std::string filename);
+        Config();
         ~Config();
 
         // getters
-        std::string getFileName(void) const;
-        std::vector<std::string> getFileContent(void);
-        std::vector<Node> getNodes(void) const;
+        const std::vector<Node>& getNodes(void) const;
         bool isLoaded(void) const;
 
         // config parsing methods
-        void openConfigFile(std::string filename);
+        void parseConfigFile(std::string filename);
         void checkScopes(void);
-        void scanTokens(std::vector<std::string> fileContent);
+        void scanTokens(std::ifstream& file);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
         TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
@@ -58,7 +53,5 @@ class Config {
                 int getColumn(void) const { return _column; }
         };
 };
-
-std::ostream& operator<<(std::ostream& os, const Config& src);
 
 #endif
