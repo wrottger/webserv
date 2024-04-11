@@ -48,7 +48,7 @@ void Config::scanTokens(std::ifstream &file)
     std::vector<std::pair<std::string, size_t> > out;
     delim.push_back(' ');
     delim.push_back('\t');
-    while (std::getline(file, line))
+    for (size_t n = 0; std::getline(file, line); n++)
     {
         out = slice(line, delim);
         if (out.size() == 0)
@@ -61,16 +61,20 @@ void Config::scanTokens(std::ifstream &file)
             {
                 if (it3->first == it2->first)
                 {
-                        _nodes.push_back(Node(it3->second, it2->second));
+                        _nodes.push_back(Node(it3->second, it2->second, n));
                         tokenFound = true;
                         break;
                 }
             }
             if (it2->first[0] == '#')
-                _nodes.push_back(Node(Comment, it2->first, it2->second)); 
+                _nodes.push_back(Node(Comment, it2->first, it2->second, n)); 
             else if (tokenFound == false)
-                _nodes.push_back(Node(Data, it2->first, it2->second));
+                _nodes.push_back(Node(Data, it2->first, it2->second, n));
         }
+    }
+    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
+    {
+        std::cout << "Token: " << it->_token << " in line " << it->_line << " at offset " << it->_offset << std::endl;
     }
 }
 
@@ -123,6 +127,7 @@ void Config::parseConfigFile(std::string filename)
     _tokens["}"] = CloseBrace;
 
     this->scanTokens(_fileStream);
+    _fileStream.close();
 }
 
 // void Config::checkScopes(void)

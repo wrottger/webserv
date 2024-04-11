@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 # include "tokens.hpp"
 # include <map>
+# include <stack>
 # include <vector>
 # include <string>
 # include <fstream>
@@ -33,9 +34,9 @@ class Config {
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
         TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
-        // token map
+        // utils
         std::map<std::string, TokenType> _tokens;
-
+        
         class ConfigException : public std::exception {
             private:
 
