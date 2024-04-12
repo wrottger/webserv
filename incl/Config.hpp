@@ -29,10 +29,10 @@ class Config {
 
         // config parsing methods
         void parseConfigFile(std::string filename);
-        void checkScopes(void);
         void scanTokens(std::ifstream& file);
-        void parseTokens(void);
+        void parserScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
         void buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
+        void parseTokens(void);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
         TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 

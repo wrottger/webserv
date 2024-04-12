@@ -169,10 +169,10 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 //     }
 // }
 
-void Config::parserScopes(void)
+void Config::parserScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
 {
     size_t scopeLevel = 0;
-    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
+    for (; it != end; it++)
     {
         if (it->_token == OpenBrace)
         {
@@ -181,7 +181,11 @@ void Config::parserScopes(void)
         else if (it->_token == CloseBrace)
         {
             if (scopeLevel == 0)
-                std::cout << RBOLD("Syntax error: unexpected '}' at row ") << it->_line + 1 << RBOLD(", column ") << it->_offset + 1 << std::endl;
+            {
+                std::stringstream ss;
+                ss << "Syntax error: unexpected token at row " << it->_line + 1 << ", column " << it->_offset + 1;
+                throw std::runtime_error(ss.str());
+            }
             else
             {
                 scopeLevel--;
