@@ -135,7 +135,7 @@ void Config::parseConfigFile(std::string filename)
 
     this->scanTokens(_fileStream);
     _fileStream.close();
-    this->checkScopes();
+    this->parseScopes(_nodes.begin(), _nodes.end());
     this->buildAST(_nodes.begin(), _nodes.end());
     // this->parseTokens();
 }
@@ -169,7 +169,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 //     }
 // }
 
-void Config::parserScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
+void Config::parseScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
 {
     size_t scopeLevel = 0;
     for (; it != end; it++)
@@ -177,6 +177,7 @@ void Config::parserScopes(std::vector<Node>::iterator it, std::vector<Node>::ite
         if (it->_token == OpenBrace)
         {
             scopeLevel++;
+            _nodes.erase(it);
         }
         else if (it->_token == CloseBrace)
         {
@@ -189,7 +190,9 @@ void Config::parserScopes(std::vector<Node>::iterator it, std::vector<Node>::ite
             else
             {
                 scopeLevel--;
+                _nodes.erase(it);
             }
         }
+
     }
 }
