@@ -10,6 +10,7 @@ public:
     size_t parseLine(const char *requestLine);
     const std::string &getMethod() const;
     const std::string &getTarget() const;
+    const std::string &getQuery() const;
     const std::string &getVersion() const;
     const std::string &getHeader(const std::string &name) const;
     const std::string &getBody() const;
@@ -51,6 +52,7 @@ private:
     std::string method;
     std::string buf;
     std::string target;
+    std::string query;
     std::string version;
     std::map<std::string, std::string> headers;
     std::string body;
