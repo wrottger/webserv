@@ -1,6 +1,6 @@
 #include "Config.hpp"
+#include "Tokens.hpp"
 #include "colors.hpp"
-#include "tokens.hpp"
 
 Config::Config(void) : _isLoaded(false)
 {
@@ -41,10 +41,12 @@ const std::vector<Node>& Config::getNodes(void) const
     return _nodes;
 }
 
+// This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
 void Config::scanTokens(std::ifstream &file)
 {
     std::vector<char> delim;
     std::string line;
+    size_t scopeLevel = 0;
     std::vector<std::pair<std::string, size_t> > out;
     delim.push_back(' ');
     delim.push_back('\t');
@@ -61,23 +63,28 @@ void Config::scanTokens(std::ifstream &file)
             {
                 if (it3->first == it2->first)
                 {
-                        _nodes.push_back(Node(it3->second, it2->second, n));
+                        if (it3->second == CloseBrace)
+                            scopeLevel--;
+                        _nodes.push_back(Node(it3->second, it2->second, n, scopeLevel));
                         tokenFound = true;
+                        if (it3->second == OpenBrace)
+                            scopeLevel++;
                         break;
                 }
             }
             if (it2->first[0] == '#')
-                _nodes.push_back(Node(Comment, it2->first, it2->second, n)); 
+                _nodes.push_back(Node(Comment, it2->first, it2->second, n, scopeLevel)); 
             else if (tokenFound == false)
-                _nodes.push_back(Node(Data, it2->first, it2->second, n));
+                _nodes.push_back(Node(Data, it2->first, it2->second, n, scopeLevel));
         }
     }
     for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
     {
-        std::cout << "Token: " << it->_token << " in line " << it->_line << " at offset " << it->_offset << std::endl;
+        std::cout << "Token: " << it->_token << " Value: " << it->_value << " Offset: " << it->_offset << " Line: " << it->_line << " Level: " << it->_level << std::endl;
     }
 }
 
+// This method is supposed to slice a string into a vector of pairs of strings and their offsets;
 std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::vector<char> delim)
 {
     size_t comment = in.find("#");
@@ -128,33 +135,57 @@ void Config::parseConfigFile(std::string filename)
 
     this->scanTokens(_fileStream);
     _fileStream.close();
+    this->checkScopes();
+    this->buildAST(_nodes.begin(), _nodes.end());
+    // this->parseTokens();
 }
 
-// void Config::checkScopes(void)
+void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
+{
+    for (; it != end; it++)
+    if (it->_level == 0)
+    {
+        if (it->_token != Server && it->_token != Comment && it->_token != OpenBrace && it->_token != CloseBrace)
+        {
+            std::stringstream ss;
+            ss << "Syntax error: unexpected token at row " << it->_line + 1 << ", column " << it->_offset + 1;
+            throw std::runtime_error(ss.str());
+        }
+    }
+}
+
+// void Config::parseTokens(void)
 // {
-//     size_t scopeLevel = 0;
-//     std::vector<std::pair<size_t, size_t> > scopes; // pair of start and end of scope
-//     for (std::vector<std::string>::iterator it = _fileContent.begin(); it != _fileContent.end(); it++)
+//     if(_nodes.size() == 0)
+//         throw std::runtime_error("Empty config file");
+//     for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
 //     {
-//         if (it->find("{") != std::string::npos)
+//         if (it->_level == 0 && it->_token != Server)
 //         {
-//             scopes.push_back(std::make_pair(it - _fileContent.begin(), 0));
-//             scopeLevel++;
+//             std::stringstream ss;
+//             ss << "Syntax error: unexpected token '" << _tokens(it->_token) << "' at row " << it->_line + 1 << ", column " << it->_offset + 1;
+//             throw std::runtime_error(ss.str());
 //         }
-//         else if (it->find("}") != std::string::npos)
-//         {
-//             if (scopeLevel == 0)
-//                 std::cout << RBOLD("Syntax error: unexpected '}' at row ") << it - _fileContent.begin() + 1 << RBOLD(", column ") << it->find("}") + 1 << std::endl;
-//             else
-//             {
-//                 scopes[scopeLevel - 1].second = it - _fileContent.begin();
-//                 scopeLevel--;
-//             }
-//         }
-//     }
-//     for (std::vector<std::pair<size_t, size_t> >::iterator it = scopes.begin(); it != scopes.end(); it++)
-//     {
-//         if (it->second == 0)
-//             std::cout << RBOLD("Syntax error: missing '}' at row ") << it->first + 1 << RBOLD(", column ") << _fileContent[it->first].find("{") + 1 << std::endl;
 //     }
 // }
+
+void Config::parserScopes(void)
+{
+    size_t scopeLevel = 0;
+    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
+    {
+        if (it->_token == OpenBrace)
+        {
+            scopeLevel++;
+        }
+        else if (it->_token == CloseBrace)
+        {
+            if (scopeLevel == 0)
+                std::cout << RBOLD("Syntax error: unexpected '}' at row ") << it->_line + 1 << RBOLD(", column ") << it->_offset + 1 << std::endl;
+            else
+            {
+                scopeLevel--;
+            }
+        }
+    }
+}

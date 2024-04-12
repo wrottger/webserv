@@ -14,7 +14,7 @@ int main (int argc, char *argv[], char *envp[])
 		config.parseConfigFile(argv[1]);
 	}
 	catch (std::exception &e) {
-		std::cerr << "Error: " << e.what() << std::endl;
+		std::cerr << e.what() << std::endl;
 		return 1;
 	}
     return 0;

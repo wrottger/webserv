@@ -1,6 +1,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
-# include "tokens.hpp"
+# include "Tokens.hpp"
 # include <map>
 # include <stack>
 # include <vector>
@@ -31,28 +31,30 @@ class Config {
         void parseConfigFile(std::string filename);
         void checkScopes(void);
         void scanTokens(std::ifstream& file);
+        void parseTokens(void);
+        void buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
         TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
         // utils
         std::map<std::string, TokenType> _tokens;
         
-        class ConfigException : public std::exception {
-            private:
+        // class ConfigException : public std::exception {
+        //     private:
 
-                int _row;
-                int _column;
-                std::string _msg;
+        //         size_t _row;
+        //         size_t _column;
+        //         std::string _msg;
 
-            public:
-                ConfigException(std::string msg, int row, int column) : _row(row), _column(column), _msg(msg)  {}
-                virtual ~ConfigException() throw() {}
-                virtual const char* what() const throw() {
-                    return _msg.c_str();
-                }
-                int getRow(void) const { return _row; }
-                int getColumn(void) const { return _column; }
-        };
+        //     public:
+        //         ConfigException(std::string msg, size_t row, size_t column) : _row(row), _column(column), _msg(msg)  {}
+        //         virtual ~ConfigException() throw() {}
+        //         virtual const char* what() const throw() {
+        //             return _msg.c_str();
+        //         }
+        //         int getRow(void) const { return _row; }
+        //         int getColumn(void) const { return _column; }
+        // };
 };
 
 #endif
