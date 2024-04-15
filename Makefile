@@ -1,40 +1,28 @@
 NAME = webserv
-CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -g -std=gnu++98 -Iincl -Wshadow
+#CXXFLAGS = -Wall -Wextra -Werror -g -std=c++98 -Iincl
+# CXXFLAGS = -g -Iincl -fsanitize=address
+CXXFLAGS = -g -Iincl
 
-CLT_NAME = client
+SCRS = $(wildcard src/*.cpp)
+OBJS = $(addprefix objs/, $(notdir $(SCRS:.cpp=.o)))
 
-SRC := 	main.cpp
+all: $(NAME)
 
-CLT_SRC := 	browser.cpp
+$(NAME): $(OBJS)
+	@$(CXX) $(CXXFLAGS) -o $(NAME) $(OBJS)
+	@echo "\033[32m[✔] \033[0m\033[1;32mCreated:\033[0m $(NAME)"
 
-HEADER :=	
+objs/%.o: src/%.cpp
+	@mkdir -p objs
+	@$(CXX) $(CXXFLAGS) -c $< -o $@ 1>/dev/null
 
-OBJ := $(SRC:.cpp=.o)
-
-#CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -g
-#CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -g -fsanitize=address
-
-.PHONY: all bonus clean fclean re
-
-all:$(NAME) $(CLT_NAME)
-
-$(NAME): $(OBJ)
-	c++ $(CXXFLAGS) $(OBJ) -o $(NAME)
-$(OBJ): $(SRC) $(HEADER)
-	c++ -c $(CXXFLAGS) $(SRC)
-
-CLT_OBJ := $(CLT_SRC:.cpp=.o)
-
-
-$(CLT_NAME): $(CLT_OBJ)
-	c++ $(CXXFLAGS) $(CLT_OBJ) -o $(CLT_NAME)
-$(CLT_OBJ): $(CLT_SRC) $(CLT_HEADER)
-	c++ -c $(CXXFLAGS) $(CLT_SRC)
-
-	.
 clean:
-	rm -f $(OBJ) $(CLT_OBJ) 
+	@rm -f $(OBJS)
+	@rm -rf objs
+
 fclean: clean
-	rm -f $(NAME) $(CLT_NAME) 
+	@rm -f $(NAME)
+
 re: fclean all
+
+.PHONY: all re clean fclean
