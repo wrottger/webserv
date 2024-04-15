@@ -7,7 +7,6 @@
 HttpRequest::HttpRequest() {
     // Initialize member variables
     body = "";
-    memset(method_buf, 0, sizeof(method_buf));
     target = "";
     query = "";
     version = "";
@@ -16,11 +15,10 @@ HttpRequest::HttpRequest() {
     request_size = 0;
 }
 
-size_t HttpRequest::parseLine(const char *requestLine) {
+size_t HttpRequest::parseBuffer(const char *requestLine) {
     if (requestLine == NULL)
         return 0;
     char c;
-    char *position = NULL;
     for (size_t i = 0; requestLine[i] != '\0'; i++)
     {
         request_size++;
@@ -36,28 +34,43 @@ size_t HttpRequest::parseLine(const char *requestLine) {
                 throw HttpError(400, "Bad Request");            
             break;
         case s_method:
-            position = std::find(method_buf, method_buf + sizeof(method_buf)/sizeof(method_buf[0]), '\0');
-            if (method_buf - position == 9)
+            if (method.size() > 7)
                 throw HttpError(501, "Not Implemented");
             if (isToken(c))
-                *position = c;
+                method.push_back(c);
             else if (c == ' ')
-            {
-                method = std::string(method_buf);
                 state = s_spaces_before_uri;
-            }
             else
                 throw HttpError(400, "Bad Request");
             break;
         case s_spaces_before_uri:
+            if (c == ' ') {
+                state = s_after_first_space;
+            } else if (c == '/') {
+                state = s_uri;  // Origin form
+            } else if (c == 'h') {
+                state = s_schema_start;  // Possible absolute form
+            } else {
+                throw HttpError(400, "Bad Request");
+            }
+            break;
+        case s_after_first_space:
+            if (c == ' ') {
+                throw HttpError(400, "Bad Request: Multiple spaces before URI");
+            } else if (c == '/') {
+                state = s_uri;  // Origin form
+            } else if (c == 'h') {
+                state = s_schema_start;  // Possible absolute form
+            } else {
+                throw HttpError(400, "Bad Request");
+            }
+            break;
         case s_schema:
-        case s_schema_slash:
-        case s_schema_slash_slash:
+
         case s_host_start:
         case s_host:
         case s_host_end:
         case s_host_ip_literal:
-        case s_port:
         case s_after_slash_in_uri:
         case s_check_uri:
         case s_uri:

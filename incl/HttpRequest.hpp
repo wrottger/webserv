@@ -7,7 +7,7 @@
 class HttpRequest {
 public:
     HttpRequest();
-    size_t parseLine(const char *requestLine);
+    size_t parseBuffer(const char *requestLine);
     const std::string &getMethod() const;
     const std::string &getTarget() const;
     const std::string &getQuery() const;
@@ -23,8 +23,8 @@ private:
         s_method,
         s_spaces_before_uri,
         s_schema,
-        s_schema_slash,
-        s_schema_slash_slash,
+        s_schema_start,
+        s_after_first_space,
         s_host_start,
         s_host,
         s_host_end,
@@ -48,9 +48,8 @@ private:
     };
 
     State state;
-    char method_buf[10];
     std::string method;
-    std::string buf;
+    std::string schema;
     std::string target;
     std::string query;
     std::string version;
