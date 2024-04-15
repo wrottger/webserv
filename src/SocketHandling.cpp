@@ -1,6 +1,6 @@
 #include "SocketHandling.hpp"
 
-SocketHandling::SocketHandling(std::vector<configObject> &config) : config(config)
+SocketHandling::SocketHandling(std::vector<configObject> &config) : _config(config)
 {
 	size_t serverCount = config[0].getServerCount();
 	std::vector<int> ports = config[0].getPorts();
@@ -9,17 +9,18 @@ SocketHandling::SocketHandling(std::vector<configObject> &config) : config(confi
 		for (size_t i = 0; i < serverCount; i++) {
 			setUpSocket(ports[i]);
 		}
+		setUpEpoll();
 	} catch (const std::runtime_error& e) {
-		for (size_t i = 0; i < openFds.size(); i++) {
-			close(openFds[i]);
+		for (size_t i = 0; i < _openFds.size(); i++) {
+			close(_openFds[i]);
 		}
 		std::cerr << e.what() << std::endl;
 	}
 }
 
-SocketHandling::SocketHandling(SocketHandling const &source) : config(config) {}
+SocketHandling::SocketHandling(SocketHandling const &other) : _config(other._config) {}
 
-SocketHandling SocketHandling::operator=(SocketHandling const &source) {}
+SocketHandling SocketHandling::operator=(SocketHandling const &other) {}
 
 void SocketHandling::setUpSocket(int port)
 {
@@ -46,13 +47,36 @@ void SocketHandling::setUpSocket(int port)
 	if (listen(socketFd, 128) < 0) {
 		throw std::runtime_error("SetUpSocket: Listen failed.");
 	}
-	openFds.push_back(socketFd);
+	_openFds.push_back(socketFd);
 }
 
-
-SocketHandling::~SocketHandling()
+int SocketHandling::getEpollFd()
 {
-	for (size_t i = 0; i < openFds.size(); i++) {
-		close(openFds[i]);
+	return _epollFd;
+}
+
+SocketHandling::~SocketHandling() {
+	for (size_t i = 0; i < _openFds.size(); i++) {
+		close(_openFds[i]);
 	}
+}
+
+void SocketHandling::setUpEpoll() {
+	struct epoll_event ev;
+
+	_epollFd = epoll_create(1);
+	if (_epollFd == -1) {
+		throw std::runtime_error("SetUpEpoll: epoll_create failed.");
+	}
+
+	ev.events = EPOLLIN;
+
+	int openSocketCount = _openFds.size();
+	for (size_t i = 0; i < openSocketCount; i++) {
+		ev.data.fd = _openFds[i];
+		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, _openFds[i], &ev) == -1) {
+			throw std::runtime_error("SetUpEpoll: epoll_ctl failed.");
+		}
+	}
+	
 }

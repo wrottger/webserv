@@ -19,16 +19,20 @@
 class SocketHandling
 {
 	private:
-		SocketHandling(SocketHandling const &source);
-		SocketHandling operator =(SocketHandling const &source);
-		std::vector<configObject> &config;
-		int	epollFd;
-		
+		std::vector<configObject> &_config;
+		std::vector<int> _openFds;
+		int	_epollFd;
+
+		SocketHandling(SocketHandling const &other);
+		SocketHandling operator =(SocketHandling const &other);
+
+		void setUpSocket(int port);
+		void setUpEpoll();
+
 	public:
-		std::vector<int> openFds;
 		SocketHandling(std::vector<configObject> &config);
 		~SocketHandling();
-		void setUpSocket(int port);
+		int getEpollFd();
 };
 
 #endif

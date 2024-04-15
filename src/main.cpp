@@ -18,18 +18,16 @@
 int main()
 {
 	// loadConfig
-	configObject server1(8080, 2342);
-	// configObject server2(8081, 2342);
-	// configObject server3(8082, 2342);
+	configObject server1;
 	size_t serverCount = 3;
 	std::vector<configObject> pommes;
 
 	pommes.push_back(server1);
 	SocketHandling a(pommes);
-	for (size_t i = 0; i < serverCount; i++)
-	{
-		std::cout << a.openFds[i] << std::endl;
-	}
+	// for (size_t i = 0; i < serverCount; i++)
+	// {
+	// 	std::cout << a.openFds[i] << std::endl;
+	// }
 
 	// init Server
 	// config Server port etc
