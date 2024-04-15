@@ -1,4 +1,6 @@
 NAME = webserv
+CXX = g++
+CXXFLAGS = -Wall -Wextra -Werror -g -std=gnu++98 -Iincl -Wshadow
 
 CLT_NAME = client
 
