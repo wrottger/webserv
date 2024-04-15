@@ -10,15 +10,15 @@ UTEST(HttpRequest, setup) {
 UTEST(HttpRequest, null)
 {
   HttpRequest r;
-  r.parseLine(NULL);
-  r.parseLine(NULL);
-  r.parseLine("G");
+  r.parseBuffer(NULL);
+  r.parseBuffer(NULL);
+  r.parseBuffer("G");
   ASSERT_FALSE(r.isComplete());
 }
 
 UTEST(HttpRequest, size) {
   HttpRequest r;
-  size_t size = r.parseLine("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
+  size_t size = r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
   size_t expected = 33;
   ASSERT_EQ(expected, size);
 }
@@ -26,17 +26,17 @@ UTEST(HttpRequest, size) {
 UTEST(HttpRequest, wrongWhitespaces)
 {
   HttpRequest r;
-  ASSERT_EXCEPTION(r.parseLine("GET /HTTP/1.1\r\nhost: localhost\r\n\r\n"), HttpError);
+  ASSERT_EXCEPTION(r.parseBuffer("GET /HTTP/1.1\r\nhost: localhost\r\n\r\n"), HttpError);
   HttpRequest r2;
-  ASSERT_EXCEPTION(r2.parseLine("GET / HTTP/1.1\r\nhost :localhost\r\n\r\n"), HttpError);
+  ASSERT_EXCEPTION(r2.parseBuffer("GET / HTTP/1.1\r\nhost :localhost\r\n\r\n"), HttpError);
   HttpRequest r3;
-  ASSERT_EXCEPTION(r3.parseLine("GET / HTTP/1.1\r\nhost: localhost \r\n\r\n"), HttpError);
+  ASSERT_EXCEPTION(r3.parseBuffer("GET / HTTP/1.1\r\nhost: localhost \r\n\r\n"), HttpError);
 }
 
 UTEST(HttpRequest, nlLineneding)
 {
   HttpRequest r;
-  r.parseLine("GET / HTTP/1.1\nhost: localhost\r\n\r\n");
+  r.parseBuffer("GET / HTTP/1.1\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getTarget().c_str());
   ASSERT_STREQ("HTTP/1.1", r.getVersion().c_str());
@@ -45,7 +45,7 @@ UTEST(HttpRequest, nlLineneding)
 
 UTEST(HttpRequest, parseAtOnce) {
   HttpRequest r;
-  size_t size = r.parseLine("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
+  size_t size = r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
   size_t expected = 33;
   ASSERT_EQ(expected, size);
   ASSERT_TRUE(r.isComplete());
@@ -53,22 +53,22 @@ UTEST(HttpRequest, parseAtOnce) {
 
 UTEST(HttpRequest, charByChar) {
   HttpRequest r;
-  r.parseLine("G");
-  r.parseLine("E");
-  r.parseLine("T");
-  r.parseLine(" ");
-  r.parseLine("/");
-  r.parseLine(" ");
-  r.parseLine("H");
-  r.parseLine("T");
-  r.parseLine("T");
-  r.parseLine("P");
-  r.parseLine("/");
-  r.parseLine("1");
-  r.parseLine(".");
-  r.parseLine("1");
-  r.parseLine("\r");
-  r.parseLine("\n");
+  r.parseBuffer("G");
+  r.parseBuffer("E");
+  r.parseBuffer("T");
+  r.parseBuffer(" ");
+  r.parseBuffer("/");
+  r.parseBuffer(" ");
+  r.parseBuffer("H");
+  r.parseBuffer("T");
+  r.parseBuffer("T");
+  r.parseBuffer("P");
+  r.parseBuffer("/");
+  r.parseBuffer("1");
+  r.parseBuffer(".");
+  r.parseBuffer("1");
+  r.parseBuffer("\r");
+  r.parseBuffer("\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getTarget().c_str());
   ASSERT_STREQ("HTTP/1.1", r.getVersion().c_str());
@@ -77,7 +77,7 @@ UTEST(HttpRequest, charByChar) {
 
 UTEST(HttpRequest, minimal) {
   HttpRequest r;
-  r.parseLine("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
+  r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getTarget().c_str());
   ASSERT_STREQ("HTTP/1.1", r.getVersion().c_str());
@@ -86,23 +86,23 @@ UTEST(HttpRequest, minimal) {
 
 UTEST(HttpRequest, missingHost) {
   HttpRequest r;
-  ASSERT_EXCEPTION(r.parseLine("GET / HTTP/1.1\r\n\r\n"), HttpError);
+  ASSERT_EXCEPTION(r.parseBuffer("GET / HTTP/1.1\r\n\r\n"), HttpError);
 }
 
 UTEST(HttpRequest, CRLFtooEarly) {
   HttpRequest r;
-  ASSERT_EXCEPTION(r.parseLine("GET\r\n/ HTTP/1.0"), HttpError);
+  ASSERT_EXCEPTION(r.parseBuffer("GET\r\n/ HTTP/1.0"), HttpError);
 }
 
 UTEST(HttpRequest, noCRLF) {
   HttpRequest r;
-  ASSERT_EXCEPTION(r.parseLine("GET / HTTP/1.0 hostname: localhost"), HttpError);
+  ASSERT_EXCEPTION(r.parseBuffer("GET / HTTP/1.0 hostname: localhost"), HttpError);
 }
 
 UTEST(HttpRequest, postRequest)
 {
   HttpRequest r;
-  r.parseLine("POST / HTTP/1.1\r\nhost: localhost\r\ncontent-length: 5\r\n\r\n12345");
+  r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\ncontent-length: 5\r\n\r\n12345");
   ASSERT_STREQ("POST", r.getMethod().c_str());
   ASSERT_STREQ("12345", r.getBody().c_str());
 }
