@@ -78,5 +78,4 @@ void SocketHandling::setUpEpoll() {
 			throw std::runtime_error("SetUpEpoll: epoll_ctl failed.");
 		}
 	}
-	
 }

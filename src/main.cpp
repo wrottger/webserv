@@ -20,10 +20,10 @@ int main()
 	// loadConfig
 	configObject server1;
 	size_t serverCount = 3;
-	std::vector<configObject> pommes;
+	std::vector<configObject> config;
 
-	pommes.push_back(server1);
-	SocketHandling a(pommes);
+	config.push_back(server1);
+	SocketHandling sockets(config);
 	// for (size_t i = 0; i < serverCount; i++)
 	// {
 	// 	std::cout << a.openFds[i] << std::endl;
