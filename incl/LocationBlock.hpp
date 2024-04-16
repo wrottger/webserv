@@ -5,7 +5,7 @@
 
 struct LocationBlock {
 
-    std::map <std::string, std::string> _directives;
+    std::map <TokenType, std::string> _directives;
     std::string _path;
 
 };

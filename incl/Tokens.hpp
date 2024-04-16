@@ -11,7 +11,6 @@ enum TokenType {
     Port,
     Host,
     Root,
-    Listing,
     Index,
     Redir,
     ServerName,
@@ -19,8 +18,8 @@ enum TokenType {
     ClientMaxBodySize,
     Default,
     CGI,
-    Comment,
     Data,
+    Semicolon,
 };
 
 struct Node {
@@ -30,6 +29,8 @@ struct Node {
     size_t      _line;
     size_t      _level;
 
+    Node(TokenType token, std::string value, size_t off, size_t line) : _token(token), _value(value), _offset(off), _line(line) {}
+    Node(TokenType token, size_t off, size_t line) : _token(token), _offset(off), _line(line) {}
     Node(TokenType token, size_t off, size_t line, size_t scope_level) : _token(token), _offset(off), _line(line), _level(scope_level) {}
     Node(TokenType token, std::string value, size_t off, size_t line, size_t scope_level) : _token(token), _value(value), _offset(off), _line(line), _level(scope_level) {}
 };

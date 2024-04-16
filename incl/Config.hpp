@@ -32,13 +32,14 @@ class Config {
         // config parsing methods
         void parseConfigFile(std::string filename);
         void scanTokens(std::ifstream& file);
-        void parseScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
+        void parseScopes(void);
         void buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
         void parseTokens(void);
         void error(const std::string &msg, const std::vector<Node>::iterator& it);
-        ServerBlock& parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
+        void sortVector(std::vector<Node>& vec);
+        ServerBlock parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
+        LocationBlock parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
-        TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
         // utils
         std::map<std::string, TokenType> _tokens;

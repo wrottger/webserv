@@ -53,7 +53,6 @@ void Config::parseConfigFile(std::string filename)
     _tokens["port"] = Port;
     _tokens["host"] = Host;
     _tokens["root"] = Root;
-    _tokens["listing"] = Listing;
     _tokens["index"] = Index;
     _tokens["redir"] = Redir;
     _tokens["server_name"] = ServerName;
@@ -63,15 +62,28 @@ void Config::parseConfigFile(std::string filename)
     _tokens["cgi"] = CGI;
     _tokens["{"] = OpenBrace;
     _tokens["}"] = CloseBrace;
+    _tokens[";"] = Semicolon;
 
     this->scanTokens(_fileStream);
     _fileStream.close();
-    this->parseScopes(_nodes.begin(), _nodes.end());
+    this->parseScopes();
     this->buildAST(_nodes.begin(), _nodes.end());
-    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
-    {
-        std::cout << "Token: " << it->_token << " Value: " << it->_value << " Offset: " << it->_offset << " Line: " << it->_line << " Level: " << it->_level << std::endl;
-    }
+    // for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
+    // {
+    //     std::cout << "Server block:" << std::endl;
+    //     for (std::map<std::string, std::string>::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
+    //     {
+    //         std::cout << it2->first << ": " << it2->second << std::endl;
+    //     }
+    //     for (std::vector<LocationBlock>::iterator it2 = it->_locations.begin(); it2 != it->_locations.end(); it2++)
+    //     {
+    //         std::cout << "Location block:" << std::endl;
+    //         for (std::map<std::string, std::string>::iterator it3 = it2->_directives.begin(); it3 != it2->_directives.end(); it3++)
+    //         {
+    //             std::cout << it3->first << ": " << it3->second << std::endl;
+    //         }
+    //     }
+    // }
 }
 
 // This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
@@ -79,12 +91,23 @@ void Config::scanTokens(std::ifstream &file)
 {
     std::vector<char> delim;
     std::string line;
-    size_t scopeLevel = 0;
     std::vector<std::pair<std::string, size_t> > out;
     delim.push_back(' ');
     delim.push_back('\t');
+    delim.push_back('{');
+    delim.push_back('}');
+    delim.push_back(';');
     for (size_t n = 0; std::getline(file, line); n++)
     {
+        for (size_t i = 0; i < line.size(); i++)
+        {
+            if (line[i] == '{')
+                _nodes.push_back(Node(OpenBrace, i, n));
+            else if (line[i] == '}')
+                _nodes.push_back(Node(CloseBrace, i, n));
+            else if (line[i] == ';')
+                _nodes.push_back(Node(Semicolon, i, n));
+        }
         out = slice(line, delim);
         if (out.size() == 0)
             continue;
@@ -96,21 +119,20 @@ void Config::scanTokens(std::ifstream &file)
             {
                 if (it3->first == it2->first)
                 {
-                        if (it3->second == CloseBrace)
-                            scopeLevel--;
-                        _nodes.push_back(Node(it3->second, it2->second, n, scopeLevel));
+                        _nodes.push_back(Node(it3->second, it2->second, n));
                         tokenFound = true;
-                        if (it3->second == OpenBrace)
-                            scopeLevel++;
                         break;
                 }
             }
             if (it2->first[0] == '#')
-                _nodes.push_back(Node(Comment, it2->first, it2->second, n, scopeLevel)); 
+                continue;
             else if (tokenFound == false)
-                _nodes.push_back(Node(Data, it2->first, it2->second, n, scopeLevel));
+            {
+                _nodes.push_back(Node(Data, it2->first, it2->second, n));
+            }
         }
     }
+    this->sortVector(_nodes);
 }
 
 // This method is supposed to slice a string into a vector of pairs of strings and their offsets;
@@ -140,25 +162,27 @@ std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::
 }
 
 // This method is supposed to parse the scopes of the config file, check for syntax errors and delete braces and comments;
-void Config::parseScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
+void Config::parseScopes(void)
 {
     std::stack<Node> openBraces;
-    for (; it != end; it++)
+    size_t level = 0;
+    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
     {
         if (it->_token == OpenBrace)
         {
             openBraces.push(*it);
+            level++;
         }
-        else if (it->_token == CloseBrace)
+        it->_level = level;
+        if (it->_token == CloseBrace)
         {
-            if (openBraces.empty())
+            if (level)
             {
-                std::stringstream ss;
-                ss << "Syntax error: unexpected brace at row " << it->_line + 1 << ", column " << it->_offset + 1;
-                throw std::runtime_error(RBOLD(ss.str()));
+                openBraces.pop();
+                level--;
             }
             else
-                openBraces.pop();
+               error("Syntax error: unexpected brace", it);
         }
     }
     if (!openBraces.empty())
@@ -168,10 +192,10 @@ void Config::parseScopes(std::vector<Node>::iterator it, std::vector<Node>::iter
         ss << "Syntax error: unclosed brace at row " << unclosedBrace._line + 1 << ", column " << unclosedBrace._offset + 1;
         throw std::runtime_error(RBOLD(ss.str()));
     }
-    for (std::vector<Node>::reverse_iterator rit = _nodes.rbegin(); rit != _nodes.rend(); rit++)
+    for (std::vector<Node>::reverse_iterator it = _nodes.rbegin(); it != _nodes.rend(); it++)
     {
-        if (rit->_token == Comment)
-            _nodes.erase(rit.base() - 1);
+        if (it->_token == OpenBrace || it->_token == CloseBrace)
+            _nodes.erase(it.base() - 1);
     }
 }
 
@@ -180,6 +204,23 @@ void Config::error(const std::string &msg, const std::vector<Node>::iterator& it
 	std::stringstream ss;
 	ss << msg << " at row " << it->_line + 1 << ", column " << it->_offset + 1;
 	throw std::runtime_error(RBOLD(ss.str()));
+}
+
+// Sorts the vector of nodes by order of line number and offset in the config file;
+void Config::sortVector(std::vector<Node>& vec)
+{
+    for (size_t i = 0; i < vec.size(); i++)
+    {
+        for (size_t j = i + 1; j < vec.size(); j++)
+        {
+            if (vec[j]._line < vec[i]._line || (vec[j]._line == vec[i]._line && vec[j]._offset < vec[i]._offset))
+            {
+                Node temp = vec[i];
+                vec[i] = vec[j];
+                vec[j] = temp;
+            }
+        }
+    }
 }
 
 void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
@@ -191,14 +232,14 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
         {
             if (it->_token == Server)
             {
+                it++;
+                if (it == end)
+                    error("Syntax error: unexpected end of file", it);
                 std::vector<Node>::iterator start = it;
                 while (it->_level)
                     it++;
                 ServerBlock serverBlock = parseServerBlock(start, it);
-                if (serverBlock._locations.size())
-                    _serverBlocks.push_back(serverBlock);
-                else
-                    error("Syntax error: empty server body", start);
+                _serverBlocks.push_back(serverBlock);
             }
             else
                 error("Syntax error: token outside of server block", it);
@@ -209,4 +250,150 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 }
 
 
-ServerBlock& parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
+ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
+{
+    ServerBlock block;
+    for (; it != end; it++)
+    {
+        if (it->_token == Location)
+        {
+            std::cout << "Location block" << std::endl;
+            std::vector<Node>::iterator locationStart = it;
+            while (it->_level > locationStart->_level)
+                it++;
+            LocationBlock locationBlock = parseLocationBlock(locationStart, it);
+            block._locations.push_back(locationBlock);
+        }
+        else
+        {
+            std::cout << "Server directives" << std::endl;
+            switch (it->_token)
+            {
+                case Port:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Port] = (it + 1)->_value;
+                        it++;
+                    }
+                    else
+                        error("Syntax error: port directive requires a value", it);
+                    break;
+                case Host:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Host] = (it + 1)->_value;
+                        it++;
+                    }
+                    else
+                        error("Syntax error: host directive requires a value", it);
+                    break;
+                case ServerName:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[ServerName] = (it + 1)->_value;
+                        it++;
+                    }
+                    else
+                        error("Syntax error: server_name directive requires a value", it);
+                    break;
+                case ClientMaxBodySize:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[ClientMaxBodySize] = (it + 1)->_value;
+                        it++;
+                    }
+                    else
+                        error("Syntax error: client_max_body_size directive requires a value", it);
+                    break;
+                case Semicolon:
+                    break;
+                default:
+                    error("Syntax error: unexpected token in server block", it);
+            }
+        }
+    }
+    for (std::map<TokenType, std::string>::iterator it2 = block._directives.begin(); it2 != block._directives.end(); it2++)
+    {
+        std::cout << it2->first << ": " << it2->second << std::endl;
+    }
+    return block;
+}
+
+LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
+{
+    LocationBlock block;
+    for (std::vector<Node>::iterator it = start; it != end; it++)
+    {
+        std::cout << "Location directives" << std::endl;
+        if (it->_token != Data)
+            error("Syntax error: expected path in location block", it);
+        else 
+            block._path = it->_value;
+        switch (it->_token)
+        {
+            case Root:
+                if (it + 1 != end && (it + 1)->_token == Data)
+                {
+                    block._directives[Root] = (it + 1)->_value;
+                    it++;
+                }
+                else
+                    error("Syntax error: root directive requires a value", it);
+                break;
+            case Index:
+                if (it + 1 != end && (it + 1)->_token == Data)
+                {
+                    block._directives[Index] = (it + 1)->_value;
+                    it++;
+                }
+                else
+                    error("Syntax error: index directive requires a value", it);
+                break;
+            case Redir:
+                if (it + 1 != end && (it + 1)->_token == Data)
+                {
+                    block._directives[Redir] = (it + 1)->_value;
+                    it++;
+                }
+                else
+                    error("Syntax error: redir directive requires a value", it);
+                break;
+            case AllowedMethods:
+                if (it + 1 != end && (it + 1)->_token == Data)
+                {
+                    block._directives[AllowedMethods] = (it + 1)->_value;
+                    it++;
+                }
+                else
+                    error("Syntax error: allowed_methods directive requires a value", it);
+                break;
+            case Default:
+                if (it + 1 != end && (it + 1)->_token == Data)
+                {
+                    block._directives[Default] = (it + 1)->_value;
+                    it++;
+                }
+                else
+                    error("Syntax error: default directive requires a value", it);
+                break;
+            case CGI:
+                if (it + 1 != end && (it + 1)->_token == Data)
+                {
+                    block._directives[CGI] = (it + 1)->_value;
+                    it++;
+                }
+                else
+                    error("Syntax error: cgi directive requires a value", it);
+                break;
+            case Semicolon:
+                break;
+            default:
+                error("Syntax error: unexpected token in location block", it);
+        }
+    }
+    for (std::map<TokenType, std::string>::iterator it = block._directives.begin(); it != block._directives.end(); it++)
+    {
+        std::cout << it->first << ": " << it->second << std::endl;
+    }
+    return block;
+}
