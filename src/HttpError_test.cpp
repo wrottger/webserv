@@ -23,8 +23,5 @@ UTEST(HttpError, throwing)
 
 UTEST(HttpError, empty)
 {
-  HttpError error(0, NULL);
-  ASSERT_STREQ("", error.what());
-  int code = error.code();
-  ASSERT_EQ(404, code);
+  ASSERT_EXCEPTION(HttpError error(0, NULL), std::exception);
 }
