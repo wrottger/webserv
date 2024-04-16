@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 # include "Tokens.hpp"
+# include "ServerBlock.hpp"
 # include <map>
 # include <stack>
 # include <vector>
@@ -13,6 +14,7 @@ class Config {
 
     private:
         std::vector<Node> _nodes;
+        std::vector<ServerBlock> _serverBlocks;
         bool _isLoaded;
 
         Config(const Config& src);  // private copy constructor and assignment operator to prevent dangling references/pointers
@@ -33,28 +35,13 @@ class Config {
         void parseScopes(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
         void buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
         void parseTokens(void);
+        void error(const std::string &msg, const std::vector<Node>::iterator& it);
+        ServerBlock& parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
         TokenType getNextToken(std::string::iterator it, std::string::iterator end);
 
         // utils
         std::map<std::string, TokenType> _tokens;
-        
-        // class ConfigException : public std::exception {
-        //     private:
-
-        //         size_t _row;
-        //         size_t _column;
-        //         std::string _msg;
-
-        //     public:
-        //         ConfigException(std::string msg, size_t row, size_t column) : _row(row), _column(column), _msg(msg)  {}
-        //         virtual ~ConfigException() throw() {}
-        //         virtual const char* what() const throw() {
-        //             return _msg.c_str();
-        //         }
-        //         int getRow(void) const { return _row; }
-        //         int getColumn(void) const { return _column; }
-        // };
 };
 
 #endif
