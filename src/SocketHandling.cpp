@@ -18,7 +18,7 @@ SocketHandling::SocketHandling(std::vector<configObject> &config) : _config(conf
 	}
 }
 
-SocketHandling::SocketHandling(SocketHandling const &other) : _config(other._config) {}
+SocketHandling::SocketHandling(SocketHandling const &other) : _config(other._config){}
 
 SocketHandling SocketHandling::operator=(SocketHandling const &other) {}
 
@@ -53,6 +53,11 @@ void SocketHandling::setUpSocket(int port)
 int SocketHandling::getEpollFd()
 {
 	return _epollFd;
+}
+
+std::vector<int> SocketHandling::getOpenFds()
+{
+	return _openFds;
 }
 
 SocketHandling::~SocketHandling() {

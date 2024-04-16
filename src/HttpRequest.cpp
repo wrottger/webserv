@@ -111,10 +111,10 @@ const std::string &HttpRequest::getBody() const {
     return body;
 }
 
-bool HttpRequest::isComplete() const
-{
-    return state == s_finished;
-}
+// bool HttpRequest::isComplete() const
+// {
+//     return state == s_finished;
+// }
 
 // size_t HttpRequest::parse_header(const char *requestLine)
 // {

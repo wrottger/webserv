@@ -11,9 +11,8 @@
 #include <sys/epoll.h>  // für epoll_create1()
 #include <vector>
 #include "SocketHandling.hpp"
+#include "EventHandler.hpp"
 #include "Config.hpp"
-
-#define MAX_EVENTS 10
 
 int main()
 {
@@ -24,6 +23,8 @@ int main()
 
 	config.push_back(server1);
 	SocketHandling sockets(config);
+	EventHandler event(sockets);
+	event.start();
 	// for (size_t i = 0; i < serverCount; i++)
 	// {
 	// 	std::cout << a.openFds[i] << std::endl;

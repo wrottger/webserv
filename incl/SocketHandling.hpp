@@ -33,6 +33,7 @@ class SocketHandling
 		SocketHandling(std::vector<configObject> &config);
 		~SocketHandling();
 		int getEpollFd();
+		std::vector<int> getOpenFds();
 };
 
 #endif

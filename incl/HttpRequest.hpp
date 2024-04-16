@@ -15,7 +15,8 @@ public:
     const std::string &getHeader(const std::string &name) const;
     const std::string &getBody() const;
 
-    bool isComplete() const;
+    bool isHeaderComplete() const {return true;};
+	bool isBodyComplete() const {return true;};
 
 private:
     enum State {

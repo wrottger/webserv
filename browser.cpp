@@ -6,7 +6,7 @@
 /*   By: dnebatz <dnebatz@student.42wolfsburg.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/02 22:06:18 by dnebatz           #+#    #+#             */
-/*   Updated: 2024/04/04 15:06:25 by dnebatz          ###   ########.fr       */
+/*   Updated: 2024/04/16 17:14:59 by dnebatz          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@
 #include <sys/epoll.h>  // für epoll_create1()
 #include <cerrno>
 
+#define PORT 8080
+
 int main() {
 	// Create a socket
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,7 +39,7 @@ int main() {
 	// Specify the server address
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(4040);  // Server port number
+	serv_addr.sin_port = htons(PORT);  // Server port number
 	if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
 		std::cerr << "Invalid address/ Address not supported" << std::endl;
 		exit(EXIT_FAILURE);
