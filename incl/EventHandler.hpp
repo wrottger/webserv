@@ -25,12 +25,14 @@ class EventHandler
 
 	private:
 		int _epollFd;
-		EventHandler();
 		std::vector<int> _listeningSockets;
 		std::list<EventHandler::ClientConnection *> _clientConnections;
+
+		EventHandler();
 		EventHandler(EventHandler const &other);
 		EventHandler &operator =(EventHandler const &other);
 
+		bool isListeningSocketTriggered(epoll_event events_arr[], int n);
 };
 
 class EventHandler::ClientConnection

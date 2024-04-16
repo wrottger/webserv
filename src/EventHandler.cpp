@@ -15,16 +15,14 @@ EventHandler::~EventHandler()
 {
 }
 
+
+
 void EventHandler::start()
 {
-	struct epoll_event ev, events[MAX_EVENTS];
-	int	epollTriggerCount, newConnectionFd;
-	struct sockaddr_in addr;
-	socklen_t addrlen = sizeof(addr);
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
+	struct epoll_event events[MAX_EVENTS];
+	int	epollTriggerCount;
 	char buffer[BUFFER_SIZE + 1] = {0};
-	bool flag = true;
+	bool wasListenSocket;
 	
 
 	while(true)
@@ -35,26 +33,9 @@ void EventHandler::start()
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			// checking if a listeningSocket was triggerd then accept new connection
-			flag = true;
-			for (size_t i = 0; i < _listeningSockets.size(); i++) {
-				if (_listeningSockets[i] == events[n].data.fd) {	
-					newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *) &addr, &addrlen);
-					if (newConnectionFd == -1)
-					{
-						throw std::runtime_error("EventHandler: accept failed.");
-					}
-					ev.events = EPOLLIN;
-					ev.data.fd = newConnectionFd;
-					if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1)
-					{
-						throw std::runtime_error("EventHandler: epoll add failed.");
-					}
-					_clientConnections.push_back(new ClientConnection(newConnectionFd));
-				flag = false;
-				}
-			}
-				// else read from the connection socket
-			if (flag) {
+			wasListenSocket = isListeningSocketTriggered(events, n);
+			// else read from the connection socket
+			if (!wasListenSocket) {
 				ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
 				if (bytes_received == 0)
 				{
@@ -90,6 +71,33 @@ EventHandler &EventHandler::operator=(EventHandler const &other)
 	return *this;
 }
 
+bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n)
+{
+	struct epoll_event ev;
+	int newConnectionFd;
+	struct sockaddr_in addr;
+	socklen_t addrlen = sizeof(addr);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	size_t listenSocketSize = _listeningSockets.size();
+
+	for (size_t i = 0; i < listenSocketSize; i++) {
+		if (_listeningSockets[i] == events_arr[n].data.fd) {	
+			newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *) &addr, &addrlen);
+			if (newConnectionFd == -1) {
+				throw std::runtime_error("EventHandler: accept failed.");
+			}
+			ev.events = EPOLLIN;
+			ev.data.fd = newConnectionFd;
+			if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
+				throw std::runtime_error("EventHandler: epoll add failed.");
+			}
+			_clientConnections.push_back(new ClientConnection(newConnectionFd));
+		return true;
+		}
+	}
+	return false;
+}
 
 // ClientConnection
 
