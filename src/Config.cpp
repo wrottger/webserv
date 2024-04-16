@@ -238,6 +238,8 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 std::vector<Node>::iterator start = it;
                 while (it->_level)
                     it++;
+                std::cout << "Start: " << start->_line << std::endl;
+                std::cout << "End: " << it->_line << std::endl;
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 _serverBlocks.push_back(serverBlock);
             }
@@ -257,7 +259,9 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
     {
         if (it->_token == Location)
         {
-            std::cout << "Location block" << std::endl;
+            it++;
+            if (it == end)
+                    error("Syntax error: unexpected end of file", it);
             std::vector<Node>::iterator locationStart = it;
             while (it->_level > locationStart->_level)
                 it++;
@@ -266,7 +270,6 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
         }
         else
         {
-            std::cout << "Server directives" << std::endl;
             switch (it->_token)
             {
                 case Port:
@@ -322,9 +325,10 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
 LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
 {
     LocationBlock block;
+    std::cout << start->_line << std::endl;
+    std::cout << end->_line << std::endl;
     for (std::vector<Node>::iterator it = start; it != end; it++)
     {
-        std::cout << "Location directives" << std::endl;
         if (it->_token != Data)
             error("Syntax error: expected path in location block", it);
         else 
