@@ -5,21 +5,16 @@
 #include <iostream>
 
 HttpRequest::HttpRequest() {
-    // Initialize member variables
-    body = "";
-    target = "";
-    query = "";
-    version = "";
-    state = s_start;
-    headers.clear();
+    state = s_method;
     request_size = 0;
 }
 
 size_t HttpRequest::parseBuffer(const char *requestLine) {
-    if (requestLine == NULL)
+    if (requestLine == NULL || isComplete())
         return 0;
     char c;
-    for (size_t i = 0; requestLine[i] != '\0'; i++)
+    size_t i = 0;
+    for (; requestLine[i] != '\0'; i++)
     {
         request_size++;
         if (request_size > 8192)
@@ -27,94 +22,207 @@ size_t HttpRequest::parseBuffer(const char *requestLine) {
         c = requestLine[i];
         switch (s_method)
         {
-        case s_start:
-            if (isToken(c))
-                state = s_method;
-            else
-                throw HttpError(400, "Bad Request");            
-            break;
         case s_method:
             if (method.size() > 7)
-                throw HttpError(501, "Not Implemented");
-            if (isToken(c))
+                throw HttpError(501, method + " method not Implemented");
+            if (c == ' ')
+                state = s_uri;
+            else if (isToken(c))
                 method.push_back(c);
-            else if (c == ' ')
-                state = s_spaces_before_uri;
             else
                 throw HttpError(400, "Bad Request");
             break;
-        case s_spaces_before_uri:
-            if (c == ' ') {
-                state = s_after_first_space;
-            } else if (c == '/') {
-                state = s_uri;  // Origin form
-            } else if (c == 'h') {
-                state = s_schema_start;  // Possible absolute form
-            } else {
-                throw HttpError(400, "Bad Request");
+        case s_uri:
+            if (c == '/')
+            {
+                state = s_host_start;
+                target.push_back(c);
             }
+            else if (tolower(c) == 'h')
+                state = s_schema;
+            else if (c == ' ')
+                throw HttpError(400, "Bad Request");
             break;
-        case s_after_first_space:
-            if (c == ' ') {
-                throw HttpError(400, "Bad Request: Multiple spaces before URI");
-            } else if (c == '/') {
-                state = s_uri;  // Origin form
-            } else if (c == 'h') {
-                state = s_schema_start;  // Possible absolute form
-            } else {
-                throw HttpError(400, "Bad Request");
-            }
+        case s_host_start:
+            if (c == ' ')
+                state = s_http_H;
+            else if (c == '?')
+                state = s_query;
+            else if (c == '#')
+                state = s_fragment;
+            else if (target.size() > MAX_URI_SIZE)
+                throw HttpError(414, "URI Too Long");
+            else
+                target.push_back(c);
+            break;
+        case s_query:
+            if (c == ' ')
+                state = s_http_H;
+            else if (c == '#')
+                state = s_fragment;
+            else if (target.size() + query.size() > MAX_URI_SIZE)
+                throw HttpError(414, "URI Too Long");
+            else
+                query.push_back(c);
+            break;
+        case s_fragment:
+            if (c == ' ')
+                state = s_http_H;
+            else if (target.size() + query.size() + fragment.size() > MAX_URI_SIZE)
+                throw HttpError(414, "URI Too Long");
+            else
+                fragment.push_back(c);
             break;
         case s_schema:
-
-        case s_host_start:
+            if (c == ':')
+            {
+                if (schema == "https")
+                    throw HttpError(501, "HTTPS not implemented");
+                if (schema != "http")
+                    throw HttpError(400, "Bad Request");
+                state = s_host_start;
+            }
+            schema.push_back(c);
+            if (!isToken(c))
+                throw HttpError(400, "Bad Request");
+            if (schema.size() > 4)
+                throw HttpError(400, "Bad Request");
+            break;
         case s_host:
-        case s_host_end:
+            if (c == ' ')
+                state = s_http_H;
+            else if (c == ' ')
+                state = s_host_ip_literal;
+            else
+                host.push_back(c);
+            break;
         case s_host_ip_literal:
-        case s_after_slash_in_uri:
         case s_check_uri:
-        case s_uri:
-        case s_http_09:
         case s_http_H:
+            if (c == 'H')
+                state = s_http_HT;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_http_HT:
+            if (c == 'T')
+                state = s_http_HTT;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_http_HTT:
+            if (c == 'T')
+                state = s_http_HTTP;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_http_HTTP:
+            if (c == 'P')
+                state = s_slash_after_HTTP;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
+        case s_slash_after_HTTP:
+            if (c == '/')
+                state = s_first_major_digit;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_first_major_digit:
+            if (c == '1')
+                state = s_major_digit;
+            else if (isdigit(c))
+                throw HttpError(505, "HTTP Version Not Supported");
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_major_digit:
+            if (c == '.')
+                state = s_first_minor_digit;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_first_minor_digit:
+            if (c == '1')
+                state = s_minor_digit;
+            else if (isdigit(c))
+                throw HttpError(505, "HTTP Version Not Supported");
+            else
+                throw HttpError(400, "Bad Request");
+            break;
         case s_minor_digit:
+            if (c == '\r')
+                state = s_field_name;
+            else if (c == '\n')
+                state = s_headers;
+            else if (isdigit(c))
+                throw HttpError(505, "HTTP Version Not Supported");
+            else 
+                throw HttpError(400, "Bad Request");
+            break;
         case s_spaces_after_digit:
         case s_almost_done:
-        case s_finished:
+            if (c == '\n')
+                state = s_field_name;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
+        case s_field_name:
+            if (fieldName.size() > MAX_HEADER_SIZE)
+                throw HttpError(431, "Request Header Fields Too Large");
+            if (c == ':')
+                state = s_field_value;
+            else if (!isToken(c))
+                throw HttpError(400, "Bad Request");
+            fieldName.push_back(c);
+            break;
+        case s_field_value:
+            if (fieldValue.size() + fieldName.size() > MAX_HEADER_SIZE)
+                throw HttpError(431, "Request Header Fields Too Large");
+            if (c == '\r')
+                state = s_header_almost_end;
+            if (c == '\n')
+                state = s_header_end;
+            fieldValue.push_back(c);
+            break;
+        case s_header_almost_end:
+            if (c == '\n')
+                state = s_header_end;
+            else
+                throw HttpError(400, "Bad Request");
+            break;
+        case s_header_end:
+            if (c == '\r')
+                state = s_finished;
+            else if (isToken(c))
+            {
+                headers[fieldName] = fieldValue;
+                fieldName.clear();
+                fieldValue.clear();
+                fieldName.push_back(c);
+                state = s_field_name;
+            }
+            else
+                throw HttpError(400, "Bad Request");
             break;
         default:
             throw HttpError(500, "Internal Server Error");
         }
     }
-
-    return 0;
+    return i;
 }
 
 const std::string &HttpRequest::getMethod() const { return method; }
 
 const std::string &HttpRequest::getTarget() const { return target; }
 
-const std::string &HttpRequest::getQuery() const { return query; }
-
-const std::string &HttpRequest::getVersion() const { return version; }
-
 const std::string &HttpRequest::getHeader(const std::string &name) const {
-    return headers.at(name);
+    return headers.find(name)->second;
 }
 
-const std::string &HttpRequest::getBody() const {
-    return body;
-}
+bool HttpRequest::isComplete() const { return state == s_finished; }
 
-bool HttpRequest::isComplete() const
-{
-    return state == s_finished;
-}
+const std::string &HttpRequest::getBody() const { return body; }
 
 // size_t HttpRequest::parse_header(const char *requestLine)
 // {
