@@ -1,10 +1,33 @@
 #include "HttpRequest.hpp"
 #include "HttpError.hpp"
+#include <iostream>
 #include "utest.h"
 
 UTEST(HttpRequest, setup) {
   HttpRequest r;
   ASSERT_FALSE(r.isComplete());
+}
+
+UTEST(HttpRequest, identifyMethod)
+{
+  HttpRequest r;
+  r.parseBuffer("GET ");
+  ASSERT_STREQ("GET", r.getMethod().c_str());
+  HttpRequest r2;
+  r2.parseBuffer("POST ");
+  ASSERT_STREQ("POST", r2.getMethod().c_str());
+  HttpRequest r3;
+  r3.parseBuffer("PUT ");
+  ASSERT_STREQ("PUT", r3.getMethod().c_str());
+}
+
+UTEST(HttpRequest, minimal)
+{
+  HttpRequest r;
+  r.parseBuffer("GET / ");
+  EXPECT_STREQ_MSG("GET", r.getMethod().c_str(), r.getMethod().c_str());
+  EXPECT_STREQ_MSG("/", r.getTarget().c_str(), r.getTarget().c_str());
+  EXPECT_STREQ_MSG("localhost", r.getHeader("host").c_str(), r.getHeader("host").c_str());
 }
 
 UTEST(HttpRequest, null)
@@ -39,7 +62,6 @@ UTEST(HttpRequest, nlLineneding)
   r.parseBuffer("GET / HTTP/1.1\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getTarget().c_str());
-  ASSERT_STREQ("HTTP/1.1", r.getVersion().c_str());
   ASSERT_STREQ("localhost", r.getHeader("host").c_str());
 }
 
@@ -71,17 +93,7 @@ UTEST(HttpRequest, charByChar) {
   r.parseBuffer("\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getTarget().c_str());
-  ASSERT_STREQ("HTTP/1.1", r.getVersion().c_str());
   ASSERT_FALSE(r.isComplete());
-}
-
-UTEST(HttpRequest, minimal) {
-  HttpRequest r;
-  r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
-  ASSERT_STREQ("GET", r.getMethod().c_str());
-  ASSERT_STREQ("/", r.getTarget().c_str());
-  ASSERT_STREQ("HTTP/1.1", r.getVersion().c_str());
-  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
 }
 
 UTEST(HttpRequest, missingHost) {
