@@ -54,6 +54,7 @@ void Config::parseConfigFile(std::string filename)
     _tokens["host"] = Host;
     _tokens["root"] = Root;
     _tokens["index"] = Index;
+    _tokens["listing"] = Listing;
     _tokens["redir"] = Redir;
     _tokens["server_name"] = ServerName;
     _tokens["allowed_methods"] = AllowedMethods;
@@ -68,22 +69,23 @@ void Config::parseConfigFile(std::string filename)
     _fileStream.close();
     this->parseScopes();
     this->buildAST(_nodes.begin(), _nodes.end());
-    // for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
-    // {
-    //     std::cout << "Server block:" << std::endl;
-    //     for (std::map<std::string, std::string>::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
-    //     {
-    //         std::cout << it2->first << ": " << it2->second << std::endl;
-    //     }
-    //     for (std::vector<LocationBlock>::iterator it2 = it->_locations.begin(); it2 != it->_locations.end(); it2++)
-    //     {
-    //         std::cout << "Location block:" << std::endl;
-    //         for (std::map<std::string, std::string>::iterator it3 = it2->_directives.begin(); it3 != it2->_directives.end(); it3++)
-    //         {
-    //             std::cout << it3->first << ": " << it3->second << std::endl;
-    //         }
-    //     }
-    // }
+    for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
+    {
+        std::cout << GBOLD("Server block:") << std::endl;
+        for (std::map<TokenType, std::string>::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
+        {
+            std::cout << it2->first << ": " << it2->second << std::endl;
+        }
+        for (std::vector<LocationBlock>::iterator it2 = it->_locations.begin(); it2 != it->_locations.end(); it2++)
+        {
+            std::cout << GBOLD("Location block:") << std::endl;
+            std::cout << "Path: " << it2->_path << std::endl;
+            for (std::map<TokenType, std::string>::iterator it3 = it2->_directives.begin(); it3 != it2->_directives.end(); it3++)
+            {
+                std::cout << it3->first << ": " << it3->second << std::endl;
+            }
+        }
+    }
 }
 
 // This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
@@ -255,14 +257,17 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
 {
     ServerBlock block;
-    for (; it != end; it++)
+    while (it != end)
     {
         if (it->_token == Location)
         {
             it++;
             if (it == end)
-                    error("Syntax error: unexpected end of file", it);
+                    error("Syntax error: expected location block", it);
             std::vector<Node>::iterator locationStart = it;
+            it++;
+            if (it == end)
+                error("Syntax error: expected location block", it);
             while (it->_level > locationStart->_level)
                 it++;
             LocationBlock locationBlock = parseLocationBlock(locationStart, it);
@@ -276,7 +281,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[Port] = (it + 1)->_value;
-                        it++;
+                        it += 2;
                     }
                     else
                         error("Syntax error: port directive requires a value", it);
@@ -285,7 +290,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[Host] = (it + 1)->_value;
-                        it++;
+                        it += 2;
                     }
                     else
                         error("Syntax error: host directive requires a value", it);
@@ -294,7 +299,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[ServerName] = (it + 1)->_value;
-                        it++;
+                        it += 2;
                     }
                     else
                         error("Syntax error: server_name directive requires a value", it);
@@ -303,13 +308,16 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[ClientMaxBodySize] = (it + 1)->_value;
-                        it++;
+                        it += 2;
                     }
                     else
                         error("Syntax error: client_max_body_size directive requires a value", it);
                     break;
                 case Semicolon:
+                {
+                    it++;
                     break;
+                }
                 default:
                     error("Syntax error: unexpected token in server block", it);
             }
@@ -325,79 +333,99 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
 LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
 {
     LocationBlock block;
-    std::cout << start->_line << std::endl;
-    std::cout << end->_line << std::endl;
-    for (std::vector<Node>::iterator it = start; it != end; it++)
+    std::vector<Node>::iterator it = start;
+    while (it != end)
     {
-        if (it->_token != Data)
-            error("Syntax error: expected path in location block", it);
-        else 
-            block._path = it->_value;
-        switch (it->_token)
+        if (it == start)
         {
-            case Root:
-                if (it + 1 != end && (it + 1)->_token == Data)
-                {
-                    block._directives[Root] = (it + 1)->_value;
-                    it++;
-                }
-                else
-                    error("Syntax error: root directive requires a value", it);
-                break;
-            case Index:
-                if (it + 1 != end && (it + 1)->_token == Data)
-                {
-                    block._directives[Index] = (it + 1)->_value;
-                    it++;
-                }
-                else
-                    error("Syntax error: index directive requires a value", it);
-                break;
-            case Redir:
-                if (it + 1 != end && (it + 1)->_token == Data)
-                {
-                    block._directives[Redir] = (it + 1)->_value;
-                    it++;
-                }
-                else
-                    error("Syntax error: redir directive requires a value", it);
-                break;
-            case AllowedMethods:
-                if (it + 1 != end && (it + 1)->_token == Data)
-                {
-                    block._directives[AllowedMethods] = (it + 1)->_value;
-                    it++;
-                }
-                else
-                    error("Syntax error: allowed_methods directive requires a value", it);
-                break;
-            case Default:
-                if (it + 1 != end && (it + 1)->_token == Data)
-                {
-                    block._directives[Default] = (it + 1)->_value;
-                    it++;
-                }
-                else
-                    error("Syntax error: default directive requires a value", it);
-                break;
-            case CGI:
-                if (it + 1 != end && (it + 1)->_token == Data)
-                {
-                    block._directives[CGI] = (it + 1)->_value;
-                    it++;
-                }
-                else
-                    error("Syntax error: cgi directive requires a value", it);
-                break;
-            case Semicolon:
-                break;
-            default:
-                error("Syntax error: unexpected token in location block", it);
+            if (it->_token != Data)
+                error("Syntax error: expected path in location block", it);
+            else
+            {
+                block._path = it->_value;
+                it++;
+            }
         }
-    }
-    for (std::map<TokenType, std::string>::iterator it = block._directives.begin(); it != block._directives.end(); it++)
-    {
-        std::cout << it->first << ": " << it->second << std::endl;
+        else
+        {
+            switch (it->_token)
+            {
+                case Listing:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Listing] = (it + 1)->_value;
+                        it += 2;
+                    }
+                    else
+                        error("Syntax error: listing directive requires a value", it);
+                    break;
+                case Root:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Root] = (it + 1)->_value;
+                        it += 2;
+                    }
+                    else
+                        error("Syntax error: root directive requires a value", it);
+                    break;
+                case Index:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Index] = (it + 1)->_value;
+                        it += 2;
+                    }
+                    else
+                        error("Syntax error: index directive requires a value", it);
+                    break;
+                case Redir:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Redir] = (it + 1)->_value;
+                        it += 2;
+                    }
+                    else
+                        error("Syntax error: redir directive requires a value", it);
+                    break;
+                case AllowedMethods:
+                    it++;
+                    while (it != end && it->_token != Semicolon)
+                    {
+                        if (it->_token == Data)
+                        {
+                            block._directives[AllowedMethods] += it->_value;
+                            it++;
+                        }
+                        else
+                            error("Syntax error: allowed_methods directive requires a value", it);
+                    }
+                    break;
+                case Default:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Default] = (it + 1)->_value;
+                        it += 2;
+                    }
+                    else
+                        error("Syntax error: default directive requires a value", it);
+                    break;
+                case CGI:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[CGI] = (it + 1)->_value;
+                        it += 2;
+                    }
+                    else
+                        error("Syntax error: cgi directive requires a value", it);
+                    break;
+                case Semicolon:
+                {
+                    it++;
+                    break;
+                }
+                default:
+                    error("Syntax error: unexpected token in location block", it);
+            }
+        }
     }
     return block;
 }

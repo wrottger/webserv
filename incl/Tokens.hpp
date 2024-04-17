@@ -8,6 +8,7 @@ enum TokenType {
     CloseBrace,
     Server,
     Location,
+    Listing,
     Port,
     Host,
     Root,
