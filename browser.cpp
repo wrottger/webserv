@@ -64,6 +64,11 @@ int main(int argc, char **argv) {
 		std::cerr << "Failed to send the message" << errno << std::endl;
 		exit(EXIT_FAILURE);
 	}
+	// if (send(sockfd, NULL,0, 0) < 0)
+	// {
+	// 	std::cerr << "Failed to send the message" << errno << std::endl;
+	// 	exit(EXIT_FAILURE);
+	// }
 	// char buffer[1024] = {0};
 	// read(sockfd, buffer, 1024);
 	// std::cout << buffer << std::endl;
@@ -72,6 +77,10 @@ int main(int argc, char **argv) {
 		message.clear();
 		std::cin >> message;
 		// message << std::eof;
+		if (message == "exit") {
+			close(sockfd);
+			return 100;
+		}
 		if (send(sockfd, message.c_str(), message.size(), 0) < 0)
 		{
 			std::cerr << "Failed to send the message" << std::endl;

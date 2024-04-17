@@ -3,10 +3,12 @@
 
 #include <string>
 #include <map>
+#include <iostream>
 
 class HttpRequest {
 public:
     HttpRequest();
+    // ~HttpRequest() {std::cout << "Wayne is doof" << std::endl;};
     size_t parseBuffer(const char *requestLine);
     const std::string &getMethod() const;
     const std::string &getTarget() const;
@@ -17,7 +19,7 @@ public:
 
     bool isHeaderComplete() const {return true;};
 	bool isBodyComplete() const {return true;};
-
+    
 private:
     enum State {
         s_start = 0,

@@ -9,7 +9,6 @@ EventHandler::EventHandler(SocketHandling &sockets)
 {
 	_epollFd = sockets.getEpollFd();
 	_listeningSockets = sockets.getOpenFds();
-
 }
 
 EventHandler::~EventHandler()
@@ -24,6 +23,7 @@ void EventHandler::start()
 	int	epollTriggerCount;
 	char buffer[BUFFER_SIZE + 1] = {0};
 	bool wasListenSocket;
+	std::list<int> cleanUpList;
 	
 
 	while(true)
@@ -34,21 +34,29 @@ void EventHandler::start()
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			// checking if a listeningSocket was triggerd then accept new connection
+			std::cout << "miau" << std::endl;
 			wasListenSocket = isListeningSocketTriggered(events, n);
 			// else read from the connection socket
 			if (!wasListenSocket) {
 				ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
+				std::cout << "bztes: " << bytes_received << std::endl;
 				if (bytes_received == 0) {
 					// The client has closed the connection
+					// we need total destruction
+					cleanUpList.push_back(events[n].data.fd);
 					std::cout << "client connection closes" << std::endl;
-					close(events[n].data.fd);
+					// epoll_ctl(_epollFd, EPOLL_CTL_DEL, events[n].data.fd, NULL);
+					// close(events[n].data.fd);
 				}
 				else if (bytes_received == -1) {
-					throw std::runtime_error("EventHandler: read failed.");
+					cleanUpList.push_back(events[n].data.fd);
+					std::cout << "client connection closes" << std::endl;
+					// throw std::runtime_error("EventHandler: read failed.");
 				}
 				else {
 					// find object with fd
 					// parse
+					buffer[bytes_received] = 0;
 					for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
 							std::cout << buffer << std::endl;
@@ -63,16 +71,21 @@ void EventHandler::start()
 														"Content-Type: text/html; charset=UTF-8\r\n"
 														"Content-Length: " + oss.str() + "\r\n\r\n"
 														+ responseBody;
-							send((*it)->getFd(), httpResponse.c_str(), httpResponse.size(), 0);
+							if (send((*it)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+								perror("Send");
+							}
 							if ((*it)->isHeaderComplete() && (*it)->isBodyComplete()) {
 								// Reponse logic
 								// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
+								;
 							}
 						}
 					}
 				}
 			}
 		}
+		handleToCloseConnections(cleanUpList);
+		cleanUpList.clear();
 		handleTimeouts();
 	}
 }
@@ -103,8 +116,8 @@ bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n)
 			newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *) &addr, &addrlen);
 			if (newConnectionFd == -1) {
 				throw std::runtime_error("EventHandler: accept failed.");
-			}
-			ev.events = EPOLLIN;
+			}	
+			ev.events = EPOLLIN | EPOLLOUT;
 			ev.data.fd = newConnectionFd;
 			if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
 				throw std::runtime_error("EventHandler: epoll add failed.");
@@ -132,18 +145,36 @@ void EventHandler::handleTimeouts()
 	}
 }
 
+void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList)
+{
+	for (std::list<int>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
+		for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
+			if (*itCleanUp == (*it)->getFd()) {
+				std::cout << "Kicked client with FD: " << (*it)->getFd() << std::endl; 
+				epoll_ctl(_epollFd, EPOLL_CTL_DEL, (*it)->getFd(), NULL);
+				delete *it;
+				it = _clientConnections.erase(it);
+			} else {
+				it++;
+			}
+		}
+	}
+}
+
 // ClientConnection
 
 EventHandler::ClientConnection::ClientConnection() {}
 
 EventHandler::ClientConnection::ClientConnection(int fd) : _fd(fd)
 {
+	_requestObject = new HttpRequest;
 	updateTime();
 }
 
 EventHandler::ClientConnection::~ClientConnection()
 {
 	close(_fd);
+	delete _requestObject;
 }
 
 int EventHandler::ClientConnection::getFd()
@@ -164,17 +195,17 @@ void EventHandler::ClientConnection::updateTime()
 
 bool EventHandler::ClientConnection::isHeaderComplete()
 {
-	return _requestObject.isHeaderComplete();
+	return _requestObject->isHeaderComplete();
 }
 
 bool EventHandler::ClientConnection::isBodyComplete()
 {
-	return _requestObject.isBodyComplete();
+	return _requestObject->isBodyComplete();
 }
 
 void EventHandler::ClientConnection::parseBuffer(const char *buffer)
 {
-	_requestObject.parseBuffer(buffer);
+	_requestObject->parseBuffer(buffer);
 	// try {
 	// } catch (... ) {
 	// 	std::cerr << "bad alloc oder so" << std::endl;

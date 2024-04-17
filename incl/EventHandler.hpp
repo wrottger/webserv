@@ -35,6 +35,7 @@ class EventHandler
 
 		bool isListeningSocketTriggered(epoll_event events_arr[], int n);
 		void handleTimeouts();
+		void handleToCloseConnections(std::list<int> &cleanUpList);
 };
 
 class EventHandler::ClientConnection
@@ -53,7 +54,7 @@ class EventHandler::ClientConnection
 		ClientConnection();
 		ClientConnection(ClientConnection const &other);
 		ClientConnection &operator =(ClientConnection const &other);
-		HttpRequest _requestObject;
+		HttpRequest *_requestObject;
 		int _fd;
 		std::time_t _lastModified;
 };

@@ -78,6 +78,7 @@ void SocketHandling::setUpEpoll() {
 	}
 
 	ev.events = EPOLLIN;
+	// ev.events = EPOLLIN | EPOLLOUT;
 
 	size_t openSocketCount = _openFds.size();
 	for (size_t i = 0; i < openSocketCount; i++) {
