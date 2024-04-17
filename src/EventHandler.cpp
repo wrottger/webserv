@@ -61,7 +61,7 @@ void EventHandler::start()
 				}
 			}
 		}
-		// handleTimeouts()
+		handleTimeouts();
 	}
 }
 
@@ -102,6 +102,15 @@ bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n)
 		}
 	}
 	return false;
+}
+
+void EventHandler::handleTimeouts()
+{
+	size_t clients = _clientConnections.size();
+
+	for (size_t i = 0; i < clients; i++) {
+		
+	}
 }
 
 // ClientConnection
