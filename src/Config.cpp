@@ -194,10 +194,12 @@ void Config::parseScopes(void)
         ss << "Syntax error: unclosed brace at row " << unclosedBrace._line + 1 << ", column " << unclosedBrace._offset + 1;
         throw std::runtime_error(RBOLD(ss.str()));
     }
-    for (std::vector<Node>::reverse_iterator it = _nodes.rbegin(); it != _nodes.rend(); it++)
+    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); /* no increment here */)
     {
         if (it->_token == OpenBrace || it->_token == CloseBrace)
-            _nodes.erase(it.base() - 1);
+            it = _nodes.erase(it);  // erase returns the next iterator
+        else
+            ++it;  // only increment if you didn't erase
     }
 }
 
@@ -227,29 +229,31 @@ void Config::sortVector(std::vector<Node>& vec)
 
 void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
 {
-
-    for (; it != end; it++)
+    while (it != end)
     {
         if (!it->_level)
         {
             if (it->_token == Server)
             {
+                std::vector<Node>::iterator start = it;
                 it++;
                 if (it == end)
                     error("Syntax error: unexpected end of file", it);
-                std::vector<Node>::iterator start = it;
-                while (it->_level)
+                while (it->_level && it != end)
                     it++;
-                std::cout << "Start: " << start->_line << std::endl;
-                std::cout << "End: " << it->_line << std::endl;
+                if (start + 1 == it)
+                    error("Syntax error: incomplete server block", start);
+                start++;
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 _serverBlocks.push_back(serverBlock);
+                std::cout << "Server block parsed" << std::endl;
+                continue;  // Skip the increment at the end of the loop
             }
             else
-                error("Syntax error: token outside of server block", it);
+                error("Syntax error: token not within server block", it);
         }
         else
-            continue;
+            error("Syntax error: token not within server block", it);
     }
 }
 
@@ -259,17 +263,19 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
     ServerBlock block;
     while (it != end)
     {
-        if (it->_token == Location)
+        if (it->_token == Location && it->_level == 1)
         {
             it++;
             if (it == end)
-                    error("Syntax error: expected location block", it);
+                error("Syntax error: expected location block", it);
             std::vector<Node>::iterator locationStart = it;
             it++;
             if (it == end)
                 error("Syntax error: expected location block", it);
-            while (it->_level > locationStart->_level)
+            while (it != end && it->_level > locationStart->_level)
                 it++;
+            if (it == end)
+                error("Syntax error: incomplete location block", locationStart);
             LocationBlock locationBlock = parseLocationBlock(locationStart, it);
             block._locations.push_back(locationBlock);
         }
@@ -319,13 +325,11 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     break;
                 }
                 default:
+                {
                     error("Syntax error: unexpected token in server block", it);
+                }
             }
         }
-    }
-    for (std::map<TokenType, std::string>::iterator it2 = block._directives.begin(); it2 != block._directives.end(); it2++)
-    {
-        std::cout << it2->first << ": " << it2->second << std::endl;
     }
     return block;
 }
@@ -334,6 +338,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
 {
     LocationBlock block;
     std::vector<Node>::iterator it = start;
+
     while (it != end)
     {
         if (it == start)
@@ -423,7 +428,9 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     break;
                 }
                 default:
+                {
                     error("Syntax error: unexpected token in location block", it);
+                }
             }
         }
     }
