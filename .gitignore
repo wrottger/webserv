@@ -1,3 +1,5 @@
 .vscode/
 webserv
 objs/
+client
+server
