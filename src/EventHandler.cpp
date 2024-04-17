@@ -1,4 +1,5 @@
 #include "EventHandler.hpp"
+#include <sstream>
 
 EventHandler::EventHandler()
 {
@@ -51,7 +52,18 @@ void EventHandler::start()
 					for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
 							std::cout << buffer << std::endl;
-							// (*it)->parseBuffer(buffer);
+							(*it)->updateTime();
+							std::string responseBody = 	"<!DOCTYPE html><html><head><title>Hello World</title></head>"
+														"<body><h1>Hello, World!</h1></body></html>";
+
+							std::ostringstream oss;
+							oss << responseBody.size();
+
+							std::string httpResponse = 	"HTTP/1.1 200 OK\r\n"
+														"Content-Type: text/html; charset=UTF-8\r\n"
+														"Content-Length: " + oss.str() + "\r\n\r\n"
+														+ responseBody;
+							send((*it)->getFd(), httpResponse.c_str(), httpResponse.size(), 0);
 							if ((*it)->isHeaderComplete() && (*it)->isBodyComplete()) {
 								// Reponse logic
 								// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
@@ -106,10 +118,17 @@ bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n)
 
 void EventHandler::handleTimeouts()
 {
-	size_t clients = _clientConnections.size();
-
-	for (size_t i = 0; i < clients; i++) {
-		
+	time_t current_time = std::time(0);
+	// std::cout << "Called " << std::endl;
+	for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
+		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
+			std::cout << "Kicked client with FD: " << (*it)->getFd() << std::endl; 
+			epoll_ctl(_epollFd, EPOLL_CTL_DEL, (*it)->getFd(), NULL);
+			delete *it;
+			it = _clientConnections.erase(it);
+        } else {
+            it++;
+        }
 	}
 }
 
@@ -124,6 +143,7 @@ EventHandler::ClientConnection::ClientConnection(int fd) : _fd(fd)
 
 EventHandler::ClientConnection::~ClientConnection()
 {
+	close(_fd);
 }
 
 int EventHandler::ClientConnection::getFd()
@@ -139,6 +159,7 @@ std::time_t EventHandler::ClientConnection::getLastModified()
 void EventHandler::ClientConnection::updateTime()
 {
 	_lastModified = std::time(0);
+	std::cout << _lastModified << std::endl;
 }
 
 bool EventHandler::ClientConnection::isHeaderComplete()

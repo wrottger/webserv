@@ -12,6 +12,7 @@
 #define MAX_EVENTS 64
 #define EPOLL_TIMEOUT 300
 #define BUFFER_SIZE 8192
+#define CLIENT_TIMEOUT 3 // Seconds
 
 
 class EventHandler
