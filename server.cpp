@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: dnebatz <dnebatz@student.42wolfsburg.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/03 21:42:08 by dnebatz           #+#    #+#             */
-/*   Updated: 2024/04/04 15:10:14 by dnebatz          ###   ########.fr       */
+/*   Updated: 2024/04/17 11:46:55 by dnebatz          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,7 @@ int main()
 	}
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
-	addr.sin_port = htons(4040);
+	addr.sin_port = htons(8080);
 	
 	// Forcefully attaching socket to the port
 	if (bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -145,7 +145,8 @@ int main()
 						send(events[n].data.fd, fullhttpResponse.c_str(), fullhttpResponse.length(), 0);
 						i++;
 						std::cout << "Connection number: " << i << " size readFileStream: " << readFileStream.str().size() << "size httpResponse: " << readFileStream.str().size() << std::endl;
-						// close(events[n].data.fd);
+						epoll_ctl(epollfd, EPOLL_CTL_DEL, events[n].data.fd, NULL);
+						close(events[n].data.fd);
 						std::cout << "size: " << fullhttpResponse.size() << std::endl;
 					}
 					else

@@ -20,13 +20,16 @@ SocketHandling::SocketHandling(std::vector<configObject> &config) : _config(conf
 
 SocketHandling::SocketHandling(SocketHandling const &other) : _config(other._config){}
 
-SocketHandling SocketHandling::operator=(SocketHandling const &other) {}
+SocketHandling SocketHandling::operator=(SocketHandling const &other) {
+	(void)other;
+	return *this;
+}
 
 void SocketHandling::setUpSocket(int port)
 {
 	int opt = 1, socketFd;
 	struct sockaddr_in addr;
-	socklen_t addrlen = sizeof(addr);
+	// socklen_t addrlen = sizeof(addr);
 
 	if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
 		throw std::runtime_error("SetUpSocket: socket failed.");
@@ -76,7 +79,7 @@ void SocketHandling::setUpEpoll() {
 
 	ev.events = EPOLLIN;
 
-	int openSocketCount = _openFds.size();
+	size_t openSocketCount = _openFds.size();
 	for (size_t i = 0; i < openSocketCount; i++) {
 		ev.data.fd = _openFds[i];
 		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, _openFds[i], &ev) == -1) {

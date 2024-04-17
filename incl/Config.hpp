@@ -9,16 +9,14 @@ class configObject
 		int port;
 		int serverFd;
 		static const int serverCount = 3;
+		std::vector<int> ports;
 
-		configObject() {};
+		configObject() {ports.push_back(8080);ports.push_back(8081);ports.push_back(8082);};
 		int getServerCount() {
 			return serverCount;
 			};
 		std::vector<int> getPorts() {
-			return std::vector<int>{
-				8080,
-				8081,
-				8082};
+			return ports;
 			};
 };
 

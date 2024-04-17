@@ -33,6 +33,7 @@ class EventHandler
 		EventHandler &operator =(EventHandler const &other);
 
 		bool isListeningSocketTriggered(epoll_event events_arr[], int n);
+
 };
 
 class EventHandler::ClientConnection

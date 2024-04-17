@@ -37,14 +37,12 @@ void EventHandler::start()
 			// else read from the connection socket
 			if (!wasListenSocket) {
 				ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
-				if (bytes_received == 0)
-				{
+				if (bytes_received == 0) {
 					// The client has closed the connection
 					std::cout << "client connection closes" << std::endl;
 					close(events[n].data.fd);
 				}
-				else if (bytes_received == -1)
-				{
+				else if (bytes_received == -1) {
 					throw std::runtime_error("EventHandler: read failed.");
 				}
 				else {
@@ -53,21 +51,28 @@ void EventHandler::start()
 					for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
 							std::cout << buffer << std::endl;
-							// (*it)->parseBuffer(buffer); 
+							// (*it)->parseBuffer(buffer);
+							if ((*it)->isHeaderComplete() && (*it)->isBodyComplete()) {
+								// Reponse logic
+								// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
+							}
 						}
 					}
 				}
 			}
 		}
+		// handleTimeouts()
 	}
 }
 
 EventHandler::EventHandler(EventHandler const &other)
 {
+	(void) other;
 }
 
 EventHandler &EventHandler::operator=(EventHandler const &other)
 {
+	(void) other;
 	return *this;
 }
 
@@ -147,5 +152,6 @@ void EventHandler::ClientConnection::parseBuffer(const char *buffer)
 }
 
 EventHandler::ClientConnection &EventHandler::ClientConnection::operator=(ClientConnection const &other) {
+	(void) other;
 	return *this;
 }

@@ -18,7 +18,7 @@ int main()
 {
 	// loadConfig
 	configObject server1;
-	size_t serverCount = 3;
+	// size_t serverCount = 3;
 	std::vector<configObject> config;
 
 	config.push_back(server1);
