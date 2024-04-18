@@ -51,7 +51,6 @@ void Config::parseConfigFile(std::string filename)
     _tokens["server"] = Server;
     _tokens["location"] = Location;
     _tokens["port"] = Port;
-    _tokens["host"] = Host;
     _tokens["root"] = Root;
     _tokens["index"] = Index;
     _tokens["listing"] = Listing;
@@ -238,15 +237,17 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 std::vector<Node>::iterator start = it;
                 it++;
                 if (it == end)
-                    error("Syntax error: unexpected end of file", it);
+                    error("Syntax error: incomplete server block", start);
                 while (it->_level && it != end)
                     it++;
                 if (start + 1 == it)
                     error("Syntax error: incomplete server block", start);
                 start++;
                 ServerBlock serverBlock = parseServerBlock(start, it);
-                _serverBlocks.push_back(serverBlock);
-                std::cout << "Server block parsed" << std::endl;
+                if (serverBlock._directives.size())
+                    _serverBlocks.push_back(serverBlock);
+                else
+                    error("Syntax error: incomplete server block", start);
                 continue;  // Skip the increment at the end of the loop
             }
             else
@@ -261,6 +262,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
 {
     ServerBlock block;
+    std::vector<Node>::iterator start = it - 1;
     while (it != end)
     {
         if (it->_token == Location && it->_level == 1)
@@ -274,38 +276,45 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                 error("Syntax error: expected location block", it);
             while (it != end && it->_level > locationStart->_level)
                 it++;
-            if (it == end)
-                error("Syntax error: incomplete location block", locationStart);
             LocationBlock locationBlock = parseLocationBlock(locationStart, it);
-            block._locations.push_back(locationBlock);
+            if (!locationBlock._path.empty() && locationBlock._directives.size())
+                block._locations.push_back(locationBlock);
+            else
+                error ("Syntax error: incomplete location block", locationStart - 1);
         }
         else
         {
             switch (it->_token)
             {
+                case Root:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives[Root] = (it + 1)->_value;
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after root directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: root directive requires a value", it);
+                    break;
                 case Port:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[Port] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after port directive", it - 2);
                     }
                     else
                         error("Syntax error: port directive requires a value", it);
-                    break;
-                case Host:
-                    if (it + 1 != end && (it + 1)->_token == Data)
-                    {
-                        block._directives[Host] = (it + 1)->_value;
-                        it += 2;
-                    }
-                    else
-                        error("Syntax error: host directive requires a value", it);
                     break;
                 case ServerName:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[ServerName] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after server_name directive", it - 2);
                     }
                     else
                         error("Syntax error: server_name directive requires a value", it);
@@ -315,6 +324,8 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     {
                         block._directives[ClientMaxBodySize] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after client_max_body_size directive", it - 2);
                     }
                     else
                         error("Syntax error: client_max_body_size directive requires a value", it);
@@ -331,6 +342,12 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
             }
         }
     }
+    if (block._directives.find(Root) == block._directives.end() && block._locations.empty())
+        error("Syntax error: request cannot be handled without root directive or location blocks", start);
+    else if (block._directives.find(Port) == block._directives.end())
+        error("Syntax error: missing port directive", start);
+    else if (block._directives.find(ServerName) == block._directives.end())
+        error("Syntax error: missing server_name directive", start);
     return block;
 }
 
@@ -353,6 +370,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
         }
         else
         {
+            std::vector<Node>::iterator i = it;
             switch (it->_token)
             {
                 case Listing:
@@ -360,6 +378,8 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     {
                         block._directives[Listing] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after listing directive", it - 2);
                     }
                     else
                         error("Syntax error: listing directive requires a value", it);
@@ -369,6 +389,8 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     {
                         block._directives[Root] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after root directive", it - 2);
                     }
                     else
                         error("Syntax error: root directive requires a value", it);
@@ -378,6 +400,8 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     {
                         block._directives[Index] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after index directive", it - 2);
                     }
                     else
                         error("Syntax error: index directive requires a value", it);
@@ -387,28 +411,43 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     {
                         block._directives[Redir] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after redir directive", it - 2);
                     }
                     else
                         error("Syntax error: redir directive requires a value", it);
                     break;
                 case AllowedMethods:
                     it++;
+                    if (it->_token != Data)
+                        error("Syntax error: expected method in allowed_methods directive", it);
                     while (it != end && it->_token != Semicolon)
                     {
                         if (it->_token == Data)
                         {
-                            block._directives[AllowedMethods] += it->_value;
-                            it++;
+                            if (it->_value == "GET" || it->_value == "POST" || it->_value == "PUT" || it->_value == "DELETE")
+                            {
+                                block._directives[AllowedMethods] += ':';
+                                block._directives[AllowedMethods] += it->_value;
+                                it++;
+                            }
+                            else
+                                error("Syntax error: invalid method in allowed_methods directive", it);
                         }
                         else
-                            error("Syntax error: allowed_methods directive requires a value", it);
+                            error("Syntax error: token not allowed in allowed_methods directive", it);
                     }
+                    if (it == end)
+                        error("Syntax error: missing semicolon after allowed_methods directive", i);
+                    block._directives[AllowedMethods].erase(0, 1);
                     break;
                 case Default:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[Default] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after default directive", it - 2);
                     }
                     else
                         error("Syntax error: default directive requires a value", it);
@@ -418,6 +457,8 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     {
                         block._directives[CGI] = (it + 1)->_value;
                         it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after cgi directive", it - 2);
                     }
                     else
                         error("Syntax error: cgi directive requires a value", it);

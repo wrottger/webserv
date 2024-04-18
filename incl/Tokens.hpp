@@ -10,7 +10,6 @@ enum TokenType {
     Location,
     Listing,
     Port,
-    Host,
     Root,
     Index,
     Redir,
