@@ -54,7 +54,7 @@ void EventHandler::start()
 					// find object with fd
 					// parse
 					buffer[bytes_received] = 0;
-					for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
+					for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
 							std::cout << buffer << std::endl;
 							(*it)->updateTime();
@@ -63,7 +63,7 @@ void EventHandler::start()
 				}
 			}
 			if ((!wasListenSocket) && events[n].events & EPOLLOUT) {
-				for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
+				for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 					if ((*it)->getFd() == events[n].data.fd) {
 						(*it)->updateTime();
 						std::string responseBody = 	"<!DOCTYPE html><html><head><title>Hello World</title></head>"
@@ -124,7 +124,7 @@ void EventHandler::handleTimeouts()
 {
 	time_t current_time = std::time(0);
 	// std::cout << "Called " << std::endl;
-	for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
+	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
 			std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl; 
 			destroyClient(*it);
@@ -138,7 +138,7 @@ void EventHandler::handleTimeouts()
 void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList)
 {
 	for (std::list<int>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
-		for (std::list<EventHandler::ClientConnection *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
+		for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 			if (*itCleanUp == (*it)->getFd()) {
 				std::cout << "Kicked in CloseConnections client with FD: " << (*it)->getFd() << std::endl; 
 				destroyClient(*it);
@@ -150,7 +150,7 @@ void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList)
 	}
 }
 
-void EventHandler::destroyClient(EventHandler::ClientConnection *client)
+void EventHandler::destroyClient(EventHandler::Client *client)
 {
 	epoll_ctl(_epollFd, EPOLL_CTL_DEL, client->getFd(), NULL);
 	delete client;
@@ -179,9 +179,9 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 				std::cerr << "EventHandler: epoll ADD failed." << std::endl;
 				return;
 			}
-			ClientConnection *newClient = NULL;
+			Client *newClient = NULL;
 			try {
-				newClient = new ClientConnection(newConnectionFd);
+				newClient = new Client(newConnectionFd);
 				_clientConnections.push_back(newClient);
 			} catch (...) {
 				delete newClient;
@@ -194,49 +194,49 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 	}
 }
 
-// ClientConnection
+// Client
 
-EventHandler::ClientConnection::ClientConnection() {}
+EventHandler::Client::Client() {}
 
-EventHandler::ClientConnection::ClientConnection(int fd) : _fd(fd)
+EventHandler::Client::Client(int fd) : _fd(fd)
 {
 	_requestObject = new HttpRequest;
 	updateTime();
 }
 
-EventHandler::ClientConnection::~ClientConnection()
+EventHandler::Client::~Client()
 {
 	close(_fd);
 	delete _requestObject;
 }
 
-int EventHandler::ClientConnection::getFd()
+int EventHandler::Client::getFd()
 {
 	return _fd;
 }
 
-std::time_t EventHandler::ClientConnection::getLastModified()
+std::time_t EventHandler::Client::getLastModified()
 {
 	return _lastModified;
 }
 
-void EventHandler::ClientConnection::updateTime()
+void EventHandler::Client::updateTime()
 {
 	_lastModified = std::time(0);
 	std::cout << _lastModified << std::endl;
 }
 
-bool EventHandler::ClientConnection::isHeaderComplete()
+bool EventHandler::Client::isHeaderComplete()
 {
 	return _requestObject->isHeaderComplete();
 }
 
-bool EventHandler::ClientConnection::isBodyComplete()
+bool EventHandler::Client::isBodyComplete()
 {
 	return _requestObject->isBodyComplete();
 }
 
-void EventHandler::ClientConnection::parseBuffer(const char *buffer)
+void EventHandler::Client::parseBuffer(const char *buffer)
 {
 	_requestObject->parseBuffer(buffer);
 	// try {
@@ -245,7 +245,7 @@ void EventHandler::ClientConnection::parseBuffer(const char *buffer)
 	// }
 }
 
-EventHandler::ClientConnection &EventHandler::ClientConnection::operator=(ClientConnection const &other) {
+EventHandler::Client &EventHandler::Client::operator=(Client const &other) {
 	(void) other;
 	return *this;
 }

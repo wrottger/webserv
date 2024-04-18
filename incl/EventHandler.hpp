@@ -18,7 +18,7 @@
 
 class EventHandler
 {
-	class ClientConnection;
+	class Client;
 	
 	public:
 		EventHandler(SocketHandling &sockets);
@@ -28,7 +28,7 @@ class EventHandler
 	private:
 		int _epollFd;
 		std::vector<int> _listeningSockets;
-		std::list<EventHandler::ClientConnection *> _clientConnections;
+		std::list<EventHandler::Client *> _clientConnections;
 
 		EventHandler();
 		EventHandler(EventHandler const &other);
@@ -37,15 +37,15 @@ class EventHandler
 		bool isListeningSocketTriggered(epoll_event events_arr[], int n) const;
 		void handleTimeouts();
 		void handleToCloseConnections(std::list<int> &cleanUpList);
-		void destroyClient(EventHandler::ClientConnection *client);
+		void destroyClient(EventHandler::Client *client);
 		void acceptNewClient(epoll_event events_arr[], int n);
 };
 
-class EventHandler::ClientConnection
+class EventHandler::Client
 {
 	public:
-		ClientConnection(int fd);
-		~ClientConnection();
+		Client(int fd);
+		~Client();
 		int getFd();
 		std::time_t getLastModified();
 		void updateTime();
@@ -54,9 +54,9 @@ class EventHandler::ClientConnection
 		void parseBuffer(const char *buffer);
 
 	private:
-		ClientConnection();
-		ClientConnection(ClientConnection const &other);
-		ClientConnection &operator =(ClientConnection const &other);
+		Client();
+		Client(Client const &other);
+		Client &operator =(Client const &other);
 		HttpRequest *_requestObject;
 		int _fd;
 		std::time_t _lastModified;
