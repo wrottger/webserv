@@ -66,6 +66,8 @@ void Config::parseConfigFile(std::string filename)
     _fileStream.close();
     this->parseScopes();
     this->buildAST(_nodes.begin(), _nodes.end());
+    if (_serverBlocks.empty())
+        throw std::runtime_error(RBOLD("Error: no server blocks found in config file"));
     _isLoaded = true;
 }
 
