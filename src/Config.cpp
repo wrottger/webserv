@@ -4,19 +4,17 @@
 
 Config::Config(void) : _isLoaded(false)
 {
-    std::cout << GBOLD("Config created") << std::endl;
+
 }
 
 Config::Config(const Config &src)
 {
-    std::cout << GBOLD("Config copied") << std::endl;
     _tokens = src._tokens;
     _isLoaded = src._isLoaded;
 }
 
 Config &Config::operator=(const Config &src)
 {
-    std::cout << GBOLD("Config assigned") << std::endl;
     if (this != &src)
     {
         _tokens = src._tokens;
@@ -27,7 +25,7 @@ Config &Config::operator=(const Config &src)
 
 Config::~Config()
 {
-    std::cout << GBOLD("Config deleted") << std::endl;
+
 }
 
 
@@ -68,23 +66,7 @@ void Config::parseConfigFile(std::string filename)
     _fileStream.close();
     this->parseScopes();
     this->buildAST(_nodes.begin(), _nodes.end());
-    for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
-    {
-        std::cout << GBOLD("Server block:") << std::endl;
-        for (std::map<TokenType, std::string>::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
-        {
-            std::cout << it2->first << ": " << it2->second << std::endl;
-        }
-        for (std::vector<LocationBlock>::iterator it2 = it->_locations.begin(); it2 != it->_locations.end(); it2++)
-        {
-            std::cout << GBOLD("Location block:") << std::endl;
-            std::cout << "Path: " << it2->_path << std::endl;
-            for (std::map<TokenType, std::string>::iterator it3 = it2->_directives.begin(); it3 != it2->_directives.end(); it3++)
-            {
-                std::cout << it3->first << ": " << it3->second << std::endl;
-            }
-        }
-    }
+    _isLoaded = true;
 }
 
 // This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
@@ -248,7 +230,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                     _serverBlocks.push_back(serverBlock);
                 else
                     error("Syntax error: incomplete server block", start);
-                continue;  // Skip the increment at the end of the loop
+                continue;
             }
             else
                 error("Syntax error: token not within server block", it);
@@ -336,9 +318,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     break;
                 }
                 default:
-                {
                     error("Syntax error: unexpected token in server block", it);
-                }
             }
         }
     }
@@ -469,9 +449,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     break;
                 }
                 default:
-                {
                     error("Syntax error: unexpected token in location block", it);
-                }
             }
         }
     }

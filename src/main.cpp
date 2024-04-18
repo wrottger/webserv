@@ -1,5 +1,6 @@
 #include "Config.hpp"
 #include "error.hpp"
+#include "colors.hpp"
 
 int main (int argc, char *argv[], char *envp[])
 {
@@ -16,6 +17,10 @@ int main (int argc, char *argv[], char *envp[])
 	catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
+	}
+	if (config.isLoaded())
+	{
+		std::cout << GBOLD("Config file loaded successfully") << std::endl;
 	}
     return 0;
 }
