@@ -33,9 +33,11 @@ class EventHandler
 		EventHandler(EventHandler const &other);
 		EventHandler &operator =(EventHandler const &other);
 
-		bool isListeningSocketTriggered(epoll_event events_arr[], int n);
+		bool isListeningSocketTriggered(epoll_event events_arr[], int n) const;
 		void handleTimeouts();
 		void handleToCloseConnections(std::list<int> &cleanUpList);
+		void destroyClient(EventHandler::ClientConnection *client);
+		void acceptNewClient(epoll_event events_arr[], int n);
 };
 
 class EventHandler::ClientConnection

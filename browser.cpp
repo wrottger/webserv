@@ -6,7 +6,7 @@
 /*   By: dnebatz <dnebatz@student.42wolfsburg.de    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/02 22:06:18 by dnebatz           #+#    #+#             */
-/*   Updated: 2024/04/17 15:13:17 by dnebatz          ###   ########.fr       */
+/*   Updated: 2024/04/18 09:39:39 by dnebatz          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,8 +88,6 @@ int main(int argc, char **argv) {
 		}
 		std::cout << "len: " << message.size() << std::endl;
 	}
-
 	close(sockfd);
-
 	return 0;
 }
