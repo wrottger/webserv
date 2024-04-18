@@ -166,19 +166,32 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 	size_t listenSocketSize = _listeningSockets.size();
 
 	for (size_t i = 0; i < listenSocketSize; i++) {
-			if (_listeningSockets[i] == events_arr[n].data.fd) {	
-				newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *) &addr, &addrlen);
-				if (newConnectionFd == -1) {
-					throw std::runtime_error("EventHandler: accept failed.");
-				}	
-				ev.events = EPOLLIN | EPOLLOUT;
-				ev.data.fd = newConnectionFd;
-				if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
-					throw std::runtime_error("EventHandler: epoll add failed.");
+		if (_listeningSockets[i] == events_arr[n].data.fd) {	
+			newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *) &addr, &addrlen);
+			if (newConnectionFd == -1) {
+				std::cerr << "EventHandler: accept failed." << std::endl;
+				return;
+			}
+			ev.events = EPOLLIN | EPOLLOUT;
+			ev.data.fd = newConnectionFd;
+			if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
+				close(newConnectionFd);
+				std::cerr << "EventHandler: epoll ADD failed." << std::endl;
+				return;
+			}
+			ClientConnection *newClient = NULL;
+			try {
+				newClient = new ClientConnection(newConnectionFd);
+				_clientConnections.push_back(newClient);
+			} catch (...) {
+				delete newClient;
+				if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, newConnectionFd, NULL) == -1) {
+					std::cerr << "EventHandler: epoll DEL failed." << std::endl;
 				}
-				_clientConnections.push_back(new ClientConnection(newConnectionFd));
+				close(newConnectionFd);
 			}
 		}
+	}
 }
 
 // ClientConnection

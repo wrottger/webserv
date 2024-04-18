@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iostream>
 #include <list>
+#include <new>
 #include "HttpRequest.hpp"
 #include "HttpError.hpp"
 #include <sys/epoll.h>
