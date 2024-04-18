@@ -1,9 +1,7 @@
 #include "EventHandler.hpp"
 #include <sstream>
 
-EventHandler::EventHandler()
-{
-}
+EventHandler::EventHandler() {}
 
 EventHandler::EventHandler(SocketHandling &sockets)
 {
@@ -11,11 +9,7 @@ EventHandler::EventHandler(SocketHandling &sockets)
 	_listeningSockets = sockets.getOpenFds();
 }
 
-EventHandler::~EventHandler()
-{
-}
-
-
+EventHandler::~EventHandler() {}
 
 void EventHandler::start()
 {
@@ -30,42 +24,46 @@ void EventHandler::start()
 	{
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT);
 		if (epollTriggerCount == -1) {
-			throw std::runtime_error("EventHandler: epoll_wait failed.");
+			std::cerr << "EventHandler: epoll_wait failed." << std::endl; // TODO: LOGGING
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
-			// checking if a listeningSocket was triggerd then accept new connection
+			// Accept new client
 			if ((wasListenSocket = isListeningSocketTriggered(events, n))) {
 				acceptNewClient(events, n);
 			}
-			// else read from the connection socket
+			// Read from client
 			if ((!wasListenSocket) && events[n].events & EPOLLIN) {
 				ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
-				std::cout << "bytes: " << bytes_received << std::endl;
+				std::cout << "bytes: " << bytes_received << std::endl; // DELETE: DEBUG
+
+				// The client has closed the connection
 				if (bytes_received == 0) {
-					// The client has closed the connection
 					cleanUpList.push_back(events[n].data.fd);
-					std::cout << "client connection closes 0" << std::endl;
+					std::cout << "client connection closes 0" << std::endl; // DELETE: DEBUG
 				}
 				else if (bytes_received == -1) {
 					cleanUpList.push_back(events[n].data.fd);
-					std::cout << "client connection closes -1" << std::endl;
+					std::cout << "client connection closes -1" << std::endl; // DELETE: DEBUG
 				}
 				else {
 					// find object with fd
 					// parse
-					buffer[bytes_received] = 0;
+					buffer[bytes_received] = '\0';
 					for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
-							std::cout << buffer << std::endl;
+							std::cout << buffer << std::endl; // DELETE: DEBUG
+							(*it)->parseBuffer(buffer);
 							(*it)->updateTime();
 						}
 					}
 				}
 			}
+			// Write to client
 			if ((!wasListenSocket) && events[n].events & EPOLLOUT) {
 				for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 					if ((*it)->getFd() == events[n].data.fd) {
 						(*it)->updateTime();
+						// Response // DELETE: DEBUG
 						std::string responseBody = 	"<!DOCTYPE html><html><head><title>Hello World</title></head>"
 													"<body><h1>Hello, World!</h1></body></html>";
 
@@ -109,7 +107,6 @@ EventHandler &EventHandler::operator=(EventHandler const &other)
 
 bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n) const
 {
-
 	size_t listenSocketSize = _listeningSockets.size();
 
 	for (size_t i = 0; i < listenSocketSize; i++) {
@@ -123,7 +120,6 @@ bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n) c
 void EventHandler::handleTimeouts()
 {
 	time_t current_time = std::time(0);
-	// std::cout << "Called " << std::endl;
 	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
 			std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl; 
@@ -194,7 +190,9 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 	}
 }
 
-// Client
+/********************************************************************/
+/*                          CLIENT                                  */
+/********************************************************************/
 
 EventHandler::Client::Client() {}
 
@@ -239,10 +237,6 @@ bool EventHandler::Client::isBodyComplete()
 void EventHandler::Client::parseBuffer(const char *buffer)
 {
 	_requestObject->parseBuffer(buffer);
-	// try {
-	// } catch (... ) {
-	// 	std::cerr << "bad alloc oder so" << std::endl;
-	// }
 }
 
 EventHandler::Client &EventHandler::Client::operator=(Client const &other) {
