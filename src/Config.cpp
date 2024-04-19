@@ -84,6 +84,7 @@ void Config::scanTokens(std::ifstream &file)
     delim.push_back(';');
     for (size_t n = 0; std::getline(file, line); n++)
     {
+        //adds delimiters to the vector of nodes
         for (size_t i = 0; i < line.size(); i++)
         {
             if (line[i] == '{')
@@ -93,13 +94,14 @@ void Config::scanTokens(std::ifstream &file)
             else if (line[i] == ';')
                 _nodes.push_back(Node(Semicolon, i, n));
         }
-        out = slice(line, delim);
-        if (out.size() == 0)
+        out = slice(line, delim); //slices the line into pure data tokens i.e. all tokens except delimiters
+        if (out.size() == 0) //skips empty lines
             continue;
         for (std::vector<std::pair<std::string, size_t> >::iterator it2 = out.begin(); it2 != out.end(); it2++)
         {
             bool tokenFound = false;
             std::map<std::string, TokenType>::iterator it3 = _tokens.begin();
+            //checks if the token is a valid token
             for (; it3 != _tokens.end(); it3++)
             {
                 if (it3->first == it2->first)
@@ -109,15 +111,15 @@ void Config::scanTokens(std::ifstream &file)
                         break;
                 }
             }
-            if (it2->first[0] == '#')
+            if (it2->first[0] == '#') //skips comments
                 continue;
-            else if (tokenFound == false)
+            else if (tokenFound == false) //all other tokens are considered data
             {
                 _nodes.push_back(Node(Data, it2->first, it2->second, n));
             }
         }
     }
-    this->sortVector(_nodes);
+    this->sortVector(_nodes); // sorts the vector of nodes by order of line number and offset in the config file
 }
 
 // This method is supposed to slice a string into a vector of pairs of strings and their offsets;
@@ -177,12 +179,13 @@ void Config::parseScopes(void)
         ss << "Syntax error: unclosed brace at row " << unclosedBrace._line + 1 << ", column " << unclosedBrace._offset + 1;
         throw std::runtime_error(RBOLD(ss.str()));
     }
+    //erase braces
     for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); /* no increment here */)
     {
         if (it->_token == OpenBrace || it->_token == CloseBrace)
-            it = _nodes.erase(it);  // erase returns the next iterator
+            it = _nodes.erase(it);
         else
-            ++it;  // only increment if you didn't erase
+            ++it;
     }
 }
 
@@ -218,15 +221,16 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
         {
             if (it->_token == Server)
             {
-                std::vector<Node>::iterator start = it;
+                std::vector<Node>::iterator start = it; // starting node of the server block
                 it++;
                 if (it == end)
                     error("Syntax error: incomplete server block", start);
-                while (it->_level && it != end)
+                while (it->_level && it != end) // iterate until the end of the server block
                     it++;
                 if (start + 1 == it)
                     error("Syntax error: incomplete server block", start);
                 start++;
+                // parse the server block and add it to the vector of server blocks
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 if (serverBlock._directives.size())
                     _serverBlocks.push_back(serverBlock);
@@ -242,30 +246,33 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
     }
 }
 
-
+// This method is supposed to parse the server block and its directives;
 ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
 {
     ServerBlock block;
     std::vector<Node>::iterator start = it - 1;
     while (it != end)
     {
+        // create a new location block and add it to the server block
         if (it->_token == Location && it->_level == 1)
         {
             it++;
             if (it == end)
                 error("Syntax error: expected location block", it);
-            std::vector<Node>::iterator locationStart = it;
+            std::vector<Node>::iterator locationStart = it; // starting node of the location block
             it++;
             if (it == end)
                 error("Syntax error: expected location block", it);
-            while (it != end && it->_level > locationStart->_level)
+            while (it != end && it->_level > locationStart->_level) // iterate until the end of the location block
                 it++;
+            // parse the location block and add it to the vector of location blocks
             LocationBlock locationBlock = parseLocationBlock(locationStart, it);
             if (!locationBlock._path.empty() && locationBlock._directives.size())
                 block._locations.push_back(locationBlock);
             else
                 error ("Syntax error: incomplete location block", locationStart - 1);
         }
+        // parse directives in server block
         else
         {
             switch (it->_token)
@@ -282,9 +289,16 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                         error("Syntax error: root directive requires a value", it);
                     break;
                 case Port:
+                    // check if the value is a number and within the range of valid port numbers
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         block._directives[Port] = (it + 1)->_value;
+                        char *endptr; // used to check if strtol was successful
+                        long portNumber = strtol((it + 1)->_value.c_str(), &endptr, 10);
+                        if (errno == ERANGE || *endptr != '\0')
+                            error("Syntax error: invalid port number", it + 1);
+                        else if (portNumber < 0 || portNumber > 65535)
+                            error("Syntax error: port number out of range", it + 1);
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after port directive", it - 2);
@@ -324,7 +338,8 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
             }
         }
     }
-    if (block._directives.find(Root) == block._directives.end() && block._locations.empty())
+    // check if there are any missing directives
+    if (block._directives.find(Root) == block._directives.end() && block._locations.empty()) // if there are no location blocks, root directive is required else the server cannot serve any requests
         error("Syntax error: request cannot be handled without root directive or location blocks", start);
     else if (block._directives.find(Port) == block._directives.end())
         error("Syntax error: missing port directive", start);
