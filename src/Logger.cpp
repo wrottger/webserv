@@ -39,9 +39,9 @@ void Logging::Logger::writeLog(std::string &data) {
 }
 
 void Logging::Logger::startLogging() { // TODO: FIX THIS
-	_logFile << "*********************************************" << std::endl;
-	_logFile << "*   Logging started. " << getCurrentTime() << "    *" << std::endl;
-	_logFile << "*********************************************" << std::endl;
+	_logFile << "************************************************" << std::endl;
+	_logFile << "*   Logging started: " << getCurrentTime() << "   *" << std::endl;
+	_logFile << "************************************************" << std::endl;
 }
 
 #include <sys/time.h>
@@ -238,12 +238,12 @@ void Logging::Logger::updateLogLevel(LogLevel logLevel) {
 }
 
 // Enable all log levels
-void Logging::Logger::enableLog() {
+void Logging::Logger::enableLogs() {
 	_logLevel = ENABLE_LOG;
 }
 
 // Disable all log levels, except error and alarm
-void Logging::Logger::disableLog() {
+void Logging::Logger::disableLogs() {
 	_logLevel = DISABLE_LOG;
 }
 

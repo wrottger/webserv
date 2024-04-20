@@ -27,8 +27,8 @@ namespace Logging {
 	#define LOG_SET_LOG_TYPE(type) Logging::Logger::getInstance().updateLogType(type) // Set log type
 
 	// Interfaces to enable and disable logging
-	#define LOG_ENABLE_LOGGING()	Logging::Logger::getInstance().enaleLog() // Enable all log levels
-	#define LOG_DISABLE_LOGGING()	Logging::Logger::getInstance().disableLog() // Disable all log levels, except error and alarm
+	#define LOG_ENABLE_LOGGING()	Logging::Logger::getInstance().enableLogs() // Enable all log levels
+	#define LOG_DISABLE_LOGGING()	Logging::Logger::getInstance().disableLogs() // Disable all log levels, except error and alarm
 
 	// Interfaces to enable and disable console and file logging
 	#define LOG_ENABLE_CONSOLE_LOGGING()	Logging::Logger::getInstance().enableConsoleLogging()	// Enable console logging
@@ -56,7 +56,7 @@ namespace Logging {
 		LOG_NONE = 0,
 		LOG_TO_CONSOLE = 1,
 		LOG_TO_FILE = 2,
-		LOG_TO_BOTH = 4
+		LOG_TO_BOTH = 3
 	} LogType;
 
 	class Logger {
@@ -105,8 +105,8 @@ namespace Logging {
 
 		// Interfaces to control log levels
 		void updateLogLevel(LogLevel logLevel);
-		void enableLog();  // Enable all log levels
-		void disableLog(); // Disable all log levels, except error and alarm
+		void enableLogs();  // Enable all log levels
+		void disableLogs(); // Disable all log levels, except error and alarm
 
 		// Interfaces to control log Types
 		void updateLogType(LogType logType);
