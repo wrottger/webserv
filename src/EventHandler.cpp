@@ -52,7 +52,7 @@ void EventHandler::start()
 					for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
 							std::cout << buffer << std::endl; // DELETE: DEBUG
-							(*it)->parseBuffer(buffer);
+							// (*it)->parseBuffer(buffer);
 							(*it)->updateTime();
 						}
 					}
@@ -78,12 +78,11 @@ void EventHandler::start()
 						if ((*it)->isHeaderComplete() && (*it)->isBodyComplete()) {
 							// Reponse logic
 							// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
-							
 							if (send((*it)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
 								perror("Send");
 							}
 						}
-					cleanUpList.push_back(events[n].data.fd);
+					// cleanUpList.push_back(events[n].data.fd);
 					}
 				}
 			}
