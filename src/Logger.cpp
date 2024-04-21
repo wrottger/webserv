@@ -13,18 +13,12 @@ Logging::Logger::Logger() {
 
 Logging::Logger::~Logger() {
 	_logFile.close();
-	delete _instance;
-	_instance = NULL;
 }
 
 // Singleton instance
 Logging::Logger &Logging::Logger::getInstance() throw() {
 	static Logger _instance;
 	return _instance;
-}
-
-void Logging::Logger::deleteInstance() throw() {
-	delete _instance;
 }
 
 void Logging::Logger::writeLog(std::string &data) {

@@ -63,7 +63,6 @@ namespace Logging {
 	public:
 
 		static Logger& getInstance() throw();
-		void deleteInstance() throw();
 
 		// Interface for Error Log 
 		void error(const char* text) throw();
