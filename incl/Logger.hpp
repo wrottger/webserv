@@ -9,6 +9,9 @@
 #include <ctime>
 #include <sys/time.h>
 
+/* The Logger class is implement as a singleton class that clears itself after the program ends. */
+/* So you don't need to worry about cleaning up the logger object. */
+
 namespace Logging {
 	// Log file name
 	static const std::string LOG_SAVE_FILE = "log.txt";
@@ -23,8 +26,8 @@ namespace Logging {
 	#define LOG_DEBUG(text)		Logging::Logger::getInstance().debug(text)	// log debug message
 
 	// Interfaces to control log levels and log types
-	#define LOG_SET_LOG_LEVEL(level)	Logging::Logger::getInstance().setLogLevel(level)		// Set log level
-	#define LOG_SET_LOG_TARGET(type)		Logging::Logger::getInstance().setLogTarget(type)	// Set log target
+	#define LOG_SET_LOG_LEVEL(level)	Logging::Logger::getInstance().setLogLevel(level)	// Set log level
+	#define LOG_SET_LOG_TARGET(type)	Logging::Logger::getInstance().setLogTarget(type)	// Set log target
 
 	// Interfaces to enable and disable logging
 	#define LOG_ENABLE_ALL_LEVELS()		Logging::Logger::getInstance().enableAllLevels()	// Enable all log levels
@@ -61,7 +64,6 @@ namespace Logging {
 
 	class Logger {
 	public:
-
 		static Logger& getInstance(); // Return the instance of the Logger
 
 		void error(const char* text);			// log error message
@@ -95,24 +97,30 @@ namespace Logging {
 		// Error and Alarm log are always enabled
 		// Hence, there is no interfce to control error and alarm logs
 
-		// Interfaces to control log levels
+		/* Handle log levels */
+
 		void setLogLevel(LogLevel logLevel); // Set log level
 		void enableAllLevels();					// Enable all log levels
 		void disableAllLevels();				// Disable all log levels, except error and alarm
 
 		void setLogTarget(LogTarget logTarget); // Set log type
 
-		// Interfaces to enable and disable logging
+		/* Handle where log output is send to */
+
 		void enableConsoleLogging();	// Enable console logging
 		void enableFileLogging();		// Enable file logging
+		void enableDuoLogging();		// Enable both console and file logging
+
 		void disableConsoleLogging();	// Disable console logging
 		void disableFileLogging();		// Disable file logging
-		void enableDuoLogging();		// Enable both console and file logging
 		void disableLogging();			// Disable both console and file logging
 
+		/* Handle what is printed in log */
+
 		void enablePrintTimeStamp();	// Enable time stamp in log
-		void disablePrintTimeStamp();	// Disable time stamp in log
 		void enablePrintLogLevel();		// Enable log level in log
+
+		void disablePrintTimeStamp();	// Disable time stamp in log
 		void disablePrintLogLevel();	// Disable log level in log
 
 	protected:

@@ -7,10 +7,10 @@ Logging::Logger::Logger() {
 	if (_logFile.fail()) {
 		std::cerr << "Failed to open log file: " << LOG_SAVE_FILE << std::endl;
 	}
-	_logLevel = LOG_LVL_DEBUG;	// Default log level
+	_logLevel = LOG_LVL_DEBUG;		// Default log level
 	_logTarget = LOG_TO_CONSOLE;	// Default log type
-	_timeStampInLog = true;		// Default timestamp in log
-	_logLevelInLog = true;		// Default log level in log
+	_timeStampInLog = true;			// Default timestamp in log
+	_logLevelInLog = true;			// Default log level in log
 	startLogging();
 }
 
