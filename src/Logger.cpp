@@ -4,6 +4,9 @@ Logging::Logger *Logging::Logger::_instance = NULL;
 
 Logging::Logger::Logger() {
 	_logFile.open(LOG_SAVE_FILE.c_str(), std::ios::out | std::ios::app);
+	if (_logFile.fail()) {
+		std::cerr << "Failed to open log file: " << LOG_SAVE_FILE << std::endl;
+	}
 	_logLevel = LOG_LVL_DEBUG; // Default log level
 	_logType = LOG_TO_CONSOLE; // Default log type
 	_timeStampInLog = true; // Default timestamp in log
@@ -23,8 +26,10 @@ Logging::Logger &Logging::Logger::getInstance() throw() {
 
 void Logging::Logger::writeLog(std::string &data) {
 	// Write log into file
-	if (LOG_TO_FILE == static_cast<LogType>(_logType & LOG_TO_FILE)) {
-		_logFile << data << std::endl;
+	if (_logFile.rdstate() == std::ios_base::goodbit) {
+		if (LOG_TO_FILE == static_cast<LogType>(_logType & LOG_TO_FILE)) {
+			_logFile << data << std::endl;
+		}
 	}
 	// Write log into console
 	if (LOG_TO_CONSOLE == static_cast<LogType>(_logType & LOG_TO_CONSOLE)) {
@@ -34,42 +39,40 @@ void Logging::Logger::writeLog(std::string &data) {
 
 void Logging::Logger::startLogging() {
 	buffer("************************************************\n");
-	buffer("*   Logging started: " );
+	buffer("*   Logging started: ");
 	buffer(getCurrentTime().c_str());
 	buffer("   *\n");
 	buffer("************************************************\n");
 }
 
-#include <sys/time.h>
-
 std::string Logging::Logger::getCurrentTime() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
 
-    std::time_t rawtime = tv.tv_sec;
-    std::tm* timeinfo = std::localtime(&rawtime);
+	std::time_t rawtime = tv.tv_sec;
+	std::tm *timeinfo = std::localtime(&rawtime);
 
-    char buffer[80];
-    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+	char buffer[80];
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
 
-    std::ostringstream oss;
-    oss << buffer << "." << std::setfill('0') << std::setw(3) << tv.tv_usec / 1000;
+	std::ostringstream oss;
+	oss << buffer << "." << std::setfill('0') << std::setw(3) << tv.tv_usec / 1000;
 
-    return oss.str();
+	return oss.str();
 }
 
 std::string Logging::Logger::insertMetaInformations(const char *logLevel) {
-    std::string data;
+	std::string data;
 
-    if (_timeStampInLog) {
-        data.append(getCurrentTime()).append(" ");
-    }
+	if (_timeStampInLog) {
+		data.append(getCurrentTime()).append(" ");
+	}
 
-    if (_logLevelInLog) {
-        data.append("[").append(logLevel).append("]").append(": ");
-    }
+	if (_logLevelInLog) {
+		data.append("[").append(logLevel).append("]").append(": ");
+	}
 
-    return data;
+	return data;
 }
 
 // Interface for Error Log
