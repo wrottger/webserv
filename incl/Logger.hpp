@@ -14,21 +14,21 @@ namespace Logging {
 	static const std::string LOG_SAVE_FILE = "log.txt";
 
 	// Direct interface for logging using a MACRO
-	#define LOG_ERROR(text)		Logging::Logger::getInstance().error(text) // Error log
-	#define LOG_ALARM(text)		Logging::Logger::getInstance().alarm(text) // Alarm log
-	#define LOG_ALWAYS(text)	Logging::Logger::getInstance().always(text) // Always log
-	#define LOG_BUFFER(text)	Logging::Logger::getInstance().buffer(text) // Buffer log
-	#define LOG_INFO(text)		Logging::Logger::getInstance().info(text) // Info log
-	#define LOG_TRACE(text)		Logging::Logger::getInstance().trace(text) // Trace log
-	#define LOG_DEBUG(text)		Logging::Logger::getInstance().debug(text) // Debug log
+	#define LOG_ERROR(text)		Logging::Logger::getInstance().error(text)	// Error log
+	#define LOG_ALARM(text)		Logging::Logger::getInstance().alarm(text)	// Alarm log
+	#define LOG_ALWAYS(text)	Logging::Logger::getInstance().always(text)	// Always log
+	#define LOG_BUFFER(text)	Logging::Logger::getInstance().buffer(text)	// Buffer log
+	#define LOG_INFO(text)		Logging::Logger::getInstance().info(text)	// Info log
+	#define LOG_TRACE(text)		Logging::Logger::getInstance().trace(text)	// Trace log
+	#define LOG_DEBUG(text)		Logging::Logger::getInstance().debug(text)	// Debug log
 
 	// Interfaces to control log levels and log types
-	#define LOG_SET_LOG_LEVEL(level) Logging::Logger::getInstance().updateLogLevel(level) // Set log level
-	#define LOG_SET_LOG_TYPE(type) Logging::Logger::getInstance().updateLogType(type) // Set log type
+	#define LOG_SET_LOG_LEVEL(level) Logging::Logger::getInstance().updateLogLevel(level)	// Set log level
+	#define LOG_SET_LOG_TYPE(type) Logging::Logger::getInstance().updateLogType(type)		// Set log type
 
 	// Interfaces to enable and disable logging
-	#define LOG_ENABLE_LOGGING()	Logging::Logger::getInstance().enableLogs() // Enable all log levels
-	#define LOG_DISABLE_LOGGING()	Logging::Logger::getInstance().disableLogs() // Disable all log levels, except error and alarm
+	#define LOG_ENABLE_LOGGING()	Logging::Logger::getInstance().enableLogs()		// Enable all log levels
+	#define LOG_DISABLE_LOGGING()	Logging::Logger::getInstance().disableLogs()	// Disable all log levels, except error and alarm
 
 	// Interfaces to enable and disable console and file logging
 	#define LOG_ENABLE_CONSOLE_LOGGING()	Logging::Logger::getInstance().enableConsoleLogging()	// Enable console logging
@@ -62,42 +62,42 @@ namespace Logging {
 	class Logger {
 	public:
 
-		static Logger& getInstance() throw();
+		static Logger& getInstance(); // Return the instance of the Logger
 
 		// Interface for Error Log 
-		void error(const char* text) throw();
-		void error(std::string& text) throw();
-		void error(std::ostringstream& stream) throw();
+		void error(const char* text);
+		void error(std::string& text);
+		void error(std::ostringstream& stream);
 
 		// Interface for Alarm Log 
-		void alarm(const char* text) throw();
-		void alarm(std::string& text) throw();
-		void alarm(std::ostringstream& stream) throw();
+		void alarm(const char* text);
+		void alarm(std::string& text);
+		void alarm(std::ostringstream& stream);
 
 		// Interface for Always Log 
-		void always(const char* text) throw();
-		void always(std::string& text) throw();
-		void always(std::ostringstream& stream) throw();
+		void always(const char* text);
+		void always(std::string& text);
+		void always(std::ostringstream& stream);
 
 		// Interface for Buffer Log 
-		void buffer(const char* text) throw();
-		void buffer(std::string& text) throw();
-		void buffer(std::ostringstream& stream) throw();
+		void buffer(const char* text);
+		void buffer(std::string& text);
+		void buffer(std::ostringstream& stream);
 
 		// Interface for Info Log 
-		void info(const char* text) throw();
-		void info(std::string& text) throw();
-		void info(std::ostringstream& stream) throw();
+		void info(const char* text);
+		void info(std::string& text);
+		void info(std::ostringstream& stream);
 
 		// Interface for Trace log 
-		void trace(const char* text) throw();
-		void trace(std::string& text) throw();
-		void trace(std::ostringstream& stream) throw();
+		void trace(const char* text);
+		void trace(std::string& text);
+		void trace(std::ostringstream& stream);
 
 		// Interface for Debug log 
-		void debug(const char* text) throw();
-		void debug(std::string& text) throw();
-		void debug(std::ostringstream& stream) throw();
+		void debug(const char* text);
+		void debug(std::string& text);
+		void debug(std::ostringstream& stream);
 
 		// Error and Alarm log must be always enable
 		// Hence, there is no interfce to control error and alarm logs
