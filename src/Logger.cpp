@@ -260,42 +260,52 @@ void Logging::Logger::setLogTarget(LogTarget logType) {
 	_logTarget = static_cast<LogTarget>(_logTarget | logType);
 }
 
+// Enable file logging
 void Logging::Logger::enableFileLogging() {
 	_logTarget = static_cast<LogTarget>(_logTarget | LOG_TO_FILE);
 }
 
+// Enable console logging
 void Logging::Logger::enableConsoleLogging() {
 	_logTarget = static_cast<LogTarget>(_logTarget | LOG_TO_CONSOLE);
 }
 
+// Disable file logging
 void Logging::Logger::disableFileLogging() {
 	_logTarget = static_cast<LogTarget>(_logTarget & ~LOG_TO_FILE);
 }
 
+// Disable console logging
 void Logging::Logger::disableConsoleLogging() {
 	_logTarget = static_cast<LogTarget>(_logTarget & ~LOG_TO_CONSOLE);
 }
 
+// Enable both file and console logging
 void Logging::Logger::enableDuoLogging() {
 	_logTarget = LOG_TO_BOTH;
 }
 
+// Disable both file and console logging
 void Logging::Logger::disableLogging() {
 	_logTarget = LOG_NONE;
 }
 
+// Show timestamp in log
 void Logging::Logger::enablePrintTimeStamp() {
 	_timeStampInLog = true;
 }
 
+// Hide timestamp in log
 void Logging::Logger::disablePrintTimeStamp() {
 	_timeStampInLog = false;
 }
 
+// Show log level in log
 void Logging::Logger::enablePrintLogLevel() {
 	_logLevelInLog = true;
 }
 
+// Hide log level in log
 void Logging::Logger::disablePrintLogLevel() {
 	_logLevelInLog = false;
 }
