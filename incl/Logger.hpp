@@ -64,42 +64,42 @@ namespace Logging {
 
 		static Logger& getInstance(); // Return the instance of the Logger
 
-		// Interface for Error Log 
-		void error(const char* text);
-		void error(std::string& text);
-		void error(std::ostringstream& stream);
+		// Interface for Error Log
+		void error(const char* text);			// log error message
+		void error(std::string& text);			// log error message
+		void error(std::ostringstream& stream);	// log error message
 
-		// Interface for Alarm Log 
-		void alarm(const char* text);
-		void alarm(std::string& text);
-		void alarm(std::ostringstream& stream);
+		// Interface for Alarm Log
+		void alarm(const char* text);			// log alarm message
+		void alarm(std::string& text);			// log alarm message
+		void alarm(std::ostringstream& stream); // log alarm message
 
-		// Interface for Always Log 
-		void always(const char* text);
-		void always(std::string& text);
-		void always(std::ostringstream& stream);
+		// Interface for Always Log
+		void always(const char* text);			// log always message
+		void always(std::string& text);			// log always message
+		void always(std::ostringstream& stream);// log always message
 
-		// Interface for Buffer Log 
-		void buffer(const char* text);
-		void buffer(std::string& text);
-		void buffer(std::ostringstream& stream);
+		// Interface for Buffer Log
+		void buffer(const char* text);			// log RAW buffer message
+		void buffer(std::string& text);			// log RAW buffer message
+		void buffer(std::ostringstream& stream);// log RAW buffer message
 
-		// Interface for Info Log 
-		void info(const char* text);
-		void info(std::string& text);
-		void info(std::ostringstream& stream);
+		// Interface for Info Log
+		void info(const char* text);			// log info message
+		void info(std::string& text);			// log info message
+		void info(std::ostringstream& stream);	// log info message
 
-		// Interface for Trace log 
-		void trace(const char* text);
-		void trace(std::string& text);
-		void trace(std::ostringstream& stream);
+		// Interface for Trace log
+		void trace(const char* text);			// log trace message
+		void trace(std::string& text);			// log trace message
+		void trace(std::ostringstream& stream);	// log trace message
 
-		// Interface for Debug log 
-		void debug(const char* text);
-		void debug(std::string& text);
-		void debug(std::ostringstream& stream);
+		// Interface for Debug log
+		void debug(const char* text);			// log debug message
+		void debug(std::string& text);			// log debug message
+		void debug(std::ostringstream& stream);	// log debug message
 
-		// Error and Alarm log must be always enable
+		// Error and Alarm log are always enabled
 		// Hence, there is no interfce to control error and alarm logs
 
 		// Interfaces to control log levels
@@ -107,22 +107,20 @@ namespace Logging {
 		void enableLogs();  // Enable all log levels
 		void disableLogs(); // Disable all log levels, except error and alarm
 
-		// Interfaces to control log Types
-		void updateLogType(LogType logType);
+		void updateLogType(LogType logType); // Update log type
 
 		// Interfaces to enable and disable logging
-		void enableConsoleLogging();
-		void enableFileLogging();
-		void disableConsoleLogging();
-		void disableFileLogging();
-		void enableDuoLogging(); // Enable both console and file logging
-		void disableLogging(); // Disable both console and file logging
+		void enableConsoleLogging();	// Enable console logging
+		void enableFileLogging();		// Enable file logging
+		void disableConsoleLogging();	// Disable console logging
+		void disableFileLogging();		// Disable file logging
+		void enableDuoLogging();		// Enable both console and file logging
+		void disableLogging();			// Disable both console and file logging
 
-		// Interfaces to enable and disable time stamp and log level in log
-		void enablePrintTimeStamp();
-		void disablePrintTimeStamp();
-		void enablePrintLogLevel();
-		void disablePrintLogLevel();
+		void enablePrintTimeStamp();	// Enable time stamp in log
+		void disablePrintTimeStamp();	// Disable time stamp in log
+		void enablePrintLogLevel();		// Enable log level in log
+		void disablePrintLogLevel();	// Disable log level in log
 
 	protected:
 		Logger();
