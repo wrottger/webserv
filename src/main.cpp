@@ -2,42 +2,44 @@
 
 int main()
 {
-	Logging::Logger &log = Logging::Logger::getInstance();
+	/****************************************************/
+	/*             Use with macros                      */
+	/****************************************************/
 
-	log.disablePrintTimeStamp();
-	LOG_ENABLE_FILE_LOGGING();
-	LOG_ERROR("This is an error message");
-	LOG_ALARM("This is an alarm message");
-	LOG_ALWAYS("This is an always message");
-	LOG_BUFFER("This is a buffer message\n");
-	LOG_INFO("This is an info message");
-	LOG_TRACE("This is a trace message");
-	LOG_DEBUG("This is a debug message");
+	LOG_BUFFER("Raw logging without newline, timestamp or other extras\n");
+	LOG_ERROR("This is an ERROR message with timestamp and log level to console");
+	LOG_ALARM("This is an ALARM message with timestamp and log level to console");
+	LOG_ALWAYS("This is an ALWAYS message with timestamp and log level to console");
+	LOG_ENABLE_DUO_LOGGING();
+	LOG_DISABLE_PRINT_TIME_STAMP();
+	LOG_INFO("This is an INFO message with log level to console and file");
+	LOG_TRACE("This is a TRACE message with log level to console and file");
+	LOG_DISABLE_PRINT_LOG_LEVEL();
+	LOG_DEBUG("This is a debug message without log level and timestamp to console and file");
 
 	LOG_SET_LOG_LEVEL(Logging::LOG_LVL_INFO);
+	LOG_TRACE("I will not be logged because my log level is lower than the current log level");
+	LOG_DEBUG("I will not be logged because my log level is lower than the current log level");
 
-	LOG_DISABLE_FILE_LOGGING();
-	LOG_ERROR("This is an error message");
-	LOG_ALARM("This is an alarm message");
-	LOG_ALWAYS("This is an always message");
-	LOG_BUFFER("This is a buffer message\n");
-	LOG_INFO("This is an info message");
-	LOG_TRACE("This is a trace message");
-	LOG_DEBUG("This is a debug message");
 
-	LOG_ENABLE_LOGGING();
-	LOG_DISABLE_LOGGING();
+	/****************************************************/
+	/*             Use with Logger class                */
+	/****************************************************/
 
-	LOG_ENABLE_CONSOLE_LOGGING();
-	LOG_DISABLE_CONSOLE_LOGGING();
-	LOG_ENABLE_FILE_LOGGING();
-	LOG_DISABLE_FILE_LOGGING();
-	LOG_ENABLE_DUO_LOGGING();
+	Logging::Logger &log = Logging::Logger::getInstance();
+	log.enableAllLevels();
 
-	LOG_ENABLE_PRINT_TIME_STAMP();
-	LOG_DISABLE_PRINT_TIME_STAMP();
-	LOG_ENABLE_PRINT_LOG_LEVEL();
-	LOG_DISABLE_PRINT_LOG_LEVEL();
+	log.disableLogging();
+	log.error("I cannot be logged because logging is disabled");
+
+	log.enableDuoLogging();
+	log.error("I am back to be logged");
+
+	log.enablePrintTimeStamp();
+	log.error("I am logged with timestamp");
+
+	log.enablePrintLogLevel();
+	log.error("I am logged with log level and timestamp");
 
 	return 0;
 }
