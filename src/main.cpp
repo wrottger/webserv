@@ -6,7 +6,7 @@ int main()
 	LOG_ERROR("This is an error message");
 	LOG_ALARM("This is an alarm message");
 	LOG_ALWAYS("This is an always message");
-	LOG_BUFFER("This is a buffer message");
+	LOG_BUFFER("This is a buffer message\n");
 	LOG_INFO("This is an info message");
 	LOG_TRACE("This is a trace message");
 	LOG_DEBUG("This is a debug message");
@@ -17,7 +17,7 @@ int main()
 	LOG_ERROR("This is an error message");
 	LOG_ALARM("This is an alarm message");
 	LOG_ALWAYS("This is an always message");
-	LOG_BUFFER("This is a buffer message");
+	LOG_BUFFER("This is a buffer message\n");
 	LOG_INFO("This is an info message");
 	LOG_TRACE("This is a trace message");
 	LOG_DEBUG("This is a debug message");

@@ -32,10 +32,12 @@ void Logging::Logger::writeLog(std::string &data) {
 	}
 }
 
-void Logging::Logger::startLogging() { // TODO: FIX THIS
-	_logFile << "************************************************" << std::endl;
-	_logFile << "*   Logging started: " << getCurrentTime() << "   *" << std::endl;
-	_logFile << "************************************************" << std::endl;
+void Logging::Logger::startLogging() {
+	buffer("************************************************\n");
+	buffer("*   Logging started: " );
+	buffer(getCurrentTime().c_str());
+	buffer("   *\n");
+	buffer("************************************************\n");
 }
 
 #include <sys/time.h>
@@ -140,14 +142,12 @@ void Logging::Logger::buffer(const char *text) throw() {
 	if (_logType == LOG_NONE) {
 		return;
 	}
-	std::string logLine;
-	logLine.append(insertMetaInformations("BUFFER"));
 	if (LOG_TO_FILE == static_cast<LogType>(_logType & LOG_TO_FILE)) {
-		_logFile << logLine << text << std::endl;
+		_logFile << text;
 	}
 	// Write log into console
 	if (LOG_TO_CONSOLE == static_cast<LogType>(_logType & LOG_TO_CONSOLE)) {
-		std::cout << logLine << text << std::endl;
+		std::cout << text;
 	}
 }
 
