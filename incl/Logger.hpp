@@ -139,7 +139,9 @@ namespace Logging {
 		bool _logLevelInLog;
 
 	private:
-		void writeLog(std::string &data);
+		void logMessage(const char* level, const char* text);
+		void createLogMessage(std::string &buffer, const char *logLevel, const char *text);
+		void writeLog(const std::string &data);
 		void startLogging();
 		std::string insertMetaInformations(const char *logLevel);
 

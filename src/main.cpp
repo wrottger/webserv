@@ -2,6 +2,9 @@
 
 int main()
 {
+	Logging::Logger &log = Logging::Logger::getInstance();
+
+	log.disablePrintTimeStamp();
 	LOG_ENABLE_FILE_LOGGING();
 	LOG_ERROR("This is an error message");
 	LOG_ALARM("This is an alarm message");
