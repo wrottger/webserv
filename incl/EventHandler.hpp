@@ -38,6 +38,7 @@ private:
 	void handleToCloseConnections(std::list<int> &cleanUpList);
 	void destroyClient(EventHandler::Client *client);
 	void acceptNewClient(epoll_event events_arr[], int n);
+	Client *findClient(int fd);
 };
 
 class EventHandler::Client {

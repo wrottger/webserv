@@ -8,6 +8,7 @@
 #include <iostream>
 #include <ctime>
 #include <sys/time.h>
+#include <signal.h>
 
 /* The Logger class is implement as a singleton class that clears itself after the program ends. */
 /* So you don't need to worry about cleaning up the logger object. */

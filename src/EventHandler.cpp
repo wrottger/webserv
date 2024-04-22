@@ -1,5 +1,4 @@
 #include "EventHandler.hpp"
-#include <sstream>
 
 EventHandler::EventHandler() {}
 
@@ -17,6 +16,7 @@ void EventHandler::start() {
 	bool wasListenSocket;
 	std::list<int> cleanUpList;
 
+	signal(SIGPIPE, SIG_IGN);
 	while (true) {
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT);
 		if (epollTriggerCount == -1) {
@@ -56,31 +56,34 @@ void EventHandler::start() {
 				}
 			}
 			// Write to client
-			if ((!wasListenSocket) && events[n].events & EPOLLOUT) {
-				for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
-					if ((*it)->getFd() == events[n].data.fd) {
-						(*it)->updateTime();
-						// Response // DELETE: DEBUG
-						std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-												   "<body><h1>Hello, World!</h1></body></html>";
+			if ((!wasListenSocket) && events[n].events & EPOLLOUT && !(events[n].events & EPOLLIN) ) {
+				Client *client = findClient(events[n].data.fd);
+				if (client == NULL) {
+					LOG_ERROR("Client not found");
+					continue;
+				} else {
+					client->updateTime();
+					// Response // DELETE: DEBUG
+					std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
+												"<body><h1>Hello, World!</h1></body></html>";
 
-						std::ostringstream oss;
-						oss << responseBody.size();
+					std::ostringstream oss;
+					oss << responseBody.size();
 
-						std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-												   "Content-Type: text/html; charset=UTF-8\r\n"
-												   "Content-Length: " +
-								oss.str() + "\r\n\r\n" + responseBody;
-						// TODO: checken nach Header ob Methode ueberhaupt erlaubt
-						if ((*it)->isHeaderComplete() && (*it)->isBodyComplete()) {
-							// Reponse logic
-							// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
-							if (send((*it)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-								perror("Send");
-							}
+					std::string httpResponse = "HTTP/1.1 200 OK\r\n"
+												"Content-Type: text/html; charset=UTF-8\r\n"
+												"Content-Length: " +
+							oss.str() + "\r\n\r\n" + responseBody;
+					// TODO: checken nach Header ob Methode ueberhaupt erlaubt
+					if (client->isHeaderComplete() && client->isBodyComplete()) {
+						// Reponse logic
+						// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
+						if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+							perror("Send");
+							cleanUpList.push_back(events[n].data.fd);
 						}
-						// cleanUpList.push_back(events[n].data.fd);
 					}
+					// cleanUpList.push_back(events[n].data.fd);
 				}
 			}
 		}
@@ -114,7 +117,7 @@ void EventHandler::handleTimeouts() {
 	time_t current_time = std::time(0);
 	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
-			LOG_INFO("Kicked client: timeout");
+			LOG_INFO("Kicked timeout client");
 			// std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl;
 			destroyClient(*it);
 			it = _clientConnections.erase(it);
@@ -128,7 +131,9 @@ void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList) {
 	for (std::list<int>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
 		for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 			if (*itCleanUp == (*it)->getFd()) {
+				LOG_ENABLE_FILE_LOGGING();
 				LOG_INFO("Kicked client: close connection");
+				LOG_DISABLE_FILE_LOGGING();
 				// std::cout << "Kicked in CloseConnections client with FD: " << (*it)->getFd() << std::endl;
 				destroyClient(*it);
 				it = _clientConnections.erase(it);
@@ -183,6 +188,15 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 			}
 		}
 	}
+}
+
+EventHandler::Client *EventHandler::findClient(int fd) {
+	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
+		if ((*it)->getFd() == fd) {
+			return *it;
+		}
+	}
+	return NULL;
 }
 
 /********************************************************************/
