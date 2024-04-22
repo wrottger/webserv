@@ -16,6 +16,7 @@ class Config {
     private:
         std::vector<Node> _nodes;
         std::vector<ServerBlock> _serverBlocks;
+        size_t _lines;
         bool _isLoaded;
 
         Config(const Config& src);  // private copy constructor and assignment operator to prevent dangling references/pointers
@@ -39,6 +40,7 @@ class Config {
         void error(const std::string &msg, const std::vector<Node>::iterator& it);
         void sortVector(std::vector<Node>& vec);
         void addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator& start);
+        void printProgressBar(size_t progress, size_t total);
         ServerBlock parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         LocationBlock parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);

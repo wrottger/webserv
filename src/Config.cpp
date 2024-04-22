@@ -2,42 +2,6 @@
 #include "Tokens.hpp"
 #include "colors.hpp"
 
-Config::Config(void) : _isLoaded(false)
-{
-
-}
-
-Config::Config(const Config &src)
-{
-    _tokens = src._tokens;
-    _isLoaded = src._isLoaded;
-}
-
-Config &Config::operator=(const Config &src)
-{
-    if (this != &src)
-    {
-        _tokens = src._tokens;
-        _isLoaded = src._isLoaded;
-    }
-    return *this;
-}
-
-Config::~Config()
-{
-
-}
-
-bool Config::isLoaded(void) const
-{
-    return _isLoaded;
-}
-
-const std::vector<Node>& Config::getNodes(void) const
-{
-    return _nodes;
-}
-
 void Config::parseConfigFile(std::string filename)
 {
     std::ifstream _fileStream(filename.c_str());
@@ -65,23 +29,6 @@ void Config::parseConfigFile(std::string filename)
     _fileStream.close();
     this->parseScopes();
     this->buildAST(_nodes.begin(), _nodes.end());
-    // for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
-    // {
-    //     std::cout << "Server block" << std::endl;
-    //     for (std::vector<std::pair<TokenType, std::string> >::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
-    //     {
-    //         std::cout << "Directive: " << it2->first << " Value: " << it2->second << std::endl;
-    //     }
-    //     std::cout << "Locations:" << std::endl;
-    //     for (std::vector<LocationBlock>::iterator it2 = it->_locations.begin(); it2 != it->_locations.end(); it2++)
-    //     {
-    //         std::cout << "Location: " << it2->_path << std::endl;
-    //         for (std::vector<std::pair<TokenType, std::string> >::iterator it3 = it2->_directives.begin(); it3 != it2->_directives.end(); it3++)
-    //         {
-    //             std::cout << "Directive: " << it3->first << " Value: " << it3->second << std::endl;
-    //         }
-    //     }
-    // }
     if (_serverBlocks.empty())
         throw std::runtime_error(RBOLD("Error: no server blocks found in config file"));
     _isLoaded = true;
@@ -163,6 +110,7 @@ void Config::scanTokens(std::ifstream &file)
                 _nodes.push_back(Node(Data, it2->first, it2->second, n));
             }
         }
+        _lines = n;
     }
     this->sortVector(_nodes); // sorts the vector of nodes by order of line number and offset in the config file
 }
@@ -234,13 +182,6 @@ void Config::parseScopes(void)
     }
 }
 
-void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
-{
-	std::stringstream ss;
-	ss << msg << " at row " << it->_line + 1 << ", column " << it->_offset + 1;
-	throw std::runtime_error(RBOLD(ss.str()));
-}
-
 // Sorts the vector of nodes by order of line number and offset in the config file;
 void Config::sortVector(std::vector<Node>& vec)
 {
@@ -279,7 +220,11 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 // parse the server block and add it to the vector of server blocks
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 if (serverBlock._directives.size())
+                {
                     addServerBlock(serverBlock , start2);
+                    if (it->_line < _lines)
+                        printProgressBar(it->_line, _lines);
+                }
                 else
                     error("Syntax error: incomplete server block", start);
                 continue;

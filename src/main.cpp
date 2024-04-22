@@ -20,7 +20,8 @@ int main (int argc, char *argv[], char *envp[])
 	}
 	if (config.isLoaded())
 	{
-		std::cout << GBOLD("Config file loaded successfully") << std::endl;
+		config.printProgressBar(1, 1);
+		std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 	}
     return 0;
 }
