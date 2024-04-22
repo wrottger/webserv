@@ -3,3 +3,4 @@ webserv
 objs/
 client
 server
+log.txt
