@@ -5,6 +5,7 @@
 #include <map>
 #include "States.hpp"
 #include "HttpMessage.hpp"
+#include "HttpError.hpp"
 
 struct StateHandler;
 
@@ -18,6 +19,8 @@ public:
     const std::string &getQuery() const;
     const std::string &getHeader(const std::string &name) const;
     const std::string &getBody() const;
+
+    HttpError getError() const;
 
     bool isComplete() const;
     bool isHeaderComplete() const;
@@ -34,6 +37,8 @@ private:
     HttpMessage message;
     size_t request_size;
 
+    HttpError parseError;
+
     std::string method; // GET, POST etc.
     std::string host; // localhost, google.com etc.
     std::string path; // /, /index.html etc.
@@ -46,7 +51,7 @@ private:
     HttpRequest(const HttpRequest &other);
     HttpRequest &operator=(const HttpRequest &other);
 
-    static bool isToken(char c);
+        
 };
 
 #endif

@@ -6,7 +6,7 @@
 #include "HttpError.hpp"
 #include "HttpMessage.hpp"
 
-HttpRequest::HttpRequest() {
+HttpRequest::HttpRequest() : parseError(0, ""){
     headerComplete = false;
     complete = false;
     state = new StateHandler();
@@ -18,7 +18,7 @@ HttpRequest::HttpRequest() {
 HttpRequest::~HttpRequest() { delete state; }
 
 size_t HttpRequest::parseBuffer(const char *requestLine) {
-    if (requestLine == NULL || isComplete())
+    if (requestLine == NULL || isComplete() || parseError.code() != 0)
         return 0;
     char c;
     size_t i = 0;
@@ -34,13 +34,19 @@ size_t HttpRequest::parseBuffer(const char *requestLine) {
         }
         catch(HttpError &e)
         {
-            std::cerr << e.what() << "  " << e.code() << '\n';
+            parseError = e;
+            return i;
         }
         if (state->func == States::headerFinished)
+        {
             headerComplete = true;
+            if (headers.count("host") == 0)
+            {
+                parseError = HttpError(400, "Host header is required");
+                return i;
+            }
+        }
     }
-    std::cerr << request_size << std::endl;
-
     // TODO percent decode path
     return i;
 }
@@ -49,17 +55,14 @@ const std::string &HttpRequest::getMethod() const { return message.method; }
 
 const std::string &HttpRequest::getPath() const { return message.path; }
 
+const std::string &HttpRequest::getQuery() const {  return message.query; }
+
 const std::string &HttpRequest::getHeader(const std::string &name) const {
     return message.headers.find(name)->second;
 }
 
+HttpError HttpRequest::getError() const { return parseError; }
+
 bool HttpRequest::isComplete() const { return state->func == States::headerFinished; }
 
 const std::string &HttpRequest::getBody() const { return message.body; }
-
-bool HttpRequest::isToken(char c)
-{
-    if (32 <= c && c <= 126)
-        return true;
-    return false;
-}

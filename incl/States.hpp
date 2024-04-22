@@ -41,9 +41,12 @@ namespace States
     // Headers
     void NL(char c, HttpMessage& message, StateHandler& nextState);
     void CR(char c, HttpMessage& message, StateHandler& nextState);
-    void headerFinished(char c, HttpMessage& message, StateHandler& nextState);
     void fieldName(char c, HttpMessage& message, StateHandler& nextState);
+    void OWS(char c, HttpMessage& message, StateHandler& nextState);
+    void SP(char c, HttpMessage& message, StateHandler& nextState);
     void fieldValue(char c, HttpMessage& message, StateHandler& nextState);
+    void headerAlmostFinished(char c, HttpMessage& message, StateHandler& nextState);
+    void headerFinished(char c, HttpMessage& message, StateHandler& nextState);
 
     // Body
     void finished(char c, HttpMessage& message, StateHandler& nextState);
