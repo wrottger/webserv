@@ -1,5 +1,7 @@
 #include "EventHandler.hpp"
 
+
+
 EventHandler::EventHandler() {}
 
 EventHandler::EventHandler(SocketHandling &sockets) {
@@ -21,7 +23,7 @@ void EventHandler::start() {
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT);
 		if (epollTriggerCount == -1) {
 			LOG_ERROR("epoll_wait failed.");
-			// std::cerr << "EventHandler: epoll_wait failed." << std::endl; // TODO: LOGGING
+			continue;
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			// Accept new client
@@ -31,24 +33,20 @@ void EventHandler::start() {
 			// Read from client
 			if ((!wasListenSocket) && events[n].events & EPOLLIN) {
 				ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
-				std::cout << "bytes: " << bytes_received << std::endl; // DELETE: DEBUG
-
 				// The client has closed the connection
 				if (bytes_received == 0) {
 					cleanUpList.push_back(events[n].data.fd);
-					LOG_INFO("Client connection closes 0");
-					// std::cout << "client connection closes 0" << std::endl; // DELETE: DEBUG
+					LOG_DEBUG("Client connection closes 0");
 				} else if (bytes_received == -1) {
 					cleanUpList.push_back(events[n].data.fd);
-					LOG_INFO("Client connection closes -1");
-					// std::cout << "client connection closes -1" << std::endl; // DELETE: DEBUG
+					LOG_DEBUG("Client connection closes -1");
 				} else {
 					// find object with fd
 					// parse
 					buffer[bytes_received] = '\0';
-					for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
+					for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 						if ((*it)->getFd() == events[n].data.fd) {
-							std::cout << buffer << std::endl; // DELETE: DEBUG
+							// std::cout << buffer << std::endl; // DELETE: DEBUG
 							// (*it)->parseBuffer(buffer);
 							(*it)->updateTime();
 						}
@@ -59,7 +57,7 @@ void EventHandler::start() {
 			if ((!wasListenSocket) && events[n].events & EPOLLOUT && !(events[n].events & EPOLLIN) ) {
 				Client *client = findClient(events[n].data.fd);
 				if (client == NULL) {
-					LOG_ERROR("Client not found");
+					LOG_ERROR("Client not found"); // Should never happen
 					continue;
 				} else {
 					client->updateTime();
@@ -115,12 +113,12 @@ bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n) c
 
 void EventHandler::handleTimeouts() {
 	time_t current_time = std::time(0);
-	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
+	for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end();) {
 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
 			LOG_INFO("Kicked timeout client");
 			// std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl;
 			destroyClient(*it);
-			it = _clientConnections.erase(it);
+			it = _clients.erase(it);
 		} else {
 			it++;
 		}
@@ -129,14 +127,14 @@ void EventHandler::handleTimeouts() {
 
 void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList) {
 	for (std::list<int>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
-		for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
+		for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end();) {
 			if (*itCleanUp == (*it)->getFd()) {
-				LOG_ENABLE_FILE_LOGGING();
-				LOG_INFO("Kicked client: close connection");
-				LOG_DISABLE_FILE_LOGGING();
+				// LOG_ENABLE_FILE_LOGGING();
+				// LOG_INFO("Kicked client: close connection");
+				// LOG_DISABLE_FILE_LOGGING();
 				// std::cout << "Kicked in CloseConnections client with FD: " << (*it)->getFd() << std::endl;
 				destroyClient(*it);
-				it = _clientConnections.erase(it);
+				it = _clients.erase(it);
 			} else {
 				it++;
 			}
@@ -177,7 +175,7 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 			Client *newClient = NULL;
 			try {
 				newClient = new Client(newConnectionFd);
-				_clientConnections.push_back(newClient);
+				_clients.push_back(newClient);
 			} catch (...) {
 				delete newClient;
 				if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, newConnectionFd, NULL) == -1) {
@@ -191,7 +189,7 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 }
 
 EventHandler::Client *EventHandler::findClient(int fd) {
-	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end(); it++) {
+	for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		if ((*it)->getFd() == fd) {
 			return *it;
 		}

@@ -27,7 +27,7 @@ public:
 private:
 	int _epollFd;
 	std::vector<int> _listeningSockets;
-	std::list<EventHandler::Client *> _clientConnections;
+	std::list<EventHandler::Client *> _clients;
 
 	EventHandler();
 	EventHandler(EventHandler const &other);
