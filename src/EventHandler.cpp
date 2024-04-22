@@ -3,28 +3,25 @@
 
 EventHandler::EventHandler() {}
 
-EventHandler::EventHandler(SocketHandling &sockets)
-{
+EventHandler::EventHandler(SocketHandling &sockets) {
 	_epollFd = sockets.getEpollFd();
 	_listeningSockets = sockets.getOpenFds();
 }
 
 EventHandler::~EventHandler() {}
 
-void EventHandler::start()
-{
+void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
-	int	epollTriggerCount;
-	char buffer[BUFFER_SIZE + 1] = {0};
+	int epollTriggerCount;
+	char buffer[BUFFER_SIZE + 1] = { 0 };
 	bool wasListenSocket;
 	std::list<int> cleanUpList;
-	
 
-	while(true)
-	{
+	while (true) {
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT);
 		if (epollTriggerCount == -1) {
-			std::cerr << "EventHandler: epoll_wait failed." << std::endl; // TODO: LOGGING
+			LOG_ERROR("epoll_wait failed.");
+			// std::cerr << "EventHandler: epoll_wait failed." << std::endl; // TODO: LOGGING
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			// Accept new client
@@ -39,13 +36,13 @@ void EventHandler::start()
 				// The client has closed the connection
 				if (bytes_received == 0) {
 					cleanUpList.push_back(events[n].data.fd);
-					std::cout << "client connection closes 0" << std::endl; // DELETE: DEBUG
-				}
-				else if (bytes_received == -1) {
+					LOG_INFO("Client connection closes 0");
+					// std::cout << "client connection closes 0" << std::endl; // DELETE: DEBUG
+				} else if (bytes_received == -1) {
 					cleanUpList.push_back(events[n].data.fd);
-					std::cout << "client connection closes -1" << std::endl; // DELETE: DEBUG
-				}
-				else {
+					LOG_INFO("Client connection closes -1");
+					// std::cout << "client connection closes -1" << std::endl; // DELETE: DEBUG
+				} else {
 					// find object with fd
 					// parse
 					buffer[bytes_received] = '\0';
@@ -64,16 +61,16 @@ void EventHandler::start()
 					if ((*it)->getFd() == events[n].data.fd) {
 						(*it)->updateTime();
 						// Response // DELETE: DEBUG
-						std::string responseBody = 	"<!DOCTYPE html><html><head><title>Hello World</title></head>"
-													"<body><h1>Hello, World!</h1></body></html>";
+						std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
+												   "<body><h1>Hello, World!</h1></body></html>";
 
 						std::ostringstream oss;
 						oss << responseBody.size();
 
-						std::string httpResponse = 	"HTTP/1.1 200 OK\r\n"
-													"Content-Type: text/html; charset=UTF-8\r\n"
-													"Content-Length: " + oss.str() + "\r\n\r\n"
-													+ responseBody;
+						std::string httpResponse = "HTTP/1.1 200 OK\r\n"
+												   "Content-Type: text/html; charset=UTF-8\r\n"
+												   "Content-Length: " +
+								oss.str() + "\r\n\r\n" + responseBody;
 						// TODO: checken nach Header ob Methode ueberhaupt erlaubt
 						if ((*it)->isHeaderComplete() && (*it)->isBodyComplete()) {
 							// Reponse logic
@@ -82,7 +79,7 @@ void EventHandler::start()
 								perror("Send");
 							}
 						}
-					// cleanUpList.push_back(events[n].data.fd);
+						// cleanUpList.push_back(events[n].data.fd);
 					}
 				}
 			}
@@ -93,49 +90,46 @@ void EventHandler::start()
 	}
 }
 
-EventHandler::EventHandler(EventHandler const &other)
-{
-	(void) other;
+EventHandler::EventHandler(EventHandler const &other) {
+	(void)other;
 }
 
-EventHandler &EventHandler::operator=(EventHandler const &other)
-{
-	(void) other;
+EventHandler &EventHandler::operator=(EventHandler const &other) {
+	(void)other;
 	return *this;
 }
 
-bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n) const
-{
+bool EventHandler::isListeningSocketTriggered(epoll_event events_arr[], int n) const {
 	size_t listenSocketSize = _listeningSockets.size();
 
 	for (size_t i = 0; i < listenSocketSize; i++) {
-		if (_listeningSockets[i] == events_arr[n].data.fd) {	
+		if (_listeningSockets[i] == events_arr[n].data.fd) {
 			return true;
 		}
 	}
 	return false;
 }
 
-void EventHandler::handleTimeouts()
-{
+void EventHandler::handleTimeouts() {
 	time_t current_time = std::time(0);
 	for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
-			std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl; 
+			LOG_INFO("Kicked client: timeout");
+			// std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl;
 			destroyClient(*it);
 			it = _clientConnections.erase(it);
-        } else {
-            it++;
-        }
+		} else {
+			it++;
+		}
 	}
 }
 
-void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList)
-{
+void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList) {
 	for (std::list<int>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
 		for (std::list<EventHandler::Client *>::iterator it = _clientConnections.begin(); it != _clientConnections.end();) {
 			if (*itCleanUp == (*it)->getFd()) {
-				std::cout << "Kicked in CloseConnections client with FD: " << (*it)->getFd() << std::endl; 
+				LOG_INFO("Kicked client: close connection");
+				// std::cout << "Kicked in CloseConnections client with FD: " << (*it)->getFd() << std::endl;
 				destroyClient(*it);
 				it = _clientConnections.erase(it);
 			} else {
@@ -145,8 +139,7 @@ void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList)
 	}
 }
 
-void EventHandler::destroyClient(EventHandler::Client *client)
-{
+void EventHandler::destroyClient(EventHandler::Client *client) {
 	epoll_ctl(_epollFd, EPOLL_CTL_DEL, client->getFd(), NULL);
 	delete client;
 }
@@ -161,17 +154,19 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 	size_t listenSocketSize = _listeningSockets.size();
 
 	for (size_t i = 0; i < listenSocketSize; i++) {
-		if (_listeningSockets[i] == events_arr[n].data.fd) {	
-			newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *) &addr, &addrlen);
+		if (_listeningSockets[i] == events_arr[n].data.fd) {
+			newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *)&addr, &addrlen);
 			if (newConnectionFd == -1) {
-				std::cerr << "EventHandler: accept failed." << std::endl;
+				LOG_ERROR("accept failed.");
+				// std::cerr << "EventHandler: accept failed." << std::endl;
 				return;
 			}
 			ev.events = EPOLLIN | EPOLLOUT;
 			ev.data.fd = newConnectionFd;
 			if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
 				close(newConnectionFd);
-				std::cerr << "EventHandler: epoll ADD failed." << std::endl;
+				LOG_ERROR("EventHandler: epoll ADD failed.");
+				// std::cerr << "EventHandler: epoll ADD failed." << std::endl;
 				return;
 			}
 			Client *newClient = NULL;
@@ -181,7 +176,8 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 			} catch (...) {
 				delete newClient;
 				if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, newConnectionFd, NULL) == -1) {
-					std::cerr << "EventHandler: epoll DEL failed." << std::endl;
+					LOG_ERROR("EventHandler: epoll DEL failed.");
+					// std::cerr << "EventHandler: epoll DEL failed." << std::endl;
 				}
 				close(newConnectionFd);
 			}
@@ -195,50 +191,42 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 
 EventHandler::Client::Client() {}
 
-EventHandler::Client::Client(int fd) : _fd(fd)
-{
+EventHandler::Client::Client(int fd) :
+		_fd(fd) {
 	_requestObject = new HttpRequest;
 	updateTime();
 }
 
-EventHandler::Client::~Client()
-{
+EventHandler::Client::~Client() {
 	close(_fd);
 	delete _requestObject;
 }
 
-int EventHandler::Client::getFd()
-{
+int EventHandler::Client::getFd() {
 	return _fd;
 }
 
-std::time_t EventHandler::Client::getLastModified()
-{
+std::time_t EventHandler::Client::getLastModified() {
 	return _lastModified;
 }
 
-void EventHandler::Client::updateTime()
-{
+void EventHandler::Client::updateTime() {
 	_lastModified = std::time(0);
-	std::cout << _lastModified << std::endl;
 }
 
-bool EventHandler::Client::isHeaderComplete()
-{
+bool EventHandler::Client::isHeaderComplete() {
 	return _requestObject->isHeaderComplete();
 }
 
-bool EventHandler::Client::isBodyComplete()
-{
+bool EventHandler::Client::isBodyComplete() {
 	return _requestObject->isBodyComplete();
 }
 
-void EventHandler::Client::parseBuffer(const char *buffer)
-{
+void EventHandler::Client::parseBuffer(const char *buffer) {
 	_requestObject->parseBuffer(buffer);
 }
 
 EventHandler::Client &EventHandler::Client::operator=(Client const &other) {
-	(void) other;
+	(void)other;
 	return *this;
 }

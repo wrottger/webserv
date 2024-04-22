@@ -1,6 +1,0 @@
-[INFO]: This is an INFO message with log level to console and file
-[TRACE]: This is a TRACE message with log level to console and file
-This is a debug message without log level and timestamp to console and file
-I am back to be logged
-2024-04-22 11:44:59.135 I am logged with timestamp
-2024-04-22 11:44:59.135 [ERROR]: I am logged with log level and timestamp

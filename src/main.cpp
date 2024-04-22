@@ -16,6 +16,7 @@
 
 int main()
 {
+	LOG_INFO("Server started");
 	// loadConfig
 	configObject server1;
 	// size_t serverCount = 3;
