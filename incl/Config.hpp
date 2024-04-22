@@ -38,6 +38,7 @@ class Config {
         void parseTokens(void);
         void error(const std::string &msg, const std::vector<Node>::iterator& it);
         void sortVector(std::vector<Node>& vec);
+        void addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator& start);
         ServerBlock parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         LocationBlock parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);

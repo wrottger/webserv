@@ -28,7 +28,6 @@ Config::~Config()
 
 }
 
-
 bool Config::isLoaded(void) const
 {
     return _isLoaded;
@@ -66,9 +65,55 @@ void Config::parseConfigFile(std::string filename)
     _fileStream.close();
     this->parseScopes();
     this->buildAST(_nodes.begin(), _nodes.end());
+    // for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
+    // {
+    //     std::cout << "Server block" << std::endl;
+    //     for (std::vector<std::pair<TokenType, std::string> >::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
+    //     {
+    //         std::cout << "Directive: " << it2->first << " Value: " << it2->second << std::endl;
+    //     }
+    //     std::cout << "Locations:" << std::endl;
+    //     for (std::vector<LocationBlock>::iterator it2 = it->_locations.begin(); it2 != it->_locations.end(); it2++)
+    //     {
+    //         std::cout << "Location: " << it2->_path << std::endl;
+    //         for (std::vector<std::pair<TokenType, std::string> >::iterator it3 = it2->_directives.begin(); it3 != it2->_directives.end(); it3++)
+    //         {
+    //             std::cout << "Directive: " << it3->first << " Value: " << it3->second << std::endl;
+    //         }
+    //     }
+    // }
     if (_serverBlocks.empty())
         throw std::runtime_error(RBOLD("Error: no server blocks found in config file"));
     _isLoaded = true;
+}
+
+//iterate through the server blocks and check if the server_name and ports are unique across all server blocks
+void Config::addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator& start)
+{
+    static std::map<std::pair<std::string, std::string>, bool> hostPortMap;
+    std::string serverName;
+    std::vector<std::string> ports;
+
+    for (std::vector<std::pair<TokenType, std::string> >::iterator it = newBlock._directives.begin(); it != newBlock._directives.end(); it++) {
+        switch (it->first) {
+            case ServerName:
+                serverName = it->second;
+                break;
+            case Port:
+                ports.push_back(it->second);
+                break;
+            default:
+                break;
+        }
+    }
+    for (std::vector<std::string>::iterator it = ports.begin(); it != ports.end(); it++) {
+        std::pair<std::string, std::string> hostPortPair(serverName, *it);
+        if (hostPortMap.find(hostPortPair) != hostPortMap.end()) {
+            error("Duplicate server name and port combination", start);
+        }
+        hostPortMap[hostPortPair] = true;
+    }
+    _serverBlocks.push_back(newBlock);
 }
 
 // This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
@@ -222,6 +267,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
             if (it->_token == Server)
             {
                 std::vector<Node>::iterator start = it; // starting node of the server block
+                std::vector<Node>::iterator start2 = start;
                 it++;
                 if (it == end)
                     error("Syntax error: incomplete server block", start);
@@ -233,7 +279,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 // parse the server block and add it to the vector of server blocks
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 if (serverBlock._directives.size())
-                    _serverBlocks.push_back(serverBlock);
+                    addServerBlock(serverBlock , start2);
                 else
                     error("Syntax error: incomplete server block", start);
                 continue;
@@ -262,7 +308,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
             std::vector<Node>::iterator locationStart = it; // starting node of the location block
             it++;
             if (it == end)
-                error("Syntax error: expected location block", it);
+                error("pure data tokens i.e. all tokens except delimitersSyntax error: expected location block", it);
             while (it != end && it->_level > locationStart->_level) // iterate until the end of the location block
                 it++;
             // parse the location block and add it to the vector of location blocks
@@ -280,7 +326,8 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                 case Root:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Root] = (it + 1)->_value;
+                        // make pair of token and value and add it to vector of directives
+                        block._directives.push_back(std::make_pair(Root, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after root directive", it - 2);
@@ -292,7 +339,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     // check if the value is a number and within the range of valid port numbers
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Port] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(Port, (it + 1)->_value));
                         char *endptr; // used to check if strtol was successful
                         long portNumber = strtol((it + 1)->_value.c_str(), &endptr, 10);
                         if (errno == ERANGE || *endptr != '\0')
@@ -309,7 +356,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                 case ServerName:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[ServerName] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(ServerName, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after server_name directive", it - 2);
@@ -320,7 +367,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                 case ClientMaxBodySize:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[ClientMaxBodySize] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(ClientMaxBodySize, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after client_max_body_size directive", it - 2);
@@ -339,12 +386,42 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
         }
     }
     // check if there are any missing directives
-    if (block._directives.find(Root) == block._directives.end() && block._locations.empty()) // if there are no location blocks, root directive is required else the server cannot serve any requests
-        error("Syntax error: request cannot be handled without root directive or location blocks", start);
-    else if (block._directives.find(Port) == block._directives.end())
-        error("Syntax error: missing port directive", start);
-    else if (block._directives.find(ServerName) == block._directives.end())
-        error("Syntax error: missing server_name directive", start);
+    bool portFound = false;
+    size_t root = 0;
+    size_t serverName = 0;
+    for (std::vector<std::pair<TokenType, std::string> >::iterator it2 = block._directives.begin(); it2 != block._directives.end(); it2++)
+    {
+        switch (it2->first)
+        {
+            case Port:
+            {
+                portFound = true;
+                continue;
+            }
+            case ServerName:
+            {
+                serverName++;
+                continue;
+            }
+            case Root:
+            {
+                root++;
+                continue;
+            }
+            default:
+                continue;
+        }
+    }
+    if (!root && block._locations.empty())
+        error("Syntax error: server requests cannot be handled without a port number or location block", start);
+    else if (root > 1)
+        error("Syntax error: server block can only have one root directive", start);
+    else if (!portFound)
+        error("Syntax error: server block requires a port directive", start);
+    else if (!serverName)
+        error("Syntax error: server block requires a server_name directive", start);
+    else if (serverName > 1)
+        error("Syntax error: server block can only have one server_name directive", start);
     return block;
 }
 
@@ -352,6 +429,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
 {
     LocationBlock block;
     std::vector<Node>::iterator it = start;
+    std::string methods;
 
     while (it != end)
     {
@@ -367,13 +445,12 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
         }
         else
         {
-            std::vector<Node>::iterator i = it;
             switch (it->_token)
             {
                 case Listing:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Listing] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(Listing, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after listing directive", it - 2);
@@ -384,7 +461,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                 case Root:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Root] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(Root, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after root directive", it - 2);
@@ -395,7 +472,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                 case Index:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Index] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(Index, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after index directive", it - 2);
@@ -406,7 +483,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                 case Redir:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Redir] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(Redir, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after redir directive", it - 2);
@@ -424,8 +501,9 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                         {
                             if (it->_value == "GET" || it->_value == "POST" || it->_value == "PUT" || it->_value == "DELETE")
                             {
-                                block._directives[AllowedMethods] += ':';
-                                block._directives[AllowedMethods] += it->_value;
+                                if (!methods.empty())
+                                    methods += ":";
+                                methods += it->_value;
                                 it++;
                             }
                             else
@@ -435,13 +513,13 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                             error("Syntax error: token not allowed in allowed_methods directive", it);
                     }
                     if (it == end)
-                        error("Syntax error: missing semicolon after allowed_methods directive", i);
-                    block._directives[AllowedMethods].erase(0, 1);
+                        error("Syntax error: missing semicolon after allowed_methods directive", it);
+                    block._directives.push_back(std::make_pair(AllowedMethods, methods));
                     break;
                 case Default:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[Default] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(Default, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after default directive", it - 2);
@@ -452,7 +530,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                 case CGI:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives[CGI] = (it + 1)->_value;
+                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
