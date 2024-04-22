@@ -14,7 +14,6 @@ EventHandler::~EventHandler() {}
 void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
-	char buffer[BUFFER_SIZE + 1] = { 0 };
 	bool wasListenSocket;
 	std::list<int> cleanUpList;
 
@@ -32,25 +31,8 @@ void EventHandler::start() {
 			}
 			// Read from client
 			if ((!wasListenSocket) && events[n].events & EPOLLIN) {
-				ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
-				// The client has closed the connection
-				if (bytes_received == 0) {
-					cleanUpList.push_back(events[n].data.fd);
-					LOG_DEBUG("Client connection closes 0");
-				} else if (bytes_received == -1) {
-					cleanUpList.push_back(events[n].data.fd);
-					LOG_DEBUG("Client connection closes -1");
-				} else {
-					// find object with fd
-					// parse
-					buffer[bytes_received] = '\0';
-					for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
-						if ((*it)->getFd() == events[n].data.fd) {
-							// std::cout << buffer << std::endl; // DELETE: DEBUG
-							// (*it)->parseBuffer(buffer);
-							(*it)->updateTime();
-						}
-					}
+				if (!readFromClient(events, n, cleanUpList)) {
+					continue;
 				}
 			}
 			// Write to client
@@ -115,8 +97,7 @@ void EventHandler::handleTimeouts() {
 	time_t current_time = std::time(0);
 	for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end();) {
 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
-			LOG_INFO("Kicked timeout client");
-			// std::cout << "Kicked timeout client with FD: " << (*it)->getFd() << std::endl;
+			LOG_DEBUG("Kicked timeout client");
 			destroyClient(*it);
 			it = _clients.erase(it);
 		} else {
@@ -129,10 +110,7 @@ void EventHandler::handleToCloseConnections(std::list<int> &cleanUpList) {
 	for (std::list<int>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
 		for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end();) {
 			if (*itCleanUp == (*it)->getFd()) {
-				// LOG_ENABLE_FILE_LOGGING();
-				// LOG_INFO("Kicked client: close connection");
-				// LOG_DISABLE_FILE_LOGGING();
-				// std::cout << "Kicked in CloseConnections client with FD: " << (*it)->getFd() << std::endl;
+				LOG_DEBUG("Kicked client: close connection");
 				destroyClient(*it);
 				it = _clients.erase(it);
 			} else {
@@ -147,6 +125,7 @@ void EventHandler::destroyClient(EventHandler::Client *client) {
 	delete client;
 }
 
+// Accept and add new client to epoll and client list
 void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 	struct epoll_event ev;
 	int newConnectionFd;
@@ -160,8 +139,7 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 		if (_listeningSockets[i] == events_arr[n].data.fd) {
 			newConnectionFd = accept(_listeningSockets[i], (struct sockaddr *)&addr, &addrlen);
 			if (newConnectionFd == -1) {
-				LOG_ERROR("accept failed.");
-				// std::cerr << "EventHandler: accept failed." << std::endl;
+				LOG_ERROR("EventHandler: accept failed.");
 				return;
 			}
 			ev.events = EPOLLIN | EPOLLOUT;
@@ -169,23 +147,49 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 			if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
 				close(newConnectionFd);
 				LOG_ERROR("EventHandler: epoll ADD failed.");
-				// std::cerr << "EventHandler: epoll ADD failed." << std::endl;
 				return;
 			}
 			Client *newClient = NULL;
 			try {
 				newClient = new Client(newConnectionFd);
 				_clients.push_back(newClient);
+				LOG_DEBUG("New client connection");
 			} catch (...) {
 				delete newClient;
 				if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, newConnectionFd, NULL) == -1) {
 					LOG_ERROR("EventHandler: epoll DEL failed.");
-					// std::cerr << "EventHandler: epoll DEL failed." << std::endl;
 				}
 				close(newConnectionFd);
 			}
 		}
 	}
+}
+
+// Return false if failed
+bool EventHandler::readFromClient(epoll_event events[], int n, std::list<int> &cleanUpList) {
+	char buffer[BUFFER_SIZE + 1] = { 0 };
+	ssize_t bytes_received = read(events[n].data.fd, buffer, BUFFER_SIZE);
+	// The client has closed the connection
+	if (bytes_received == 0) {
+		cleanUpList.push_back(events[n].data.fd);
+		LOG_DEBUG("Client connection closes 0");
+	} else if (bytes_received == -1) {
+		cleanUpList.push_back(events[n].data.fd);
+		LOG_DEBUG("Client connection closes -1");
+	} else {
+		// find object with fd
+		// parse
+		buffer[bytes_received] = '\0';
+		Client *client = findClient(events[n].data.fd);
+		if (client == NULL) {
+			LOG_ERROR("Client not found"); // Should never happen
+			return false;
+		} else {
+			client->updateTime();
+			// client->parseBuffer(buffer);
+		}
+	}
+	return true;
 }
 
 EventHandler::Client *EventHandler::findClient(int fd) {
