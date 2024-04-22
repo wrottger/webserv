@@ -25,20 +25,4 @@ int main()
 	SocketHandling sockets(config);
 	EventHandler event(sockets);
 	event.start();
-	
-	// for (size_t i = 0; i < serverCount; i++)
-	// {
-	// 	std::cout << a.openFds[i] << std::endl;
-	// }
-
-	// init Server
-	// config Server port etc
-	// listen
-
-	// add epoll
-
-	// epoll loop
-		// exit handling
-	
-
 }
