@@ -21,7 +21,7 @@ size_t HttpRequest::parseBuffer(const char *requestLine) {
         return 0;
     char c;
     size_t i = 0;
-    for (; requestLine[i] != '\0'; i++)
+    for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++)
     {
         request_size++;
         if (request_size > 8192)
@@ -36,16 +36,13 @@ size_t HttpRequest::parseBuffer(const char *requestLine) {
             parseError = e;
             return i;
         }
-        if (state->func == States::headerFinished)
-        {
-            message.path = percentDecode(message.path);
-            complete = true;
-            if (headers.count("host") == 0)
-            {
-                parseError = HttpError(400, "Host header is required");
-                return i;
-            }
-        }
+    }
+    if (state->func == States::headerFinished)
+    {
+        message.path = percentDecode(message.path);
+        complete = true;
+        if (headers.count("host") == 0)
+            parseError = HttpError(400, "Host header is required");
     }
     return i;
 }
