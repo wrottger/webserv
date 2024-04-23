@@ -1,10 +1,12 @@
 #include "SocketHandling.hpp"
+#include "Config.hpp"
+#include <algorithm>
 
-SocketHandling::SocketHandling(std::vector<configObject> &config) : _config(config)
+SocketHandling::SocketHandling(std::vector<ServerBlock> &config) : _config(config)
 {
-	size_t serverCount = config[0].getServerCount();
-	std::vector<int> ports = config[0].getPorts();
-
+	size_t serverCount = config.size();
+    std::vector<int> ports;
+	ports = Config::getPorts(config);
 	try {
 		for (size_t i = 0; i < serverCount; i++) {
 			setUpSocket(ports[i]);
