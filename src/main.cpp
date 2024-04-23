@@ -14,7 +14,9 @@
 #include "EventHandler.hpp"
 #include "Config.hpp"
 #include "colors.hpp"
+#include "utest.h"
 
+UTEST_STATE();
 
 int main(int argc, char *argv[], char *envp[])
 {
