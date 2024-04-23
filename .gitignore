@@ -1,3 +1,7 @@
+objs/
+client
+server
+log.txt
 # Prerequisites
 *.d
 
@@ -31,3 +35,4 @@
 *.out
 *.app
 webserv
+.vscode
