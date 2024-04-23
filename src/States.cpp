@@ -270,7 +270,6 @@ void headerAlmostFinished(char c, HttpMessage& message, StateHandler& nextState)
     } else {
         throw HttpError(400, "Invalid character after headers: " + std::string(1, c));
     }
-    return;
 }
 
 void headerFinished(char c, HttpMessage& message, StateHandler& nextState) {
