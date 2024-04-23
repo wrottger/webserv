@@ -10,17 +10,17 @@ int main (int argc, char *argv[], char *envp[])
 		return 1;
 	}
 	(void)envp;
-	Config config;
+	Config* config = Config::getInstance();
 	try {
-		config.parseConfigFile(argv[1]);
+		config->parseConfigFile(argv[1]);
 	}
 	catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	if (config.isLoaded())
+	if (config->isLoaded())
 	{
-		config.printProgressBar(1, 1);
+		config->printProgressBar(1, 1);
 		std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 	}
     return 0;

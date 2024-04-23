@@ -6,27 +6,6 @@ Config::Config(void) : _isLoaded(false)
 
 }
 
-Config::Config(const Config &src)
-{
-    _tokens = src._tokens;
-    _isLoaded = src._isLoaded;
-}
-
-Config &Config::operator=(const Config &src)
-{
-    if (this != &src)
-    {
-        _tokens = src._tokens;
-        _isLoaded = src._isLoaded;
-    }
-    return *this;
-}
-
-Config::~Config()
-{
-
-}
-
 bool Config::isLoaded(void) const
 {
     return _isLoaded;
@@ -35,6 +14,14 @@ bool Config::isLoaded(void) const
 const std::vector<Node>& Config::getNodes(void) const
 {
     return _nodes;
+}
+
+Config* Config::getInstance()
+{
+        if (_instance == NULL) {
+            _instance = new Config();
+        }
+        return _instance;
 }
 
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)

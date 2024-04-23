@@ -14,20 +14,21 @@
 class Config {
 
     private:
+
+        Config();
+        Config& operator=(const Config& src); 
+        Config(const Config& src);
+        static Config* _instance;
+
         std::vector<Node> _nodes;
         std::vector<ServerBlock> _serverBlocks;
         size_t _lines;
         bool _isLoaded;
 
-        Config(const Config& src);  // private copy constructor and assignment operator to prevent dangling references/pointers
-        Config& operator=(const Config& src); 
 
     public:
-
-        Config();
-        ~Config();
-
         // getters
+        static Config* getInstance();
         const std::vector<Node>& getNodes(void) const;
         bool isLoaded(void) const;
 

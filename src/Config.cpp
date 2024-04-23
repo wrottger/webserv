@@ -2,6 +2,9 @@
 #include "Tokens.hpp"
 #include "colors.hpp"
 
+
+Config* Config::_instance = NULL;
+
 void Config::parseConfigFile(std::string filename)
 {
     std::ifstream _fileStream(filename.c_str());
