@@ -42,7 +42,6 @@ void EventHandler::start() {
 					LOG_ERROR("Client not found"); // Should never happen
 					continue;
 				} else {
-					client->updateTime();
 					// Response // DELETE: DEBUG
 					std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
 												"<body><h1>Hello, World!</h1></body></html>";
@@ -58,9 +57,10 @@ void EventHandler::start() {
 					if (client->isHeaderComplete()) {
 						// Reponse logic
 						// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
+						// client->updateTime();
 						if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
 							perror("Send");
-							cleanUpList.push_back(events[n].data.fd);
+							// cleanUpList.push_back(events[n].data.fd);
 						}
 					}
 					// cleanUpList.push_back(events[n].data.fd);
