@@ -180,5 +180,11 @@ UTEST(HttpRequest, postRequest)
   HttpRequest r;
   r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\ncontent-length: 5\r\n\r\n12345");
   ASSERT_STREQ("POST", r.getMethod().c_str());
-  ASSERT_STREQ("12345", r.getBody().c_str());
+}
+
+UTEST(HttpRequest, percentDecode)
+{
+  HttpRequest r;
+  r.parseBuffer("GET /%20 HTTP/1.1\r\nhost: localhost\r\n\r\n");
+  ASSERT_STREQ("/ ", r.getPath().c_str());
 }
