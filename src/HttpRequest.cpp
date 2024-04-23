@@ -1,120 +1,72 @@
-#include "HttpRequest.hpp"
-#include "HttpError.hpp"
 #include <string.h>
+#include <typeinfo>
 #include <algorithm>
 #include <iostream>
+#include "HttpRequest.hpp"
+#include "HttpError.hpp"
+#include "HttpMessage.hpp"
 
-HttpRequest::HttpRequest() {
-    // Initialize member variables
-    body = "";
-    target = "";
-    query = "";
-    version = "";
-    state = s_start;
-    headers.clear();
+HttpRequest::HttpRequest() : parseError(0, ""){
+    headerComplete = false;
+    complete = false;
+    state = new StateHandler();
+    state->func = &States::method;
+    message = HttpMessage();
     request_size = 0;
 }
 
+HttpRequest::~HttpRequest() { delete state; }
+
 size_t HttpRequest::parseBuffer(const char *requestLine) {
-    if (requestLine == NULL)
+    if (requestLine == NULL || isComplete() || parseError.code() != 0)
         return 0;
     char c;
-    for (size_t i = 0; requestLine[i] != '\0'; i++)
+    size_t i = 0;
+    for (; requestLine[i] != '\0'; i++)
     {
         request_size++;
         if (request_size > 8192)
             throw HttpError(413, "Request Entity Too Large");
         c = requestLine[i];
-        switch (s_method)
+        try
         {
-        case s_start:
-            if (isToken(c))
-                state = s_method;
-            else
-                throw HttpError(400, "Bad Request");            
-            break;
-        case s_method:
-            if (method.size() > 7)
-                throw HttpError(501, "Not Implemented");
-            if (isToken(c))
-                method.push_back(c);
-            else if (c == ' ')
-                state = s_spaces_before_uri;
-            else
-                throw HttpError(400, "Bad Request");
-            break;
-        case s_spaces_before_uri:
-            if (c == ' ') {
-                state = s_after_first_space;
-            } else if (c == '/') {
-                state = s_uri;  // Origin form
-            } else if (c == 'h') {
-                state = s_schema_start;  // Possible absolute form
-            } else {
-                throw HttpError(400, "Bad Request");
+            state->func(c, message, *state);  
+        }
+        catch(HttpError &e)
+        {
+            parseError = e;
+            return i;
+        }
+        if (state->func == States::headerFinished)
+        {
+            headerComplete = true;
+            if (headers.count("host") == 0)
+            {
+                parseError = HttpError(400, "Host header is required");
+                return i;
             }
-            break;
-        case s_after_first_space:
-            if (c == ' ') {
-                throw HttpError(400, "Bad Request: Multiple spaces before URI");
-            } else if (c == '/') {
-                state = s_uri;  // Origin form
-            } else if (c == 'h') {
-                state = s_schema_start;  // Possible absolute form
-            } else {
-                throw HttpError(400, "Bad Request");
-            }
-            break;
-        case s_schema:
-
-        case s_host_start:
-        case s_host:
-        case s_host_end:
-        case s_host_ip_literal:
-        case s_after_slash_in_uri:
-        case s_check_uri:
-        case s_uri:
-        case s_http_09:
-        case s_http_H:
-        case s_http_HT:
-        case s_http_HTT:
-        case s_http_HTTP:
-        case s_first_major_digit:
-        case s_major_digit:
-        case s_first_minor_digit:
-        case s_minor_digit:
-        case s_spaces_after_digit:
-        case s_almost_done:
-        case s_finished:
-            break;
-        default:
-            throw HttpError(500, "Internal Server Error");
         }
     }
-
-    return 0;
+    // TODO percent decode path
+    return i;
 }
 
-const std::string &HttpRequest::getMethod() const { return method; }
+const std::string &HttpRequest::getMethod() const { return message.method; }
 
-const std::string &HttpRequest::getTarget() const { return target; }
+const std::string &HttpRequest::getPath() const { return message.path; }
 
-const std::string &HttpRequest::getQuery() const { return query; }
-
-const std::string &HttpRequest::getVersion() const { return version; }
+const std::string &HttpRequest::getQuery() const {  return message.query; }
 
 const std::string &HttpRequest::getHeader(const std::string &name) const {
-    return headers.at(name);
+    return message.headers.find(name)->second;
 }
 
-const std::string &HttpRequest::getBody() const {
-    return body;
-}
+HttpError HttpRequest::getError() const { return parseError; }
 
-// bool HttpRequest::isComplete() const
-// {
-//     return state == s_finished;
-// }
+bool HttpRequest::isComplete() const
+{
+    return state == s_finished;
+}
 
 // size_t HttpRequest::parse_header(const char *requestLine)
 // {
