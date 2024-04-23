@@ -10,6 +10,7 @@
 # include <iostream>
 # include <sstream>
 # include <cstdlib>
+# include <algorithm>
 
 class Config {
 
@@ -32,6 +33,7 @@ class Config {
         const std::vector<Node>& getNodes(void) const;
         std::vector<ServerBlock>& getServerBlocks(void);
         bool isLoaded(void) const;
+        static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
 
         // config parsing methods
         void parseConfigFile(std::string filename);

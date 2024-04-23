@@ -1,19 +1,12 @@
 #include "SocketHandling.hpp"
-#include "ServerBlock.hpp"
+#include "Config.hpp"
 #include <algorithm>
 
 SocketHandling::SocketHandling(std::vector<ServerBlock> &config) : _config(config)
 {
 	size_t serverCount = config.size();
     std::vector<int> ports;
-    for (size_t i = 0; i < serverCount; i++) {
-        std::vector<int> blockPorts = config[i].getPort();
-        for (std::vector<int>::iterator it = blockPorts.begin(); it != blockPorts.end(); ++it) {
-            if (std::find(ports.begin(), ports.end(), *it) == ports.end()) {
-                ports.push_back(*it);
-            }
-        }
-    }
+	ports = Config::getPorts(config);
 	try {
 		for (size_t i = 0; i < serverCount; i++) {
 			setUpSocket(ports[i]);
