@@ -24,6 +24,8 @@ void Config::parseConfigFile(std::string filename)
     _tokens["{"] = OpenBrace;
     _tokens["}"] = CloseBrace;
     _tokens[";"] = Semicolon;
+    _tokens["error"] = Error;
+    _tokens["error_page"] = ErrorPage;
 
     this->scanTokens(_fileStream);
     _fileStream.close();
@@ -413,6 +415,28 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                     }
                     else
                         error("Syntax error: root directive requires a value", it);
+                    break;
+                case Error:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives.push_back(std::make_pair(Error, (it + 1)->_value));
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after error directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: error directive requires a value", it);
+                    break;
+                case ErrorPage:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives.push_back(std::make_pair(ErrorPage, (it + 1)->_value));
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after error_page directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: error_page directive requires a value", it);
                     break;
                 case Index:
                     if (it + 1 != end && (it + 1)->_token == Data)

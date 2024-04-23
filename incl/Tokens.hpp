@@ -21,6 +21,7 @@ enum TokenType {
     Data,
     Semicolon,
     Error,
+    ErrorPage,
 };
 
 struct Node {
