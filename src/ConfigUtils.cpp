@@ -24,6 +24,11 @@ Config* Config::getInstance()
         return _instance;
 }
 
+std::vector<ServerBlock>& Config::getServerBlocks(void)
+{
+    return _serverBlocks;
+}
+
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
 {
 	std::stringstream ss;

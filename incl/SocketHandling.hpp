@@ -19,7 +19,7 @@
 class SocketHandling
 {
 	private:
-		std::vector<configObject> &_config;
+		std::vector<ServerBlock> &_config;
 		std::vector<int> _openFds;
 		int	_epollFd;
 
@@ -30,7 +30,7 @@ class SocketHandling
 		void setUpEpoll();
 
 	public:
-		SocketHandling(std::vector<configObject> &config);
+		SocketHandling(std::vector<ServerBlock> &config);
 		~SocketHandling();
 		int getEpollFd();
 		std::vector<int> getOpenFds();

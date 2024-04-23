@@ -37,6 +37,6 @@ int main(int argc, char *argv[], char *envp[])
   config->printProgressBar(1, 1);
   std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
   LOG_INFO("Server started");
-  SocketHandling sockets(config);
+  SocketHandling sockets(config->getServerBlocks());
   EventHandler event(sockets);
 }
