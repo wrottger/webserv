@@ -86,7 +86,6 @@ std::string Logging::Logger::insertMetaInformations(const char *logLevel) {
 	if (_logLevelInLog) {
 		data.append("[").append(logLevel).append("]").append(": ");
 	}
-
 	return data;
 }
 
