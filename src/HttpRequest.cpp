@@ -86,4 +86,12 @@ std::string HttpRequest::percentDecode(std::string &str)
 
 bool HttpRequest::isComplete() const { return state->func == States::headerFinished; }
 
-const std::string &HttpRequest::getBody() const { return message.body; }
+// size_t HttpRequest::parse_header(const char *requestLine)
+// {
+//     return size_t();
+// }
+
+// size_t HttpRequest::parse_body(const char *requestLine)
+// {
+//     return size_t();
+// }
