@@ -35,4 +35,5 @@ log.txt
 *.out
 *.app
 webserv
+output/
 .vscode
