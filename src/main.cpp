@@ -41,4 +41,5 @@ int main(int argc, char *argv[], char *envp[])
   LOG_INFO("Server started");
   SocketHandling sockets(config->getServerBlocks());
   EventHandler event(sockets);
+  event.start();
 }
