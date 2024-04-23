@@ -24,10 +24,10 @@ UTEST(HttpRequest, identifyMethod)
 UTEST(HttpRequest, minimal)
 {
   HttpRequest r;
-  r.parseBuffer("GET / ");
+  ASSERT_EQ(r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n"), (size_t)35);
   EXPECT_STREQ_MSG("GET", r.getMethod().c_str(), r.getMethod().c_str());
   EXPECT_STREQ_MSG("/", r.getPath().c_str(), r.getPath().c_str());
-  //EXPECT_STREQ_MSG("localhost", r.getHeader("host").c_str(), r.getHeader("host").c_str());
+  EXPECT_STREQ_MSG("localhost", r.getHeader("host").c_str(), r.getHeader("host").c_str());
 }
 
 UTEST(HttpRequest, null)
@@ -42,7 +42,7 @@ UTEST(HttpRequest, null)
 UTEST(HttpRequest, size) {
   HttpRequest r;
   size_t size = r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\n\r\n");
-  size_t expected = 35;
+  size_t expected = 36;
   ASSERT_EQ(expected, size);
   ASSERT_TRUE(r.isComplete());
 }
@@ -61,7 +61,7 @@ UTEST(HttpRequest, localhost)
   r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
-  // ASSERT_STREQ("localhost", r.getHeader("host").c_str());
+  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
   ASSERT_TRUE(r.isComplete());
 }
 
@@ -85,17 +85,17 @@ UTEST(HttpRequest, nlLineneding)
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
   ASSERT_TRUE(r.isComplete());
-  //ASSERT_STREQ("localhost", r.getHeader("host").c_str());
+  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
 }
 
 UTEST(HttpRequest, parseAtOnce) {
   HttpRequest r;
   size_t size = r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
-  size_t expected = 34;
+  size_t expected = 35;
   ASSERT_EQ(expected, size);
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
-  // ASSERT_STREQ("localhost", r.getHeader("host").c_str());
+  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
   ASSERT_TRUE(r.isComplete());
 }
 
@@ -111,7 +111,7 @@ UTEST(HttpRequest, absolutePath)
   r.parseBuffer("GET http://httpbin.org/index.html?a=1#title HTTP/1.1\r\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/index.html", r.getPath().c_str());
-  // ASSERT_STREQ("localhost", r.getHeader("host").c_str());
+  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
   ASSERT_STREQ("a=1", r.getQuery().c_str());
   ASSERT_TRUE(r.isComplete());
 }
