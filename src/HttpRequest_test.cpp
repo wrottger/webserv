@@ -58,7 +58,7 @@ UTEST(HttpRequest, longerPath)
 UTEST(HttpRequest, localhost)
 {
   HttpRequest r;
-  r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nhost: localhost\r\n\r\n");
+  r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nHost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
   ASSERT_STREQ("localhost", r.getHeader("host").c_str());
@@ -180,6 +180,9 @@ UTEST(HttpRequest, postRequest)
   HttpRequest r;
   r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\ncontent-length: 5\r\n\r\n12345");
   ASSERT_STREQ("POST", r.getMethod().c_str());
+  ASSERT_STREQ("/", r.getPath().c_str());
+  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
+  ASSERT_STREQ("5", r.getHeader("content-length").c_str());
 }
 
 UTEST(HttpRequest, percentDecode)
