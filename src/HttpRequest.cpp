@@ -98,10 +98,3 @@ bool HttpRequest::isComplete() const { return state->func == States::headerFinis
 // {
 //     return size_t();
 // }
-
-bool HttpRequest::isToken(char c)
-{
-    if (32 <= c && c <= 126)
-        return true;
-    return false;
-}

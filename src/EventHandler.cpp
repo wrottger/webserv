@@ -55,7 +55,7 @@ void EventHandler::start() {
 												"Content-Length: " +
 							oss.str() + "\r\n\r\n" + responseBody;
 					// TODO: checken nach Header ob Methode ueberhaupt erlaubt
-					if (client->isHeaderComplete() && client->isBodyComplete()) {
+					if (client->isHeaderComplete()) {
 						// Reponse logic
 						// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
 						if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
@@ -186,7 +186,7 @@ bool EventHandler::readFromClient(epoll_event events[], int n, std::list<int> &c
 			return false;
 		} else {
 			client->updateTime();
-			// client->parseBuffer(buffer);
+			client->parseBuffer(buffer);
 		}
 	}
 	return true;
@@ -231,11 +231,7 @@ void EventHandler::Client::updateTime() {
 }
 
 bool EventHandler::Client::isHeaderComplete() {
-	return _requestObject->isHeaderComplete();
-}
-
-bool EventHandler::Client::isBodyComplete() {
-	return _requestObject->isBodyComplete();
+	return _requestObject->isComplete();
 }
 
 void EventHandler::Client::parseBuffer(const char *buffer) {
