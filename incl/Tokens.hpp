@@ -20,6 +20,7 @@ enum TokenType {
     CGI,
     Data,
     Semicolon,
+    Error,
 };
 
 struct Node {
