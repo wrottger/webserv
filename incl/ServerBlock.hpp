@@ -7,7 +7,6 @@ struct ServerBlock {
 
     std::vector<LocationBlock> _locations;
     std::vector<std::pair<TokenType, std::string> > _directives;
-
 };
 
 #endif

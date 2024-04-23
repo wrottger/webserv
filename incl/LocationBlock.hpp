@@ -1,7 +1,8 @@
 #ifndef LOCATION_BLOCK_HPP
 # define LOCATION_BLOCK_HPP
-# include <map>
 # include <string>
+# include <vector>
+# include "Tokens.hpp"
 
 struct LocationBlock {
 

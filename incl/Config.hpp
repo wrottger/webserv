@@ -1,6 +1,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
-# include "Tokens.hpp"
+# include "Nodes.hpp"
 # include "ServerBlock.hpp"
 # include <map>
 # include <stack>
@@ -10,6 +10,7 @@
 # include <iostream>
 # include <sstream>
 # include <cstdlib>
+# include <algorithm>
 
 class Config {
 
@@ -30,7 +31,9 @@ class Config {
         // getters
         static Config* getInstance();
         const std::vector<Node>& getNodes(void) const;
+        std::vector<ServerBlock>& getServerBlocks(void);
         bool isLoaded(void) const;
+        static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
 
         // config parsing methods
         void parseConfigFile(std::string filename);

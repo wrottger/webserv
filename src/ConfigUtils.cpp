@@ -24,6 +24,32 @@ Config* Config::getInstance()
         return _instance;
 }
 
+std::vector<ServerBlock>& Config::getServerBlocks(void)
+{
+    return _serverBlocks;
+}
+
+std::vector<int> Config::getPorts(std::vector<ServerBlock>& _serverBlocks) 
+{
+    std::vector<int> ports;
+
+    for (std::vector<ServerBlock>::iterator it = _serverBlocks.begin(); it != _serverBlocks.end(); it++)
+    {
+        for (std::vector<std::pair<TokenType, std::string> >::iterator it2 = it->_directives.begin(); it2 != it->_directives.end(); it2++)
+        {
+            if (it2->first == Port)
+            {
+                std::stringstream ss(it2->second);
+                int temp;
+                ss >> temp;
+                if (std::find(ports.begin(), ports.end(), temp) == ports.end())
+                    ports.push_back(temp);
+            }
+        }
+    }
+return ports;
+}
+
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
 {
 	std::stringstream ss;
