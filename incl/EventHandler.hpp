@@ -57,7 +57,7 @@ private:
 	Client();
 	Client(Client const &other);
 	Client &operator=(Client const &other);
-	HttpRequest *_requestObject;
+	HttpHeader *_requestObject;
 	int _fd;
 	std::time_t _lastModified;
 };

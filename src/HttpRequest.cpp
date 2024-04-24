@@ -6,17 +6,17 @@
 #include "HttpError.hpp"
 #include "HttpMessage.hpp"
 
-HttpRequest::HttpRequest() : parseError(0, ""){
+HttpHeader::HttpHeader() : parseError(0, ""){
     complete = false;
     state = new StateHandler();
-    state->func = &States::method;
+    state->func = States::method;
     message = HttpMessage();
     request_size = 0;
 }
 
-HttpRequest::~HttpRequest() { delete state; }
+HttpHeader::~HttpHeader() { delete state; }
 
-size_t HttpRequest::parseBuffer(const char *requestLine) {
+size_t HttpHeader::parseBuffer(const char *requestLine) {
     if (requestLine == NULL || isComplete() || parseError.code() != 0)
         return 0;
     char c;
@@ -47,20 +47,20 @@ size_t HttpRequest::parseBuffer(const char *requestLine) {
     return i;
 }
 
-const std::string &HttpRequest::getMethod() const { return message.method; }
+const std::string &HttpHeader::getMethod() const { return message.method; }
 
-const std::string &HttpRequest::getPath() const { return message.path; }
+const std::string &HttpHeader::getPath() const { return message.path; }
 
-const std::string &HttpRequest::getQuery() const {  return message.query; }
+const std::string &HttpHeader::getQuery() const {  return message.query; }
 
-const std::string &HttpRequest::getHeader(const std::string &name) const {
+const std::string &HttpHeader::getHeader(const std::string &name) const {
     return message.headers.find(name)->second;
 }
 
-bool HttpRequest::isError() const { return parseError.code() != 0;}
-HttpError HttpRequest::getError() const { return parseError; }
+bool HttpHeader::isError() const { return parseError.code() != 0;}
+HttpError HttpHeader::getError() const { return parseError; }
 
-std::string HttpRequest::percentDecode(std::string &str)
+std::string HttpHeader::percentDecode(std::string &str)
 {
     std::string decoded;
     for (size_t i = 0; i < str.size(); i++)
@@ -84,7 +84,7 @@ std::string HttpRequest::percentDecode(std::string &str)
     return decoded;
 }
 
-bool HttpRequest::isComplete() const { return state->func == States::headerFinished; }
+bool HttpHeader::isComplete() const { return state->func == States::headerFinished; }
 
 // size_t HttpRequest::parse_header(const char *requestLine)
 // {
