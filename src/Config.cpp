@@ -1,5 +1,4 @@
 #include "Config.hpp"
-#include "Tokens.hpp"
 #include "colors.hpp"
 
 
@@ -243,7 +242,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 }
 
 // This method is supposed to parse the server block and its directives;
-ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
+Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
 {
     ServerBlock block;
     std::vector<Node>::iterator start = it - 1;
@@ -375,7 +374,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
     return block;
 }
 
-LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
+Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
 {
     LocationBlock block;
     std::vector<Node>::iterator it = start;

@@ -2,7 +2,7 @@
 #include "Config.hpp"
 #include <algorithm>
 
-SocketHandling::SocketHandling(std::vector<ServerBlock> &config) : _config(config)
+SocketHandling::SocketHandling(std::vector<Config::ServerBlock> &config) : _config(config)
 {
 	size_t serverCount = config.size();
     std::vector<int> ports;

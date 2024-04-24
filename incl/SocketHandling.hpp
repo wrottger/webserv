@@ -19,9 +19,10 @@
 class SocketHandling
 {
 	private:
-		std::vector<ServerBlock> &_config;
+
+		std::vector<Config::ServerBlock> &_config;
 		std::vector<int> _openFds;
-		int	_epollFd;
+		int _epollFd;
 
 		SocketHandling(SocketHandling const &other);
 		SocketHandling operator =(SocketHandling const &other);
@@ -29,8 +30,8 @@ class SocketHandling
 		void setUpSocket(int port);
 		void setUpEpoll();
 
-	public:
-		SocketHandling(std::vector<ServerBlock> &config);
+		public:
+		SocketHandling(std::vector<Config::ServerBlock> &config);
 		~SocketHandling();
 		int getEpollFd();
 		std::vector<int> getOpenFds();
