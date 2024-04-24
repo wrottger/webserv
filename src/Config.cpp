@@ -177,7 +177,7 @@ void Config::parseScopes(void)
         throw std::runtime_error(RBOLD(ss.str()));
     }
     //erase braces
-    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); /* no increment here */)
+    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end();)
     {
         if (it->_token == OpenBrace || it->_token == CloseBrace)
             it = _nodes.erase(it);
