@@ -3,11 +3,7 @@
 
 #include <string>
 #include <map>
-#include "States.hpp"
-#include "HttpMessage.hpp"
 #include "HttpError.hpp"
-
-struct StateHandler;
 
 class HttpHeader {
 public:

@@ -2,9 +2,8 @@
 #include <typeinfo>
 #include <algorithm>
 #include <iostream>
-#include "HttpRequest.hpp"
+#include "HttpHeader.hpp"
 #include "HttpError.hpp"
-#include "HttpMessage.hpp"
 
 HttpHeader::HttpHeader() : parseError(0, ""){
     complete = false;

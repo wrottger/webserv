@@ -2,7 +2,7 @@
 #define EVENTHANDLER_HPP
 
 #include "HttpError.hpp"
-#include "HttpRequest.hpp"
+#include "HttpHeader.hpp"
 #include "Logger.hpp"
 #include "SocketHandling.hpp"
 #include <sys/epoll.h>
