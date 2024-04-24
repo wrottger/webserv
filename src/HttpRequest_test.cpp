@@ -59,7 +59,6 @@ UTEST(HttpRequest, localhost)
 {
   HttpRequest r;
   r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nHost: localhost\r\n\r\n");
-  r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nHost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
   ASSERT_STREQ("localhost", r.getHeader("host").c_str());
@@ -181,80 +180,6 @@ UTEST(HttpRequest, postRequest)
   HttpRequest r;
   r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\ncontent-length: 5\r\n\r\n12345");
   ASSERT_STREQ("POST", r.getMethod().c_str());
-  ASSERT_STREQ("/", r.getPath().c_str());
-  ASSERT_STREQ("localhost", r.getHeader("host").c_str());
-  ASSERT_STREQ("5", r.getHeader("content-length").c_str());
-}
-
-UTEST(HttpRequest, percentDecode)
-{
-  HttpRequest r;
-  r.parseBuffer("GET /%20 HTTP/1.1\r\nhost: localhost\r\n\r\n");
-  ASSERT_STREQ("/ ", r.getPath().c_str());
-}
-
-#include "HttpRequest.hpp"
-#include "HttpError.hpp"
-#include <iostream>
-#include "utest.h"
-
-UTEST(HttpRequest, setup) {
-  HttpRequest r;
-  ASSERT_FALSE(r.isComplete());
-}
-
-UTEST(HttpRequest, identifyMethod)
-{
-  HttpRequest r;
-  r.parseBuffer("GET ");
-  ASSERT_STREQ("GET", r.getMethod().c_str());
-  HttpRequest r2;
-  r2.parseBuffer("POST ");
-  ASSERT_STREQ("POST", r2.getMethod().c_str());
-  HttpRequest r3;
-  r3.parseBuffer("PUT ");
-  ASSERT_STREQ("PUT", r3.getMethod().c_str());
-}
-
-UTEST(HttpRequest, minimal)
-{
-  HttpRequest r;
-  ASSERT_EQ(r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n"), (size_t)35);
-  EXPECT_STREQ_MSG("GET", r.getMethod().c_str(), r.getMethod().c_str());
-  EXPECT_STREQ_MSG("/", r.getPath().c_str(), r.getPath().c_str());
-  EXPECT_STREQ_MSG("localhost", r.getHeader("host").c_str(), r.getHeader("host").c_str());
-}
-
-UTEST(HttpRequest, null)
-{
-  HttpRequest r;
-  r.parseBuffer(NULL);
-  r.parseBuffer(NULL);
-  r.parseBuffer("G");
-  ASSERT_FALSE(r.isComplete());
-}
-
-UTEST(HttpRequest, size) {
-  HttpRequest r;
-  size_t size = r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\n\r\n");
-  size_t expected = 36;
-  ASSERT_EQ(expected, size);
-  ASSERT_TRUE(r.isComplete());
-}
-
-UTEST(HttpRequest, longerPath)
-{
-  HttpRequest r;
-  r.parseBuffer("GET /rooot/user/ratntant/index.html ");
-  ASSERT_STREQ("GET", r.getMethod().c_str());
-  ASSERT_STREQ("/rooot/user/ratntant/index.html", r.getPath().c_str());
-}
-
-UTEST(HttpRequest, localhost)
-{
-  HttpRequest r;
-  r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nhost: localhost\r\n\r\n");
-  ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
   ASSERT_STREQ("localhost", r.getHeader("host").c_str());
   ASSERT_STREQ("5", r.getHeader("content-length").c_str());
