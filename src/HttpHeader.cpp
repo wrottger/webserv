@@ -306,7 +306,7 @@ void HttpHeader::States::fieldName(char c, HttpMessage& message, StateHandler& n
     } else if (c == ' ') {
         nextState.func = OWS;
     } else if (isToken(c)) {
-        message.fieldName += c;
+        message.fieldName += tolower(c);
     } else {
         throw HttpError(400, "Invalid character in field name: " + std::string(1, c));
     }
