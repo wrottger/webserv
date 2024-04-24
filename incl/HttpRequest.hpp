@@ -48,14 +48,14 @@ struct StateHandler {
 
 struct States
 {
-    const std::string delimiters = std::string("\"(),/:;<=>?@[\\]{}");
 
-    const static bool isToken(char c) {
+    static bool isToken(char c) {
+        const std::string delimiters = std::string("\"(),/:;<=>?@[\\]{}");
         return (c > 32 && c < 127) && delimiters.find(c) == std::string::npos;
     }
 
-    const static std::string subDelis = std::string("!$&'()*+,;=");
     static bool isPchar(char c) {
+        const static std::string subDelis = std::string("!$&'()*+,;=");
         return isalnum(c) || subDelis.find(c) != std::string::npos || c == ':' || c == '@' || c == '%';
     }
 
