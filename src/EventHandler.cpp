@@ -209,7 +209,7 @@ EventHandler::Client::Client() {}
 
 EventHandler::Client::Client(int fd) :
 		_fd(fd) {
-	_requestObject = new HttpRequest;
+	_requestObject = new HttpHeader;
 	updateTime();
 }
 

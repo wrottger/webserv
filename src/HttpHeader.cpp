@@ -1,20 +1,103 @@
-#include "States.hpp"
+#include <string.h>
+#include <typeinfo>
+#include <algorithm>
 #include <iostream>
+#include "HttpHeader.hpp"
+#include "HttpError.hpp"
 
-std::string delimiters = std::string("\"(),/:;<=>?@[\\]{}");
+HttpHeader::HttpHeader() : parseError(0, ""){
+    complete = false;
+    state = new StateHandler();
+    state->func = States::method;
+    message = HttpMessage();
+    request_size = 0;
+}
 
-static bool isToken(char c) {
+HttpHeader::~HttpHeader() { delete state; }
+
+size_t HttpHeader::parseBuffer(const char *requestLine) {
+    if (requestLine == NULL || isComplete() || parseError.code() != 0)
+        return 0;
+    char c;
+    size_t i = 0;
+    for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++)
+    {
+        request_size++;
+        if (request_size > 8192)
+            throw HttpError(413, "Request Entity Too Large");
+        c = requestLine[i];
+        try
+        {
+            state->func(c, message, *state);
+        }
+        catch(HttpError &e)
+        {
+            parseError = e;
+            return i;
+        }
+    }
+    if (state->func == States::headerFinished)
+    {
+        message.path = percentDecode(message.path);
+        complete = true;
+        if (headers.count("host") == 0)
+            parseError = HttpError(400, "Host header is required");
+    }
+    return i;
+}
+
+const std::string &HttpHeader::getMethod() const { return message.method; }
+
+const std::string &HttpHeader::getPath() const { return message.path; }
+
+const std::string &HttpHeader::getQuery() const {  return message.query; }
+
+const std::string &HttpHeader::getHeader(const std::string &name) const {
+    return message.headers.find(name)->second;
+}
+
+bool HttpHeader::isError() const { return parseError.code() != 0;}
+HttpError HttpHeader::getError() const { return parseError; }
+
+std::string HttpHeader::percentDecode(std::string &str)
+{
+    std::string decoded;
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        if (str[i] == '%')
+        {
+            if (i + 2 >= str.size())
+            {
+                parseError = HttpError(400, "Invalid percent encoding");
+                return "";
+            }
+            char c = (str[i + 1] - '0') * 16 + (str[i + 2] - '0');
+            decoded.push_back(c);
+            i += 2;
+        }
+        else
+        {
+            decoded.push_back(str[i]);
+        }
+    }
+    return decoded;
+}
+
+bool HttpHeader::isComplete() const { return state->func == States::headerFinished; }
+
+
+bool HttpHeader::States::isToken(char c) {
+    const std::string delimiters = std::string("\"(),/:;<=>?@[\\]{}");
     return (c > 32 && c < 127) && delimiters.find(c) == std::string::npos;
 }
 
-std::string subDelis = std::string("!$&'()*+,;=");
-static bool isPchar(char c) {
+bool HttpHeader::States::isPchar(char c) {
+    const static std::string subDelis = std::string("!$&'()*+,;=");
     return isalnum(c) || subDelis.find(c) != std::string::npos || c == ':' || c == '@' || c == '%';
 }
 
-namespace States
-{
-void method(char c, HttpMessage& message, StateHandler& nextState) {
+// Body
+void HttpHeader::States::method(char c, HttpMessage& message, StateHandler& nextState) {
     if (isToken(c)) {
         message.method += c;
     } else if (c == ' ') {
@@ -24,7 +107,7 @@ void method(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void targetStart(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::targetStart(char c, HttpMessage& message, StateHandler& nextState) {
     if (c == '/') {
         message.path += c;
         nextState.func = path;
@@ -35,7 +118,7 @@ void targetStart(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void scheme(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::scheme(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == ':') {
         nextState.func = colonSlashSlash;
@@ -44,7 +127,7 @@ void scheme(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void colonSlashSlash(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::colonSlashSlash(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == ':' || c == '/') {
         return;
@@ -55,7 +138,7 @@ void colonSlashSlash(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void authority(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::authority(char c, HttpMessage& message, StateHandler& nextState) {
     if (c == ':') {
         nextState.func = port;
     } else if (c == '/') {
@@ -70,7 +153,7 @@ void authority(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void port(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::port(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (isdigit(c)) {
         return;
@@ -85,7 +168,7 @@ void port(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void path(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::path(char c, HttpMessage& message, StateHandler& nextState) {
     if (isPchar(c) || c == '/' || c == '.' || c == ',') {
         message.path += c;
     } else if (c == ' ') {
@@ -99,7 +182,7 @@ void path(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void httpVersion(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::httpVersion(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == 'H') {
         nextState.func = ht;
@@ -108,7 +191,7 @@ void httpVersion(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void ht(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::ht(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == 'T') {
         nextState.func = htt;
@@ -117,7 +200,7 @@ void ht(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void htt(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::htt(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == 'T') {
         nextState.func = http;
@@ -126,7 +209,7 @@ void htt(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void http(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::http(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == 'P') {
         nextState.func = httpSlash;
@@ -135,7 +218,7 @@ void http(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void httpSlash(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::httpSlash(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '/') {
         nextState.func = majorDigit;
@@ -144,7 +227,7 @@ void httpSlash(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void majorDigit(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::majorDigit(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '1') {
         nextState.func = dot;
@@ -155,7 +238,7 @@ void majorDigit(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void dot(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::dot(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '.') {
         nextState.func = minorDigit;
@@ -164,7 +247,7 @@ void dot(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void minorDigit(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::minorDigit(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '1') {
         nextState.func = CR;
@@ -175,7 +258,7 @@ void minorDigit(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void query(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::query(char c, HttpMessage& message, StateHandler& nextState) {
     if (isPchar(c) || c == '/' || c == '?') {
         message.query += c;
     } else if (c == '#') {
@@ -185,7 +268,7 @@ void query(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void fragment(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::fragment(char c, HttpMessage& message, StateHandler& nextState) {
     if (c == ' ') {
         nextState.func = httpVersion;
     } else if (isPchar(c) || c == '/' || c == '?') {
@@ -195,7 +278,7 @@ void fragment(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void CR(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::CR(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '\r') {
         nextState.func = NL;
@@ -206,7 +289,7 @@ void CR(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void NL(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::NL(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '\n') {
         nextState.func = fieldName;
@@ -215,7 +298,7 @@ void NL(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void fieldName(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::fieldName(char c, HttpMessage& message, StateHandler& nextState) {
     if (c == '\r' && message.fieldName.empty()) {
         nextState.func = headerAlmostFinished;
     } else if (c == ':') {
@@ -229,7 +312,7 @@ void fieldName(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void OWS(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::OWS(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == ':') {
         nextState.func = SP;
@@ -238,7 +321,7 @@ void OWS(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void SP(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::SP(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == ' ') {
         nextState.func = fieldValue;
@@ -247,7 +330,7 @@ void SP(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void fieldValue(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::fieldValue(char c, HttpMessage& message, StateHandler& nextState) {
     if (c == '\r') {
         message.headers[message.fieldName] = message.fieldValue;
         message.fieldName = "";
@@ -263,7 +346,7 @@ void fieldValue(char c, HttpMessage& message, StateHandler& nextState) {
     }
 }
 
-void headerAlmostFinished(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::headerAlmostFinished(char c, HttpMessage& message, StateHandler& nextState) {
     (void) message;
     if (c == '\n') {
         nextState.func = headerFinished;
@@ -272,11 +355,10 @@ void headerAlmostFinished(char c, HttpMessage& message, StateHandler& nextState)
     }
 }
 
-void headerFinished(char c, HttpMessage& message, StateHandler& nextState) {
+void HttpHeader::States::headerFinished(char c, HttpMessage& message, StateHandler& nextState) {
     (void)c;
     (void)message;
     (void)nextState;
     return;
 }
 
-} // namespace States
