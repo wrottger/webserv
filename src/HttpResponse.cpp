@@ -7,7 +7,7 @@ size_t HttpResponse::readBuffer(const char *buffer) {
 	return size_t();
 }
 
-void HttpResponse::canWrite(bool canWrite) {
+void HttpResponse::write() {
 }
 
 bool HttpResponse::finished() {

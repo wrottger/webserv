@@ -9,7 +9,7 @@ class HttpResponse
         HttpResponse(HttpHeader &header, int fds);
         ~HttpResponse();
         size_t readBuffer(const char* buffer);
-        void canWrite(bool canWrite);
+        void write();
         bool finished();
 
     private:
