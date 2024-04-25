@@ -302,6 +302,17 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                     else
                         error("Syntax error: port directive requires a value", it);
                     break;
+                case CGI:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after cgi directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: cgi directive requires a value", it);
+                    break;
                 case ServerName:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
