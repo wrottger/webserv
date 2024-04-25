@@ -15,11 +15,10 @@ class Config {
     public:
 
         struct ServerBlock;
-        
-    private:
-
         struct Node;
         struct LocationBlock;
+        
+    private:
 
         Config();
         Config& operator=(const Config& src); 
@@ -62,6 +61,7 @@ class Config {
         std::vector<ServerBlock>& getServerBlocks(void);
         bool isLoaded(void) const;
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
+        static LocationBlock* getClosestLocationBlock(std::string path, std::string host);
 
         // config parsing methods
         void parseConfigFile(std::string filename);

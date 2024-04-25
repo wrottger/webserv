@@ -50,6 +50,49 @@ std::vector<int> Config::getPorts(std::vector<ServerBlock>& _serverBlocks)
 return ports;
 }
 
+// returns the location block that is the closest match for the given path; returns NULL if no match is found
+Config::LocationBlock* Config::getClosestLocationBlock(std::string path, std::string host)
+{
+    if (getInstance() == NULL)
+        throw std::runtime_error("Cannot use getClosestLocationBlock without a valid Config instance.");
+
+    Config* config = getInstance();
+    std::vector<std::pair<std::string, LocationBlock> > paths;
+    for (size_t s_count = 0; s_count != config->_serverBlocks.size(); s_count++) //iterate through server blocks
+    {
+        for (size_t d = 0; d != config->_serverBlocks[s_count]._directives.size(); d++) //iterate through location blocks
+        {
+            if (config->_serverBlocks[s_count]._directives[d].first == ServerName && config->_serverBlocks[s_count]._directives[d].second == host)
+            {
+                for (size_t l = 0; l != config->_serverBlocks[s_count]._locations.size(); l++)
+                {
+                    if (path.find(config->_serverBlocks[s_count]._locations[l]._path) == 0)
+                    {
+                        paths.push_back(std::make_pair(config->_serverBlocks[s_count]._locations[l]._path, config->_serverBlocks[s_count]._locations[l]));
+                    }
+                }
+            }
+        }
+    }
+    std::cout << "Paths size: " << paths.size() << std::endl;
+    if (paths.size() == 0)
+        return static_cast<LocationBlock*>(NULL);
+    
+    std::pair<std::string, LocationBlock> temp = paths[0];
+    for (size_t i = 0; i != paths.size(); i++)
+    {
+        if (paths[i].first.size() > temp.first.size())
+            temp = paths[i];
+    }
+    LocationBlock *ret = new LocationBlock(temp.second); // dont forget to delete this
+    return ret;
+}
+
+// isMethodAllowed(string -> Path, string -> Method)
+// isCgiAllowed(string -> Path, string -> Fileextension)
+// getRootDirectory(string -> Path, string -> Host)
+
+
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
 {
 	std::stringstream ss;

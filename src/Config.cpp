@@ -257,7 +257,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
             std::vector<Node>::iterator locationStart = it; // starting node of the location block
             it++;
             if (it == end)
-                error("pure data tokens i.e. all tokens except delimitersSyntax error: expected location block", it);
+                error("Syntax error: expected location block", it);
             while (it != end && it->_level > locationStart->_level) // iterate until the end of the location block
                 it++;
             // parse the location block and add it to the vector of location blocks
