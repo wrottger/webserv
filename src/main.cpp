@@ -45,6 +45,12 @@ int main()
 	int someInt = 1337;
 	logStream << "I am logged using a stream " << someInt << " " << 3.1415f;
 	log.error(logStream);
+	LOG_ERROR(logStream);
+
+	LOG_ERROR_WITH_TAG("I am logged with a tag", "EventHandler");
+	LOG_DISABLE_PRINT_TIME_STAMP();
+	LOG_DISABLE_PRINT_LOG_LEVEL();
+	LOG_ALARM_WITH_TAG("I am logged with a tag", "EventHandler");
 
 	return 0;
 }
