@@ -15,6 +15,7 @@
 #include "Config.hpp"
 #include "colors.hpp"
 #include "utest.h"
+#include "Logger.hpp"
 
 UTEST_STATE();
 

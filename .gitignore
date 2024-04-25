@@ -1,7 +1,3 @@
-objs/
-client
-server
-log.txt
 # Prerequisites
 *.d
 
@@ -37,3 +33,7 @@ log.txt
 webserv
 output/
 .vscode
+objs/
+client
+server
+log.txt
