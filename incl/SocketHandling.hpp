@@ -14,6 +14,7 @@
 # include <sys/epoll.h>  // für epoll_create1()
 # include <vector>
 # include <stdexcept>
+# include <signal.h>
 # include "Config.hpp"
 
 class SocketHandling
