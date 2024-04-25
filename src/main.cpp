@@ -41,5 +41,10 @@ int main()
 	log.enablePrintLogLevel();
 	log.error("I am logged with log level and timestamp");
 
+	std::ostringstream logStream;
+	int someInt = 1337;
+	logStream << "I am logged using a stream " << someInt << " " << 3.1415f;
+	log.error(logStream);
+
 	return 0;
 }
