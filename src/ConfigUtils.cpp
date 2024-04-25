@@ -51,7 +51,7 @@ return ports;
 }
 
 // returns the location block that is the closest match for the given path; returns NULL if no match is found
-Config::LocationBlock* Config::getClosestLocationBlock(std::string path, std::string host)
+Config::LocationBlock* Config::getClosestPathMatch(std::string path, std::string host)
 {
     if (getInstance() == NULL)
         throw std::runtime_error("Cannot use getClosestLocationBlock without a valid Config instance.");
@@ -74,7 +74,6 @@ Config::LocationBlock* Config::getClosestLocationBlock(std::string path, std::st
             }
         }
     }
-    std::cout << "Paths size: " << paths.size() << std::endl;
     if (paths.size() == 0)
         return static_cast<LocationBlock*>(NULL);
     
