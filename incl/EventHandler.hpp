@@ -2,7 +2,7 @@
 #define EVENTHANDLER_HPP
 
 #include "HttpError.hpp"
-#include "HttpRequest.hpp"
+#include "HttpHeader.hpp"
 #include "Logger.hpp"
 #include "SocketHandling.hpp"
 #include <sys/epoll.h>
@@ -57,7 +57,7 @@ private:
 	Client();
 	Client(Client const &other);
 	Client &operator=(Client const &other);
-	HttpRequest *_requestObject;
+	HttpHeader *_requestObject;
 	int _fd;
 	std::time_t _lastModified;
 };

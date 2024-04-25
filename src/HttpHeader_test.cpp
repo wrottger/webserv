@@ -1,63 +1,63 @@
-#include "HttpRequest.hpp"
+#include "HttpHeader.hpp"
 #include "HttpError.hpp"
 #include <iostream>
 #include "utest.h"
 
-UTEST(HttpRequest, setup) {
-  HttpRequest r;
+UTEST(HttpHeader, setup) {
+  HttpHeader r;
   ASSERT_FALSE(r.isComplete());
 }
 
-UTEST(HttpRequest, identifyMethod)
+UTEST(HttpHeader, identifyMethod)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET ");
   ASSERT_STREQ("GET", r.getMethod().c_str());
-  HttpRequest r2;
+  HttpHeader r2;
   r2.parseBuffer("POST ");
   ASSERT_STREQ("POST", r2.getMethod().c_str());
-  HttpRequest r3;
+  HttpHeader r3;
   r3.parseBuffer("PUT ");
   ASSERT_STREQ("PUT", r3.getMethod().c_str());
 }
 
-UTEST(HttpRequest, minimal)
+UTEST(HttpHeader, minimal)
 {
-  HttpRequest r;
+  HttpHeader r;
   ASSERT_EQ(r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n"), (size_t)35);
   EXPECT_STREQ_MSG("GET", r.getMethod().c_str(), r.getMethod().c_str());
   EXPECT_STREQ_MSG("/", r.getPath().c_str(), r.getPath().c_str());
   EXPECT_STREQ_MSG("localhost", r.getHeader("host").c_str(), r.getHeader("host").c_str());
 }
 
-UTEST(HttpRequest, null)
+UTEST(HttpHeader, null)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer(NULL);
   r.parseBuffer(NULL);
   r.parseBuffer("G");
   ASSERT_FALSE(r.isComplete());
 }
 
-UTEST(HttpRequest, size) {
-  HttpRequest r;
+UTEST(HttpHeader, size) {
+  HttpHeader r;
   size_t size = r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\n\r\n");
   size_t expected = 36;
   ASSERT_EQ(expected, size);
   ASSERT_TRUE(r.isComplete());
 }
 
-UTEST(HttpRequest, longerPath)
+UTEST(HttpHeader, longerPath)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET /rooot/user/ratntant/index.html ");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/rooot/user/ratntant/index.html", r.getPath().c_str());
 }
 
-UTEST(HttpRequest, localhost)
+UTEST(HttpHeader, localhost)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET http://localhost.com/ HTTP/1.1\r\nHost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
@@ -65,22 +65,22 @@ UTEST(HttpRequest, localhost)
   ASSERT_TRUE(r.isComplete());
 }
 
-UTEST(HttpRequest, wrongWhitespaces)
+UTEST(HttpHeader, wrongWhitespaces)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET /HTTP/1.1\r\nhost: localhost\r\n\r\n");
   EXPECT_EQ(400, r.getError().code());
-  HttpRequest r2;
+  HttpHeader r2;
   r2.parseBuffer("GET / HTTP/1.1\r\nhost :localhost\r\n\r\n");
   EXPECT_EQ(400, r2.getError().code());
-  HttpRequest r3;
+  HttpHeader r3;
   r3.parseBuffer("GET / HTTP/1.1\r\nhost: localhost \r\n\r\n");
   EXPECT_EQ(400, r3.getError().code());
 }
 
-UTEST(HttpRequest, nlLineneding)
+UTEST(HttpHeader, nlLineneding)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET / HTTP/1.1\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
@@ -88,8 +88,8 @@ UTEST(HttpRequest, nlLineneding)
   ASSERT_STREQ("localhost", r.getHeader("host").c_str());
 }
 
-UTEST(HttpRequest, parseAtOnce) {
-  HttpRequest r;
+UTEST(HttpHeader, parseAtOnce) {
+  HttpHeader r;
   size_t size = r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
   size_t expected = 35;
   ASSERT_EQ(expected, size);
@@ -99,15 +99,15 @@ UTEST(HttpRequest, parseAtOnce) {
   ASSERT_TRUE(r.isComplete());
 }
 
-UTEST(HttpRequest, wrongVersion){
-  HttpRequest r;
+UTEST(HttpHeader, wrongVersion){
+  HttpHeader r;
   r.parseBuffer("GET / HTTP/1.0\r\nhost: localhost\r\n\r\n");
   ASSERT_EQ(505, r.getError().code());
 }
 
-UTEST(HttpRequest, absolutePath)
+UTEST(HttpHeader, absolutePath)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET http://httpbin.org/index.html?a=1#title HTTP/1.1\r\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("GET", r.getMethod().c_str());
   ASSERT_STREQ("/index.html", r.getPath().c_str());
@@ -116,8 +116,8 @@ UTEST(HttpRequest, absolutePath)
   ASSERT_TRUE(r.isComplete());
 }
 
-UTEST(HttpRequest, charByChar) {
-  HttpRequest r;
+UTEST(HttpHeader, charByChar) {
+  HttpHeader r;
   r.parseBuffer("G");
   r.parseBuffer("E");
   r.parseBuffer("T");
@@ -157,27 +157,27 @@ UTEST(HttpRequest, charByChar) {
   ASSERT_STREQ("/", r.getPath().c_str());
 }
 
-UTEST(HttpRequest, missingHost) {
-  HttpRequest r;
+UTEST(HttpHeader, missingHost) {
+  HttpHeader r;
   r.parseBuffer("GET / HTTP/1.1\r\n\r\n");
   ASSERT_EQ(400, r.getError().code());
 }
 
-UTEST(HttpRequest, CRLFtooEarly) {
-  HttpRequest r;
+UTEST(HttpHeader, CRLFtooEarly) {
+  HttpHeader r;
   r.parseBuffer("GET\r\n/ HTTP/1.0");
   ASSERT_EQ(400, r.getError().code());
 }
 
-UTEST(HttpRequest, noCRLF) {
-  HttpRequest r;
+UTEST(HttpHeader, noCRLF) {
+  HttpHeader r;
   r.parseBuffer("GET / HTTP/1.1 hostname: localhost");
   ASSERT_EQ(400, r.getError().code());
 }
 
-UTEST(HttpRequest, postRequest)
+UTEST(HttpHeader, postRequest)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("POST / HTTP/1.1\r\nhost: localhost\r\ncontent-length: 5\r\n\r\n12345");
   ASSERT_STREQ("POST", r.getMethod().c_str());
   ASSERT_STREQ("/", r.getPath().c_str());
@@ -185,9 +185,9 @@ UTEST(HttpRequest, postRequest)
   ASSERT_STREQ("5", r.getHeader("content-length").c_str());
 }
 
-UTEST(HttpRequest, percentDecode)
+UTEST(HttpHeader, percentDecode)
 {
-  HttpRequest r;
+  HttpHeader r;
   r.parseBuffer("GET /%20 HTTP/1.1\r\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("/ ", r.getPath().c_str());
 }
