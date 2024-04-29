@@ -31,41 +31,44 @@ void EventHandler::start() {
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			EventsData * eventData = static_cast<EventsData *>(events[n].data.ptr);
 			// Accept new client
-			if (eventData->eventType == LISTENING) {
-				LOG_DEBUG("New Trigger on Listeningsocket");
-				acceptNewClient(eventData);
-				continue;
-			}
-			// Read from client
-			if (eventData->eventType == CLIENT && events[n].events & EPOLLIN) {
-				readFromClient(*eventData, cleanUpList);
-				continue;
-			}
-			// Write to client
-			if (eventData->eventType == CLIENT && events[n].events & EPOLLOUT) {
-				Client *client = static_cast<Client *>((*eventData).objectPointer);
-				// Response // DELETE: DEBUG
-				std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-											"<body><h1>Hello, World!</h1></body></html>";
-
-				std::ostringstream oss;
-				oss << responseBody.size();
-
-				std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-											"Content-Type: text/html; charset=UTF-8\r\n"
-											"Content-Length: " +
-						oss.str() + "\r\n\r\n" + responseBody;
-				// TODO: checken nach Header ob Methode ueberhaupt erlaubt
-				if (client->isHeaderComplete()) {
-					// Reponse logic
-					// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
-					// client->updateTime();
-					if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-						perror("Send");
-						// cleanUpList.push_back(events[n].data.fd);
+			switch(eventData->eventType) {
+				case LISTENING:
+					acceptNewClient(eventData);
+					continue;
+				case CLIENT:
+					if (events[n].events & EPOLLIN) {
+						readFromClient(*eventData, cleanUpList);
+						continue;
 					}
-				// cleanUpList.push_back(events[n].data.fd);
-				}
+					if (events[n].events & EPOLLOUT) {
+						Client *client = static_cast<Client *>((*eventData).objectPointer);
+						// Response // DELETE: DEBUG
+						std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
+													"<body><h1>Hello, World!</h1></body></html>";
+
+						std::ostringstream oss;
+						oss << responseBody.size();
+
+						std::string httpResponse = "HTTP/1.1 200 OK\r\n"
+													"Content-Type: text/html; charset=UTF-8\r\n"
+													"Content-Length: " +
+								oss.str() + "\r\n\r\n" + responseBody;
+						// TODO: checken nach Header ob Methode ueberhaupt erlaubt
+						if (client->isHeaderComplete()) {
+							// Reponse logic
+							// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
+							// client->updateTime();
+							if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+								perror("Send");
+								// cleanUpList.push_back(events[n].data.fd);
+							}
+						// cleanUpList.push_back(events[n].data.fd);
+						}
+					}
+					break;
+				case CGI:
+					LOG_DEBUG("CGI triggered");
+					break;
 			}
 		}
 		processCleanUpList(cleanUpList);
