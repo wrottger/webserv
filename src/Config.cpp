@@ -484,7 +484,7 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                             if (it->_value == "GET" || it->_value == "POST" || it->_value == "PUT" || it->_value == "DELETE")
                             {
                                 if (!methods.empty())
-                                    methods += ":";
+                                    methods += " ";
                                 methods += it->_value;
                                 it++;
                             }
@@ -512,13 +512,19 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                 case CGI:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing interpreter path in cgi directive", it - 2);
+                        it++;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
+                        pair.second += " " + (it - 1)->_value;
+                        block._directives.push_back(pair);
                     }
                     else
-                        error("Syntax error: cgi directive requires a value", it);
+                        error("Syntax error: cgi directive requires file extension + interpreter path", it);
                     break;
                 case Semicolon:
                 {
