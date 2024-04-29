@@ -11,7 +11,7 @@ bool Config::isLoaded(void) const
     return _isLoaded;
 }
 
-const std::vector<Node>& Config::getNodes(void) const
+const std::vector<Config::Node>& Config::getNodes(void) const
 {
     return _nodes;
 }
@@ -24,7 +24,7 @@ Config* Config::getInstance()
         return _instance;
 }
 
-std::vector<ServerBlock>& Config::getServerBlocks(void)
+std::vector<Config::ServerBlock>& Config::getServerBlocks(void)
 {
     return _serverBlocks;
 }

@@ -15,6 +15,7 @@
 #include "Config.hpp"
 #include "colors.hpp"
 #include "utest.h"
+#include "Logger.hpp"
 
 UTEST_STATE();
 
@@ -38,6 +39,7 @@ int main(int argc, char *argv[], char *envp[])
 	  return 1;
   config->printProgressBar(1, 1);
   std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
+
   LOG_INFO("Server started");
   SocketHandling sockets(config->getServerBlocks());
   EventHandler event(sockets);
