@@ -4,6 +4,7 @@
 #include <iostream>
 #include <wait.h>
 #include <vector>
+#include "Logger.hpp"
 
 
 #define PARENTS_END 0
@@ -14,20 +15,20 @@ int main() {
 	// char* const argv[] = {(char*)"python3", (char*)"script.py", NULL};
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0) {
-		std::cerr << "Failed to create socket pair" << std::endl;
+		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
 		return 1;
 	}
 
 	pid_t pid = fork();
 	if (pid < 0) {
-		std::cerr << "Failed to fork" << std::endl;
+		LOG_ERROR_WITH_TAG("Failed to fork", "CGI");
 		return 1;
 	}
 // Child
 	if (pid != 0) {
 		close(sockets[PARENTS_END]);  // Close parent's end of the socket pair
 		std::string executable = "/usr/bin/python3";
-   		std::string firstarg = "script.py";
+		std::string firstarg = "script.py";
 		std::vector<char *> argv;
 		std::string big = "0";
 		int i = 0;
