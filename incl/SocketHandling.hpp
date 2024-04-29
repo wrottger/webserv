@@ -16,6 +16,8 @@
 # include <stdexcept>
 # include <signal.h>
 # include "Config.hpp"
+# include "EventsData.hpp"
+# include <list>
 
 class SocketHandling
 {
@@ -24,6 +26,7 @@ class SocketHandling
 		std::vector<Config::ServerBlock> &_config;
 		std::vector<int> _openFds;
 		int _epollFd;
+		std::list<EventsData *> eventDataList;
 
 		SocketHandling(SocketHandling const &other);
 		SocketHandling operator =(SocketHandling const &other);

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <list>
 #include <new>
+#include "EventsData.hpp"
 
 #define MAX_EVENTS 64
 #define EPOLL_TIMEOUT 300
@@ -27,7 +28,7 @@ public:
 private:
 	int _epollFd;
 	std::vector<int> _listeningSockets;
-	std::list<EventHandler::Client *> _clients;
+	std::list<EventsData *> _eventDataList;
 
 	EventHandler();
 	EventHandler(EventHandler const &other);
@@ -35,11 +36,10 @@ private:
 
 	bool isListeningSocketTriggered(epoll_event events_arr[], int n) const;
 	void handleTimeouts();
-	void handleToCloseConnections(std::list<int> &cleanUpList);
+	void processCleanUpList(std::list<EventsData *> &cleanUpList);
 	void destroyClient(EventHandler::Client *client);
-	void acceptNewClient(epoll_event events_arr[], int n);
-	bool readFromClient(epoll_event events[], int n, std::list<int> &cleanUpList);
-	Client *findClient(int fd);
+	void acceptNewClient(EventsData * eventData);
+	void readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList);
 };
 
 class EventHandler::Client {
