@@ -26,7 +26,6 @@ int main() {
 // Child
 	if (pid != 0) {
 		close(sockets[PARENTS_END]);  // Close parent's end of the socket pair
-
 		std::string executable = "/usr/bin/python3";
    		std::string firstarg = "script.py";
 		std::vector<char *> argv;
