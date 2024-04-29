@@ -19,8 +19,6 @@ EventHandler::~EventHandler() {
 void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
-	// bool wasListenSocket;
-	// std::list<int> cleanUpList;
 	std::list<EventsData *> cleanUpList;
 
 	signal(SIGPIPE, SIG_IGN);
@@ -98,7 +96,7 @@ EventHandler &EventHandler::operator=(EventHandler const &other) {
 // 	}
 // }
 
-void EventHandler::processCleanUpList(std::list<EventsData *> &cleanUpList) { //TODO: REFACTOR
+void EventHandler::processCleanUpList(std::list<EventsData *> &cleanUpList) {
 	for (std::list<EventsData *>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
 		for (std::list<EventsData *>::iterator itAllEvents = _eventDataList.begin(); itAllEvents != _eventDataList.end(); itAllEvents++) {
 			if (*itCleanUp == *itAllEvents) {
@@ -145,7 +143,6 @@ void EventHandler::acceptNewClient(EventsData * eventData) {
 			throw std::runtime_error("EventHandler: epoll ADD failed.");
 			return;
 		}
-		// _clients.push_back(newClient); //TODO: new list with all EventsData
 		LOG_DEBUG("New client connection");
 	} catch (...) {
 		delete newData;
@@ -173,14 +170,6 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 	}
 }
 
-// EventHandler::Client *EventHandler::findClient(int fd) {
-// 	for (std::list<EventHandler::Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
-// 		if ((*it)->getFd() == fd) {
-// 			return *it;
-// 		}
-// 	}
-// 	return NULL;
-// }
 
 /********************************************************************/
 /*                          CLIENT                                  */

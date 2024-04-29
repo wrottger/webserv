@@ -31,7 +31,6 @@ void SocketHandling::setUpSocket(int port)
 {
 	int opt = 1, socketFd;
 	struct sockaddr_in addr;
-	// socklen_t addrlen = sizeof(addr);
 
 	if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
 		throw std::runtime_error("SetUpSocket: socket failed.");
@@ -83,8 +82,7 @@ void SocketHandling::setUpEpoll() {
 	if (_epollFd == -1) {
 		throw std::runtime_error("SetUpEpoll: epoll_create failed.");
 	}
-	ev.events = EPOLLIN;
-	// ev.events = EPOLLIN | EPOLLOUT;
+	ev.events = EPOLLIN | EPOLLOUT;
 
 	size_t openSocketCount = _openFds.size();
 	for (size_t i = 0; i < openSocketCount; i++) {

@@ -28,7 +28,6 @@ public:
 private:
 	int _epollFd;
 	std::vector<int> _listeningSockets;
-	// std::list<EventHandler::Client *> _clients;
 	std::list<EventsData *> _eventDataList;
 
 	EventHandler();
@@ -40,9 +39,7 @@ private:
 	void processCleanUpList(std::list<EventsData *> &cleanUpList);
 	void destroyClient(EventHandler::Client *client);
 	void acceptNewClient(EventsData * eventData);
-	// bool readFromClient(epoll_event events[], int n, std::list<int> &cleanUpList);
 	void readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList);
-	// Client *findClient(int fd);
 };
 
 class EventHandler::Client {
