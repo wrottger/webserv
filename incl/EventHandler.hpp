@@ -10,6 +10,7 @@
 #include <iostream>
 #include <list>
 #include <new>
+#include "EventsData.hpp"
 
 #define MAX_EVENTS 64
 #define EPOLL_TIMEOUT 300
@@ -28,6 +29,7 @@ private:
 	int _epollFd;
 	std::vector<int> _listeningSockets;
 	std::list<EventHandler::Client *> _clients;
+	std::list<EventsData *> eventDataList;
 
 	EventHandler();
 	EventHandler(EventHandler const &other);

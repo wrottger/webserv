@@ -69,22 +69,31 @@ SocketHandling::~SocketHandling() {
 	for (size_t i = 0; i < _openFds.size(); i++) {
 		close(_openFds[i]);
 	}
+	for (std::list<EventsData *>::iterator it = eventDataList.begin(); it != eventDataList.end(); it++) {
+		delete *it;
+	}
+	eventDataList.clear();
 }
 
 void SocketHandling::setUpEpoll() {
 	struct epoll_event ev;
+	EventsData * newData;
 
 	_epollFd = epoll_create(1);
 	if (_epollFd == -1) {
 		throw std::runtime_error("SetUpEpoll: epoll_create failed.");
 	}
-
 	ev.events = EPOLLIN;
 	// ev.events = EPOLLIN | EPOLLOUT;
 
 	size_t openSocketCount = _openFds.size();
 	for (size_t i = 0; i < openSocketCount; i++) {
-		ev.data.fd = _openFds[i];
+		newData = new EventsData;
+		newData->fd = _openFds[i];
+		newData->eventType = LISTENING;
+		newData->objectPointer = NULL;
+		ev.data.ptr = newData;
+		eventDataList.push_back(newData);
 		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, _openFds[i], &ev) == -1) {
 			throw std::runtime_error("SetUpEpoll: epoll_ctl failed.");
 		}

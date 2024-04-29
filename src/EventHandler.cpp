@@ -9,7 +9,12 @@ EventHandler::EventHandler(SocketHandling &sockets) {
 	_listeningSockets = sockets.getOpenFds();
 }
 
-EventHandler::~EventHandler() {}
+EventHandler::~EventHandler() {
+	for (std::list<EventsData *>::iterator it = eventDataList.begin(); it != eventDataList.end(); it++) {
+		delete *it;
+	}
+	eventDataList.clear();
+}
 
 void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
@@ -134,6 +139,7 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
 	size_t listenSocketSize = _listeningSockets.size();
+	EventsData * newData;
 
 	for (size_t i = 0; i < listenSocketSize; i++) {
 		if (_listeningSockets[i] == events_arr[n].data.fd) {
@@ -143,7 +149,13 @@ void EventHandler::acceptNewClient(epoll_event events_arr[], int n) {
 				return;
 			}
 			ev.events = EPOLLIN | EPOLLOUT;
-			ev.data.fd = newConnectionFd;
+			// ev.data.fd = newConnectionFd;
+			newData = new EventsData;
+			newData->fd = newConnectionFd;
+			newData->eventType = LISTENING;
+			newData->objectPointer = NULL;
+			ev.data.ptr = newData;
+			eventDataList.push_back(newData);
 			if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
 				close(newConnectionFd);
 				LOG_ERROR("EventHandler: epoll ADD failed.");
