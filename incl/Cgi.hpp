@@ -14,6 +14,8 @@
 #include <iostream>
 #include <vector>
 
+#define SEND_SIZE 8192
+
 class Cgi {
 private:
 	std::string _outputBuffer;
@@ -24,6 +26,7 @@ private:
 	bool _isFinished;
 	int _errorCode;
 	static const time_t _timeout = 5;
+	const std::string _bodyBuffer;
 
 private:
 	Cgi();
@@ -31,7 +34,7 @@ private:
 	Cgi &operator=(const Cgi &other);
 	char **createEnvironment(const HttpHeader *headerObject);
 	char **createArguments();
-	void executeCgi(const std::string &bodyBuffer, Client *client);
+	void executeCgi(Client *client);
 	int executeChild(const HttpHeader *headerObject);
 	
 
