@@ -25,6 +25,9 @@ public:
 	EventHandler(SocketHandling &sockets);
 	~EventHandler();
 	void start();
+	EventsData *createNewEvent(int fd, EventType type, Client *client);
+	void addEventToList(EventsData *eventData);
+	int getEpollFd() const;
 
 private:
 	int _epollFd;
@@ -41,7 +44,6 @@ private:
 	void destroyClient(Client *client);
 	void acceptNewClient(EventsData *eventData);
 	void readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList);
-	void addToEpoll(int fd, int type, Client *client);
 };
 
 #endif
