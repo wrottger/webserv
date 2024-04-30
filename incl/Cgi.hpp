@@ -2,7 +2,7 @@
 #define CGI_HPP
 
 #include "Config.hpp"
-#include "HttpHeader.hpp"
+#include "EventHandler.hpp"
 #include "Logger.hpp"
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -30,7 +30,7 @@ private:
 	int excecuteChild(const std::string &bodyBuffer, const HttpHeader &requestObject);
 
 public:
-	Cgi(const std::string &bodyBuffer, const int &epollFd, const HttpHeader &requestObject);
+	Cgi(const std::string &bodyBuffer, Client *client);
 	~Cgi();
 
 	bool isFinished() const;

@@ -1,4 +1,5 @@
 #include "EventHandler.hpp"
+#include "Client.hpp"
 
 EventHandler::EventHandler() {}
 
@@ -109,7 +110,7 @@ void EventHandler::processCleanUpList(std::list<EventsData *> &cleanUpList) {
 	}
 }
 
-void EventHandler::destroyClient(EventHandler::Client *client) {
+void EventHandler::destroyClient(Client *client) {
 	epoll_ctl(_epollFd, EPOLL_CTL_DEL, client->getFd(), NULL);
 	delete client;
 }
@@ -168,47 +169,4 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 		client->updateTime();
 		client->parseBuffer(buffer);
 	}
-}
-
-/********************************************************************/
-/*                          CLIENT                                  */
-/********************************************************************/
-
-EventHandler::Client::Client() {}
-
-EventHandler::Client::Client(int fd, EventHandler *eventHandler) :
-		_fd(fd),
-		_eventHandler(eventHandler) {
-	_requestObject = new HttpHeader;
-	updateTime();
-}
-
-EventHandler::Client::~Client() {
-	close(_fd);
-	delete _requestObject;
-}
-
-int EventHandler::Client::getFd() {
-	return _fd;
-}
-
-std::time_t EventHandler::Client::getLastModified() {
-	return _lastModified;
-}
-
-void EventHandler::Client::updateTime() {
-	_lastModified = std::time(0);
-}
-
-bool EventHandler::Client::isHeaderComplete() {
-	return _requestObject->isComplete();
-}
-
-void EventHandler::Client::parseBuffer(const char *buffer) {
-	_requestObject->parseBuffer(buffer);
-}
-
-EventHandler::Client &EventHandler::Client::operator=(Client const &other) {
-	(void)other;
-	return *this;
 }
