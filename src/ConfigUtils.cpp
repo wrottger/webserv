@@ -194,6 +194,12 @@ std::string Config::getFilePath(const std::string filePath, const std::string ho
     return result;
 }
 
+std::string Config::getDir(const std::string filePath, const std::string host)
+{
+    std::string path = getFilePath(filePath, host);
+    return path.substr(0, path.find_last_of("/"));
+}
+
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
 {
 	std::stringstream ss;

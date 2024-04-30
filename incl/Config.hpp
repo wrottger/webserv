@@ -66,6 +66,7 @@ class Config {
         bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
         std::string getRootDirectory(const std::string route, const std::string host);
         std::string getFilePath(const std::string filePath, const std::string host);
+        std::string getDir(const std::string filePath, const std::string host);
         bool isValidPath(const std::string& path);
 
         // config parsing methods
