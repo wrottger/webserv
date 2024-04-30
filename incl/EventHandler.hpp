@@ -6,6 +6,7 @@
 #include "HttpHeader.hpp"
 #include "Logger.hpp"
 #include "SocketHandling.hpp"
+#include "Cgi.hpp"
 #include <sys/epoll.h>
 #include <ctime>
 #include <iostream>
