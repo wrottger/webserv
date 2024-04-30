@@ -14,8 +14,4 @@ print("<pre>")
 for key, value in os.environ.items():
     print(f"{key}: {value}")
 print("</pre>")
-print("<h3>Standard Input:</h3>")
-print("<pre>")
-#print(sys.stdin.read())
-print("</pre>")
 print("</body></html>")

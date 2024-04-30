@@ -33,10 +33,11 @@ char **Cgi::createArguments() {
 }
 
 Cgi::Cgi(const std::string &bodyBuffer, Client *client) :
-		_isFinished(false), _errorCode(0) {
+		_isFinished(false), _errorCode(0),
+		_bodyBuffer(bodyBuffer) {
 			_sockets[0] = -1;
 			_sockets[1] = -1;
-	executeCgi(bodyBuffer, client);
+	executeCgi(client);
 }
 
 Cgi::~Cgi() {
@@ -58,7 +59,7 @@ int Cgi::getErrorCode() const {
 	return _errorCode;
 }
 
-void Cgi::executeCgi(const std::string &bodyBuffer, Client *client) {
+void Cgi::executeCgi(Client *client) {
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
 		_isFinished = true;
@@ -98,7 +99,7 @@ void Cgi::executeCgi(const std::string &bodyBuffer, Client *client) {
 		return;
 	} else if (pid != 0) { // Parent process
 		close(_sockets[1]); // Close child's end of the socket pair
-		(void)bodyBuffer;
+		
 	} else { // Child process
 		executeChild(client->getHeaderObject());
 	}
