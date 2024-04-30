@@ -176,8 +176,8 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 
 EventHandler::Client::Client() {}
 
-EventHandler::Client::Client(int fd, EventHandler * eventHandler) :
-		_fd(fd), 
+EventHandler::Client::Client(int fd, EventHandler *eventHandler) :
+		_fd(fd),
 		_eventHandler(eventHandler) {
 	_requestObject = new HttpHeader;
 	updateTime();
