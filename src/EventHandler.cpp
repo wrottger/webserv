@@ -137,7 +137,7 @@ void EventHandler::acceptNewClient(EventsData *eventData) {
 		newData->objectPointer = NULL;
 		ev.data.ptr = newData;
 		_eventDataList.push_back(newData);
-		newClient = new Client(newConnectionFd);
+		newClient = new Client(newConnectionFd, this);
 		newData->objectPointer = newClient;
 		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
 			LOG_ERROR("EventHandler: epoll ADD failed.");
@@ -176,8 +176,9 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 
 EventHandler::Client::Client() {}
 
-EventHandler::Client::Client(int fd) :
-		_fd(fd) {
+EventHandler::Client::Client(int fd, EventHandler * eventHandler) :
+		_fd(fd), 
+		_eventHandler(eventHandler) {
 	_requestObject = new HttpHeader;
 	updateTime();
 }

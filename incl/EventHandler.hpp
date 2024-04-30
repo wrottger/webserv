@@ -40,11 +40,12 @@ private:
 	void destroyClient(EventHandler::Client *client);
 	void acceptNewClient(EventsData *eventData);
 	void readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList);
+	void addToEpoll(int fd, int type, Client * client);
 };
 
 class EventHandler::Client {
 public:
-	Client(int fd);
+	Client(int fd, EventHandler * eventHandler);
 	~Client();
 	int getFd();
 	std::time_t getLastModified();
@@ -60,6 +61,7 @@ private:
 	HttpHeader *_requestObject;
 	int _fd;
 	std::time_t _lastModified;
+	EventHandler * _eventHandler;
 };
 
 #endif
