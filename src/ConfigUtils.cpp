@@ -63,20 +63,28 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string route, std::st
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use getClosestPathMatch without a valid Config instance.");
     std::vector<std::pair<std::string, position> > paths;
-    for (size_t s_count = 0; s_count != config->_serverBlocks.size(); s_count++) //iterate through server blocks
+    for (size_t server = 0; server != config->_serverBlocks.size(); server++) //iterate through server blocks
     {
-        for (size_t d = 0; d != config->_serverBlocks[s_count]._directives.size(); d++) //iterate through location blocks
+        for (size_t directive = 0; directive != config->_serverBlocks[server]._directives.size(); directive++) //iterate through location blocks
         {
-            if (config->_serverBlocks[s_count]._directives[d].first == ServerName && config->_serverBlocks[s_count]._directives[d].second == host)
+            if (config->_serverBlocks[server]._directives[directive].first == ServerName && config->_serverBlocks[server]._directives[directive].second == host)
             {
-                for (size_t l_count = 0; l_count != config->_serverBlocks[s_count]._locations.size(); l_count++)
+                for (size_t location = 0; location != config->_serverBlocks[server]._locations.size(); location++)
                 {
-                    if (route.find(config->_serverBlocks[s_count]._locations[l_count]._path) == 0)
+                    std::string locationPath = config->_serverBlocks[server]._locations[location]._path;
+
+                    // Add trailing slashes to route and locationPath if they don't have one
+                    if (!route.empty() && route[route.size() - 1] != '/')
+                        route += '/';
+                    if (!locationPath.empty() && locationPath[locationPath.size() - 1] != '/')
+                        locationPath += '/';
+
+                    if (route.find(locationPath) == 0)
                     {
                         position position;
-                        position.serverBlock = s_count;
-                        position.locationBlock = l_count;
-                        paths.push_back(std::make_pair(config->_serverBlocks[s_count]._locations[l_count]._path, position));
+                        position.serverBlock = server;
+                        position.locationBlock = location;
+                        paths.push_back(std::make_pair(locationPath, position));
                     }
                 }
             }
@@ -91,6 +99,7 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string route, std::st
         if (paths[i].first.size() > temp.first.size())
             temp = paths[i];
     }
+    std::cout << "temp.first: " << temp.first << std::endl;
     return std::make_pair(temp.second.serverBlock, temp.second.locationBlock);
 }
 
@@ -112,26 +121,83 @@ bool Config::isDirectiveAllowed(const std::string& route, const std::string& hos
     return false;
 }
 
+bool Config::isValidPath(const std::string& path)
+{
+    std::string specialChars = "*?|<>:\"~\t ";
+    std::string controlChars = "";
+
+    for (char c = 0; c < 32; ++c)
+    {
+        controlChars += c;
+    }
+    controlChars += 127;
+
+    if (path[0] != '/') // check if the path is absolute
+        return false;
+    else if (path.find("/.") != std::string::npos) // prevent hidden files
+        return false;
+    else if (path.find("..") != std::string::npos) // prevent directory traversal
+        return false;
+    else if (path.find("//") != std::string::npos)
+        return false;
+    else if (path.find_first_of(specialChars) != std::string::npos) // check for special characters
+        return false;
+    else if (path.find_first_of(controlChars) != std::string::npos) // check for control characters
+        return false;
+    return true;
+}
 // returns the root directory for the given route and host or empty string if not found (location block directives take precedence over server block directives)
 std::string Config::getRootDirectory(const std::string route, const std::string host)
 {
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use getRootDirectory without a valid Config instance.");
-    std::pair<size_t, size_t> l = config->getClosestPathMatch(route, host);
-    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
+    std::pair<size_t, size_t> position = config->getClosestPathMatch(route, host); // first = server block index, second = location block index
+    std::cout << "position.first: " << position.first << " position.second: " << position.second << std::endl;
+    if (position.first == std::numeric_limits<size_t>::max() || position.second == std::numeric_limits<size_t>::max())
         return "";
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    for (size_t i = 0; i != config->_serverBlocks[position.first]._locations[position.second]._directives.size(); i++) // iterate through location block directives
     {
-        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == Root)
-            return config->_serverBlocks[l.first]._locations[l.second]._directives[i].second;
+        if (config->_serverBlocks[position.first]._locations[position.second]._directives[i].first == Root)
+            return config->_serverBlocks[position.first]._locations[position.second]._directives[i].second;
     }
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    for (size_t i = 0; i != config->_serverBlocks[position.first]._directives.size(); i++) // iterate through server block directives
     {
-        if (config->_serverBlocks[l.first]._directives[i].first == Root)
-            return config->_serverBlocks[l.first]._directives[i].second;
+        if (config->_serverBlocks[position.first]._directives[i].first == Root)
+            return config->_serverBlocks[position.first]._directives[i].second;
     }
     return "";
+}
+
+std::string Config::getFilePath(const std::string filePath, const std::string host)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use getFilePath without a valid Config instance.");
+    
+    std::string root = config->getRootDirectory(filePath, host);
+    if (root.empty())
+        throw std::runtime_error("No root directory found for filePath: " + filePath + ", host: " + host);
+
+    // Ensure root does not end with a slash
+    if (!root.empty() && root[root.size() - 1] == '/')
+        root.erase(root.size() - 1);
+
+    // Ensure filePath does not start with a slash
+    std::string normalizedFilePath = filePath;
+    if (!normalizedFilePath.empty() && normalizedFilePath[0] == '/')
+        normalizedFilePath = normalizedFilePath.substr(1);
+
+    // Concatenate root and normalizedFilePath
+    std::string result = root + "/" + normalizedFilePath;
+
+    return result;
+}
+
+std::string Config::getDir(const std::string filePath, const std::string host)
+{
+    std::string path = getFilePath(filePath, host);
+    return path.substr(0, path.find_last_of("/"));
 }
 
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)

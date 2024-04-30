@@ -397,11 +397,13 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
         {
             if (it->_token != Data)
                 error("Syntax error: expected path in location block", it);
-            else
+            else if (isValidPath(it->_value))
             {
                 block._path = it->_value;
                 it++;
             }
+            else
+                error("Syntax error: invalid path in location block", it);
         }
         else
         {
@@ -421,7 +423,10 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                 case Root:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(Root, (it + 1)->_value));
+                        if (isValidPath((it + 1)->_value))
+                            block._directives.push_back(std::make_pair(Root, (it + 1)->_value));
+                        else
+                            error("Syntax error: invalid path in root directive", it + 1);
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after root directive", it - 2);
