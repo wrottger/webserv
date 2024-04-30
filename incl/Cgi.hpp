@@ -17,18 +17,23 @@
 class Cgi {
 private:
 	std::string _outputBuffer;
+	static const size_t _maxBufferSize = 1024 * 1024;
+	size_t _currentBufferSize;
 	int _sockets[2];
-	time_t _lastModified;
+	time_t _timeCreated;
 	bool _isFinished;
 	int _errorCode;
+	static const time_t _timeout = 5;
 
 private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
-	const char *createEnviroment();
+	char **createEnvironment(const HttpHeader *headerObject);
+	char **createArguments();
 	void executeCgi(const std::string &bodyBuffer, Client *client);
-	int executeChild(const std::string &bodyBuffer, const HttpHeader *headerObject);
+	int executeChild(const HttpHeader *headerObject);
+	
 
 public:
 	Cgi(const std::string &bodyBuffer, Client *client);

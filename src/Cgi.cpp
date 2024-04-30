@@ -1,12 +1,42 @@
 #include "Cgi.hpp"
 
-const char *Cgi::createEnviroment() {
-	return NULL;
+#include <cstdlib>
+#include <cstring>
+
+char** Cgi::createEnvironment(const HttpHeader *headerObject) {
+    (void)headerObject;
+	char** env = new char*[12];
+    env[0] = strdup("REQUEST_METHOD=GET");
+    env[1] = strdup("QUERY_STRING=param1=value1&param2=value2");
+    env[2] = strdup("CONTENT_TYPE=application/x-www-form-urlencoded");
+    env[3] = strdup("CONTENT_LENGTH=");
+    env[4] = strdup("SCRIPT_NAME=/path/to/script");
+    env[5] = strdup("REQUEST_URI=/path/to/script?param1=value1&param2=value2");
+    env[6] = strdup("DOCUMENT_URI=/path/to/script");
+    env[7] = strdup("DOCUMENT_ROOT=/path/to/webroot");
+    env[8] = strdup("SERVER_PROTOCOL=HTTP/1.1");
+    env[9] = strdup("REMOTE_ADDR=127.0.0.1");
+    env[10] = strdup("SERVER_NAME=localhost");
+    env[11] = strdup("SERVER_PORT=80");
+    env[12] = NULL; // The environment list must be NULL-terminated
+
+    return env;
+}
+
+char **Cgi::createArguments() {
+	    char** argv = new char*[3];
+    argv[0] = strdup("/bin/python3");
+    argv[1] = strdup("script.py");
+    argv[2] = NULL; // The environment list must be NULL-terminated
+
+	return argv;
 }
 
 Cgi::Cgi(const std::string &bodyBuffer, Client *client) :
-		_isFinished(false), _errorCode(0), _sockets{ -1, -1 } {
-	executeCgi(bodyBuffer, epollFd, requestObject);
+		_isFinished(false), _errorCode(0) {
+			_sockets[0] = -1;
+			_sockets[1] = -1;
+	executeCgi(bodyBuffer, client);
 }
 
 Cgi::~Cgi() {
@@ -56,6 +86,9 @@ void Cgi::executeCgi(const std::string &bodyBuffer, Client *client) {
 		return;
 	}
 
+	// Update the last modified time
+	_timeCreated = std::time(0);
+
 	// Fork the process
 	pid_t pid = fork();
 	if (pid < 0) {
@@ -65,12 +98,13 @@ void Cgi::executeCgi(const std::string &bodyBuffer, Client *client) {
 		return;
 	} else if (pid != 0) { // Parent process
 		close(_sockets[1]); // Close child's end of the socket pair
+		(void)bodyBuffer;
 	} else { // Child process
-		executeChild(bodyBuffer, client->getHeaderObject());
+		executeChild(client->getHeaderObject());
 	}
 }
 
-int Cgi::executeChild(const std::string &bodyBuffer, const HttpHeader *headerObject) {
+int Cgi::executeChild(const HttpHeader *headerObject) {
 	close(_sockets[0]); // Close parent's end of the socket pair
 	dup2(_sockets[1], STDIN_FILENO);
 	dup2(_sockets[1], STDOUT_FILENO);
@@ -87,7 +121,14 @@ int Cgi::executeChild(const std::string &bodyBuffer, const HttpHeader *headerObj
 		std::exit(255);
 	}
 
-	// const char *envp[] = createEnviroment();
+	// Set the enviroment variables
+	char **envp = createEnvironment(headerObject);
+	char **argv = createArguments();
+
+	execve(argv[0], argv, envp);
+	LOG_ERROR_WITH_TAG("Failed to execve CGI", "CGI");
+
+	std::exit(255);
 
 	return 0;
 }
