@@ -1,6 +1,7 @@
 #ifndef EVENTHANDLER_HPP
 #define EVENTHANDLER_HPP
 
+#include "EventsData.hpp"
 #include "HttpError.hpp"
 #include "HttpHeader.hpp"
 #include "Logger.hpp"
@@ -10,7 +11,6 @@
 #include <iostream>
 #include <list>
 #include <new>
-#include "EventsData.hpp"
 
 #define MAX_EVENTS 64
 #define EPOLL_TIMEOUT 300
@@ -38,7 +38,7 @@ private:
 	void handleTimeouts();
 	void processCleanUpList(std::list<EventsData *> &cleanUpList);
 	void destroyClient(EventHandler::Client *client);
-	void acceptNewClient(EventsData * eventData);
+	void acceptNewClient(EventsData *eventData);
 	void readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList);
 };
 
