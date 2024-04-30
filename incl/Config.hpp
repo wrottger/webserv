@@ -65,6 +65,8 @@ class Config {
         std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
         bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
         std::string getRootDirectory(const std::string route, const std::string host);
+        std::string getFilePath(const std::string filePath, const std::string host);
+        bool isValidPath(const std::string& path);
 
         // config parsing methods
         void parseConfigFile(std::string filename);
