@@ -20,6 +20,8 @@ void EventHandler::start() {
 	int epollTriggerCount;
 	std::list<EventsData *> cleanUpList;
 
+	Cgi *testCgi = NULL;
+
 	signal(SIGPIPE, SIG_IGN);
 	while (true) {
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT);
@@ -36,7 +38,11 @@ void EventHandler::start() {
 					continue;
 				case CLIENT:
 					if (events[n].events & EPOLLIN) {
+						Client *client = static_cast<Client *>((*eventData).objectPointer);
 						readFromClient(*eventData, cleanUpList);
+						std::string testbody = "miau kakao body";
+						if (testCgi == NULL)
+							testCgi = new Cgi(testbody, client);
 						continue;
 					}
 					if (events[n].events & EPOLLOUT) {
@@ -55,10 +61,16 @@ void EventHandler::start() {
 						// TODO: checken nach Header ob Methode ueberhaupt erlaubt
 						if (client->isHeaderComplete()) {
 							// Reponse logic
+							if (client->getHeaderObject()->getMethod() == "GET") {
+								if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+									perror("Send");
+								}
+							}
+							if (client->getHeaderObject()->getMethod() == "POST") {
+								// std::string testbody = "miau kakao body";
+								// Cgi test(testbody, client);
 							// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
 							// client->updateTime();
-							if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-								perror("Send");
 								// cleanUpList.push_back(events[n].data.fd);
 							}
 							// cleanUpList.push_back(events[n].data.fd);
@@ -67,6 +79,11 @@ void EventHandler::start() {
 					break;
 				case CGI:
 					LOG_DEBUG("CGI triggered");
+					if (events[n].events & EPOLLIN) {
+						char buffer[1000] = {0};
+						std::cout << read(eventData->fd, buffer, 1000);
+						std::cout << "buffer: " << buffer << std::endl;
+					}
 					break;
 			}
 		}
@@ -168,6 +185,8 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 		Client *client = static_cast<Client *>(eventData.objectPointer);
 		client->updateTime();
 		client->parseBuffer(buffer);
+		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
+		LOG_BUFFER(bufferDebug);
 	}
 }
 

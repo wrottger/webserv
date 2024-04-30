@@ -25,9 +25,11 @@ char** Cgi::createEnvironment(const HttpHeader *headerObject) {
 
 char **Cgi::createArguments() {
 	    char** argv = new char*[3];
-    argv[0] = strdup("/bin/python3");
-    argv[1] = strdup("script.py");
-    argv[2] = NULL; // The environment list must be NULL-terminated
+    // argv[0] = strdup("/bin/python3");
+    // argv[1] = strdup("overflow.py");
+    // argv[2] = NULL; // The environment list must be NULL-terminated
+	    argv[0] = strdup("steve");
+    	argv[1] = NULL; // The environment list must be NULL-terminated
 
 	return argv;
 }
@@ -41,14 +43,15 @@ Cgi::Cgi(const std::string &bodyBuffer, Client *client) :
 }
 
 Cgi::~Cgi() {
-	if (_sockets[0] != -1) {
-		epoll_ctl(_sockets[0], EPOLL_CTL_DEL, _sockets[0], NULL);
-		close(_sockets[0]);
-	}
-	if (_sockets[1] != -1) {
-		epoll_ctl(_sockets[1], EPOLL_CTL_DEL, _sockets[1], NULL);
-		close(_sockets[1]);
-	}
+	// TODO: fix epoll delete with epollfd
+	// if (_sockets[0] != -1) {
+	// 	epoll_ctl(7, EPOLL_CTL_DEL, _sockets[0], NULL);
+	// 	close(_sockets[0]);
+	// }
+	// if (_sockets[1] != -1) {
+	// 	epoll_ctl(7, EPOLL_CTL_DEL, _sockets[1], NULL);
+	// 	close(_sockets[1]);
+	// }
 }
 
 bool Cgi::isFinished() const {
@@ -67,6 +70,7 @@ void Cgi::executeCgi(Client *client) {
 		return;
 	}
 
+	LOG_ALARM("ALARM CGI EXECUTING");
 	// Add the socket to epoll event list and create an EventData object for it
 	try {
 		EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
@@ -99,17 +103,18 @@ void Cgi::executeCgi(Client *client) {
 		return;
 	} else if (pid != 0) { // Parent process
 		close(_sockets[1]); // Close child's end of the socket pair
-		
+
 	} else { // Child process
 		executeChild(client->getHeaderObject());
 	}
+	// close(_sockets[0]);
 }
 
 int Cgi::executeChild(const HttpHeader *headerObject) {
 	close(_sockets[0]); // Close parent's end of the socket pair
 	dup2(_sockets[1], STDIN_FILENO);
 	dup2(_sockets[1], STDOUT_FILENO);
-	close(_sockets[1]); // Close child's end of the socket pair
+	// close(_sockets[1]); // Close child's end of the socket pair
 
 	// TODO: Implement change directory
 	// if (chdir(Config::getInstance().getDirPath()) < 0) {
@@ -128,6 +133,7 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 
 	execve(argv[0], argv, envp);
 	LOG_ERROR_WITH_TAG("Failed to execve CGI", "CGI");
+	perror("execve failed:"); // TODO: DELETE DEBUG
 
 	std::exit(255);
 
