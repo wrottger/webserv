@@ -170,3 +170,19 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 		client->parseBuffer(buffer);
 	}
 }
+
+EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client) {
+	EventsData *eventData = new EventsData;
+	eventData->fd = fd;
+	eventData->eventType = type;
+	eventData->objectPointer = client;
+	return eventData;
+}
+
+void EventHandler::addEventToList(EventsData *eventData) {
+	_eventDataList.push_back(eventData);
+}
+
+int EventHandler::getEpollFd() const {
+	return _epollFd;
+}
