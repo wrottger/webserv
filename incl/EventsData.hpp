@@ -1,5 +1,5 @@
 #ifndef EVENTSDATA_HPP
-# define EVENTSDATA_HPP
+#define EVENTSDATA_HPP
 
 enum EventType {
 	LISTENING,
@@ -8,9 +8,9 @@ enum EventType {
 };
 
 struct EventsData {
-	int			fd;
-	EventType	eventType;
-	void *		objectPointer;
+	int fd;
+	EventType eventType;
+	void *objectPointer;
 };
 
 #endif

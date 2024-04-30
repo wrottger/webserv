@@ -1,11 +1,10 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <iostream>
-#include <wait.h>
-#include <vector>
 #include "Logger.hpp"
-
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <wait.h>
+#include <iostream>
+#include <vector>
 
 #define PARENTS_END 0
 #define CHILDS_END 1
@@ -24,9 +23,9 @@ int main() {
 		LOG_ERROR_WITH_TAG("Failed to fork", "CGI");
 		return 1;
 	}
-// Child
+	// Child
 	if (pid != 0) {
-		close(sockets[PARENTS_END]);  // Close parent's end of the socket pair
+		close(sockets[PARENTS_END]); // Close parent's end of the socket pair
 		std::string executable = "/usr/bin/python3";
 		std::string firstarg = "script.py";
 		std::vector<char *> argv;
@@ -43,23 +42,23 @@ int main() {
 		// argv.push_back(const_cast<char*>(executable.c_str()));
 		// argv.push_back(const_cast<char*>(firstarg.c_str()));
 		// argv.push_back(NULL);
-		
+
 		// dup2(sockets[CHILDS_END], STDIN_FILENO);
 		// dup2(sockets[CHILDS_END], STDOUT_FILENO);
 
 		// execve(argv[0], argv.data(), NULL);
 		// perror("execve");
 		usleep(10000);
-		close(sockets[CHILDS_END]);  // Close child's end of the socket pair
-	} else {  // Parent process
-		close(sockets[CHILDS_END]);  // Close child's end of the socket pair
+		close(sockets[CHILDS_END]); // Close child's end of the socket pair
+	} else { // Parent process
+		close(sockets[CHILDS_END]); // Close child's end of the socket pair
 
 		std::string string;
 		int bytesReceived = 0;
 		int i = 0;
 		std::string realBuffer;
-		while(i < 10) {
-			char buffer[1000] = {0};
+		while (i < 10) {
+			char buffer[1000] = { 0 };
 			bytesReceived = read(sockets[PARENTS_END], buffer, sizeof(buffer));
 			if (bytesReceived <= 0) {
 				break;
@@ -69,7 +68,7 @@ int main() {
 			realBuffer += buffer;
 		}
 		std::cout << realBuffer.size() << std::endl;
-		close(sockets[PARENTS_END]);  // Close parent's end of the socket pair
+		close(sockets[PARENTS_END]); // Close parent's end of the socket pair
 		waitpid(pid, 0, 0);
 	}
 	return 0;

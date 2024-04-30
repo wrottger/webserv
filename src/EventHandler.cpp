@@ -1,7 +1,5 @@
 #include "EventHandler.hpp"
 
-
-
 EventHandler::EventHandler() {}
 
 EventHandler::EventHandler(SocketHandling &sockets) {
@@ -29,9 +27,9 @@ void EventHandler::start() {
 			continue;
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
-			EventsData * eventData = static_cast<EventsData *>(events[n].data.ptr);
+			EventsData *eventData = static_cast<EventsData *>(events[n].data.ptr);
 			// Accept new client
-			switch(eventData->eventType) {
+			switch (eventData->eventType) {
 				case LISTENING:
 					acceptNewClient(eventData);
 					continue;
@@ -44,14 +42,14 @@ void EventHandler::start() {
 						Client *client = static_cast<Client *>((*eventData).objectPointer);
 						// Response // DELETE: DEBUG
 						std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-													"<body><h1>Hello, World!</h1></body></html>";
+												   "<body><h1>Hello, World!</h1></body></html>";
 
 						std::ostringstream oss;
 						oss << responseBody.size();
 
 						std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-													"Content-Type: text/html; charset=UTF-8\r\n"
-													"Content-Length: " +
+												   "Content-Type: text/html; charset=UTF-8\r\n"
+												   "Content-Length: " +
 								oss.str() + "\r\n\r\n" + responseBody;
 						// TODO: checken nach Header ob Methode ueberhaupt erlaubt
 						if (client->isHeaderComplete()) {
@@ -62,7 +60,7 @@ void EventHandler::start() {
 								perror("Send");
 								// cleanUpList.push_back(events[n].data.fd);
 							}
-						// cleanUpList.push_back(events[n].data.fd);
+							// cleanUpList.push_back(events[n].data.fd);
 						}
 					}
 					break;
@@ -117,14 +115,14 @@ void EventHandler::destroyClient(EventHandler::Client *client) {
 }
 
 // Accept and add new client to epoll and client list
-void EventHandler::acceptNewClient(EventsData * eventData) {
+void EventHandler::acceptNewClient(EventsData *eventData) {
 	struct epoll_event ev;
 	int newConnectionFd;
 	struct sockaddr_in addr;
 	socklen_t addrlen = sizeof(addr);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
-	EventsData * newData;
+	EventsData *newData;
 	newConnectionFd = accept(eventData->fd, (struct sockaddr *)&addr, &addrlen);
 	if (newConnectionFd == -1) {
 		LOG_ERROR("EventHandler: accept failed.");
@@ -152,7 +150,6 @@ void EventHandler::acceptNewClient(EventsData * eventData) {
 		delete newClient;
 		close(newConnectionFd);
 	}
-
 }
 
 void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList) {
@@ -172,7 +169,6 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 		client->parseBuffer(buffer);
 	}
 }
-
 
 /********************************************************************/
 /*                          CLIENT                                  */
