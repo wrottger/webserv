@@ -29,14 +29,17 @@ public:
 	EventsData *createNewEvent(int fd, EventType type, Client *client);
 	void addEventToList(EventsData *eventData);
 	int getEpollFd() const;
-	void registerEvent(int fd, EventType type, Client *client);
+	int registerEvent(int fd, EventType type, Client *client);
 	void unregisterEvent(int fd);
 	void unregisterEvent(EventsData *eventData);
+	void addToCleanUpList(int fd);
+	void addToCleanUpList(EventsData *eventData);
 
 private:
 	int _epollFd;
 	std::vector<int> _listeningSockets;
 	std::list<EventsData *> _eventDataList;
+	std::list<EventsData *> _cleanUpList;
 
 	EventHandler();
 	EventHandler(EventHandler const &other);
@@ -44,10 +47,10 @@ private:
 
 	bool isListeningSocketTriggered(epoll_event events_arr[], int n) const;
 	void handleTimeouts();
-	void processCleanUpList(std::list<EventsData *> &cleanUpList);
+	void processCleanUpList();
 	void destroyClient(Client *client);
 	void acceptNewClient(EventsData *eventData);
-	void readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList);
+	void readFromClient(EventsData &eventData);
 };
 
 #endif

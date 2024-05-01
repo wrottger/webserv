@@ -18,7 +18,6 @@ EventHandler::~EventHandler() {
 void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
-	std::list<EventsData *> cleanUpList;
 	bool testCgiOnce = true;
 
 	Cgi *testCgi = NULL;
@@ -40,7 +39,7 @@ void EventHandler::start() {
 				case CLIENT:
 					if (events[n].events & EPOLLIN) {
 						Client *client = static_cast<Client *>((*eventData).objectPointer);
-						readFromClient(*eventData, cleanUpList);
+						readFromClient(*eventData);
 						std::string testbody = "miau kakao body";
 						if (testCgiOnce) {
 							testCgiOnce = false;
@@ -75,9 +74,9 @@ void EventHandler::start() {
 								// Cgi test(testbody, client);
 							// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
 							// client->updateTime();
-								// cleanUpList.push_back(events[n].data.fd);
+								// _cleanUpList.push_back(events[n].data.fd);
 							}
-							// cleanUpList.push_back(events[n].data.fd);
+							// _cleanUpList.push_back(events[n].data.fd);
 						}
 					}
 					break;
@@ -90,13 +89,13 @@ void EventHandler::start() {
 						ssize_t bytes_received = read(client->getFd(), buffer, BUFFER_SIZE);
 						// The client has closed the connection
 						if (bytes_received == 0) {
-							cleanUpList.push_back(eventData);
-							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
+							// _cleanUpList.push_back(eventData);
+							// std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
 							delete testCgi;
 							LOG_DEBUG("CGI connection closes 0");
 						} else if (bytes_received == -1) {
-							cleanUpList.push_back(eventData);
-							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
+							// _cleanUpList.push_back(eventData);
+							// std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
 							LOG_DEBUG("CGI connection closes -1");
 							delete testCgi;
 						} else {
@@ -108,8 +107,8 @@ void EventHandler::start() {
 					break;
 			}
 		}
-		processCleanUpList(cleanUpList);
-		cleanUpList.clear();
+		processCleanUpList();
+		_cleanUpList.clear();
 		// handleTimeouts();
 	}
 }
@@ -136,75 +135,85 @@ EventHandler &EventHandler::operator=(EventHandler const &other) {
 // 	}
 // }
 
-void EventHandler::processCleanUpList(std::list<EventsData *> &cleanUpList) {
-	for (std::list<EventsData *>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
-		for (std::list<EventsData *>::iterator itAllEvents = _eventDataList.begin(); itAllEvents != _eventDataList.end(); itAllEvents++) {
-			std::cout << "inside is: " << (*itCleanUp)->eventType << std::endl;
-			if (*itCleanUp == *itAllEvents) {
-				std::cout << "cleaning: " << (*itCleanUp)->eventType << std::endl;
-				if ((*itCleanUp)->eventType == CLIENT) {
-					destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
-				}
-				delete *itCleanUp;
-				itAllEvents = _eventDataList.erase(itAllEvents);
-			}
+void EventHandler::processCleanUpList() {
+	// for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
+	// 	for (std::list<EventsData *>::iterator itAllEvents = _eventDataList.begin(); itAllEvents != _eventDataList.end(); itAllEvents++) {
+	// 		std::cout << "inside is: " << (*itCleanUp)->eventType << std::endl;
+	// 		if (*itCleanUp == *itAllEvents) {
+	// 			std::cout << "cleaning: " << (*itCleanUp)->eventType << std::endl;
+	// 			if ((*itCleanUp)->eventType == CLIENT) {
+	// 				destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
+	// 			}
+	// 			// delete *itCleanUp;
+	// 			// itAllEvents = _eventDataList.erase(itAllEvents);
+	// 		}
+	// 	}
+	// }
+	for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
+		if ((*itCleanUp)->eventType == CLIENT) {
+			destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
 		}
+	}
+	for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
+		unregisterEvent(*itCleanUp);
 	}
 }
 
 void EventHandler::destroyClient(Client *client) {
-	epoll_ctl(_epollFd, EPOLL_CTL_DEL, client->getFd(), NULL);
+	// epoll_ctl(_epollFd, EPOLL_CTL_DEL, client->getFd(), NULL);
 	delete client;
 }
 
 // Accept and add new client to epoll and client list
 void EventHandler::acceptNewClient(EventsData *eventData) {
-	struct epoll_event ev;
+	// struct epoll_event ev;
 	int newConnectionFd;
 	struct sockaddr_in addr;
 	socklen_t addrlen = sizeof(addr);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
-	EventsData *newData;
+	// EventsData *newData;
 	newConnectionFd = accept(eventData->fd, (struct sockaddr *)&addr, &addrlen);
+	std::cout << "accepting client fd: " << eventData->fd << "newfd" << newConnectionFd << std::endl; // TODO: DELETE
 	if (newConnectionFd == -1) {
 		LOG_ERROR("EventHandler: accept failed.");
 		return;
 	}
-	ev.events = EPOLLIN | EPOLLOUT;
+	// ev.events = EPOLLIN | EPOLLOUT;
 	Client *newClient = NULL;
 	try {
-		newData = new EventsData;
-		newData->fd = newConnectionFd;
-		newData->eventType = CLIENT;
-		newData->objectPointer = NULL;
-				ev.data.ptr = newData;
-		_eventDataList.push_back(newData);
+		// newData = new EventsData;
+		// newData->fd = newConnectionFd;
+		// newData->eventType = CLIENT;
+		// newData->objectPointer = NULL;
+		// 		ev.data.ptr = newData;
+		// _eventDataList.push_back(newData);
 		newClient = new Client(newConnectionFd, this);
-		newData->objectPointer = newClient;
-		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
-			LOG_ERROR("EventHandler: epoll ADD failed.");
-			throw std::runtime_error("EventHandler: epoll ADD failed.");
-			return;
-		}
+		// newData->objectPointer = newClient;
+		// if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
+		// 	LOG_ERROR("EventHandler: epoll ADD failed.");
+		// 	throw std::runtime_error("EventHandler: epoll ADD failed.");
+		// 	return;
+		// }
+		registerEvent(newConnectionFd, CLIENT, newClient);
 		LOG_DEBUG("New client connection");
 	} catch (...) {
-		delete newData;
+		// delete newData;
 		delete newClient;
 		close(newConnectionFd);
 	}
 }
 
-void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *> &cleanUpList) {
+void EventHandler::readFromClient(EventsData &eventData) {
 	char buffer[BUFFER_SIZE + 1] = { 0 };
 	ssize_t bytes_received = read(eventData.fd, buffer, BUFFER_SIZE);
 	// The client has closed the connection
 	if (bytes_received == 0) {
-		cleanUpList.push_back(&eventData);
-		(void)cleanUpList;
+		_cleanUpList.push_back(&eventData);
+		(void)_cleanUpList;
 		LOG_DEBUG("Client connection closes 0");
 	} else if (bytes_received == -1) {
-		cleanUpList.push_back(&eventData);
+		_cleanUpList.push_back(&eventData);
 		LOG_DEBUG("Client connection closes -1");
 	} else {
 		buffer[bytes_received] = '\0';
@@ -220,7 +229,11 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	EventsData *eventData = new EventsData;
 	eventData->fd = fd;
 	eventData->eventType = type;
-	eventData->objectPointer = client;
+	if (type == CLIENT || type == CGI) {
+		eventData->objectPointer = client;
+	} else {
+		eventData->objectPointer = NULL;
+	}
 		return eventData;
 }
 
@@ -233,34 +246,59 @@ int EventHandler::getEpollFd() const {
 	return _epollFd;
 }
 
-void EventHandler::registerEvent(int fd, EventType type, Client *client) {
+int EventHandler::registerEvent(int fd, EventType type, Client *client) {
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLOUT;
 	ev.data.ptr = createNewEvent(fd, type, client);
-	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev) == -1) {
-		LOG_ERROR("EventHandler: epoll ADD failed.");
-	}
 	_eventDataList.push_back(static_cast<EventsData *>(ev.data.ptr));
+	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+		LOG_ERROR("RegisterEvent: epoll ADD failed.");
+		return -1;
+	}
+	return 0;
 }
 
 void EventHandler::unregisterEvent(int fd) {
+	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL) == -1) {
+		std::cerr << "Fd: " << fd << std::endl; // TODO: DELETE
+		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
+	}
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		if ((*it)->fd == fd) {
+			LOG_ALARM_WITH_TAG("Unregistered something with fd", "EventHandler");
 			delete *it;
 			_eventDataList.erase(it);
 			break;
 		}
 	}
-	epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
 }
 
 void EventHandler::unregisterEvent(EventsData *eventData) {
+	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL) == -1) {
+		perror("epoll_ctl");
+		std::cerr << "Fd: " << eventData->fd << std::endl; // TODO: DELETE
+		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
+		perror("epoll_ctl");
+	}
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		if (*it == eventData) {
+			LOG_ALARM_WITH_TAG("Unregistered something with pointer", "EventHandler");
 			delete *it;
 			_eventDataList.erase(it);
 			break;
 		}
 	}
-	epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL);
+}
+
+void EventHandler::addToCleanUpList(int fd) {
+	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+		if ((*it)->fd == fd) {
+			_cleanUpList.push_back(*it);
+			break;
+		}
+	}
+}
+
+void EventHandler::addToCleanUpList(EventsData *eventData) {
+	_cleanUpList.push_back(eventData);
 }
