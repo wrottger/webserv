@@ -76,7 +76,7 @@ void Cgi::executeCgi(Client *client) {
 		EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
 		client->getEventHandler()->addEventToList(eventData);
 		epoll_event ev;
-		ev.events = EPOLLIN | EPOLLET;
+		ev.events = EPOLLIN | EPOLLOUT;
 		ev.data.ptr = eventData;
 		if (epoll_ctl(client->getEventHandler()->getEpollFd(), EPOLL_CTL_ADD, _sockets[0], &ev) < 0) {
 			LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
