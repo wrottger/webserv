@@ -1,4 +1,5 @@
 #include "Client.hpp"
+#include "EventHandler.hpp"
 
 Client::Client() {}
 
@@ -10,6 +11,7 @@ Client::Client(int fd, EventHandler *eventHandler) :
 }
 
 Client::~Client() {
+	// _eventHandler->unregisterEvent(_fd);
 	close(_fd);
 	delete _headerObject;
 }

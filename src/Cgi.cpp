@@ -45,15 +45,17 @@ Cgi::Cgi(const std::string &bodyBuffer, Client *client, EventsData * event) :
 Cgi::~Cgi() {
 	// TODO: fix epoll delete with epollfd
 	if (_sockets[0] != -1) {
-		epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[0], NULL);
+		// epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[0], NULL);
 		close(_sockets[0]);
 	}
-	if (_sockets[1] != -1) {
-		epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[1], NULL);
-		close(_sockets[1]);
-	}
+	// if (_sockets[1] != -1) {
+	// 	epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[1], NULL);
+	// 	close(_sockets[1]);
+	// }
 	// _client->getEventHandler()->deleteFromList();
-	delete _event;
+	// delete _event;
+	// _client->getEventHandler()->unregisterEvent(_sockets[0]);
+	_client->getEventHandler()->addToCleanUpList(_sockets[0]);
 }
 
 bool Cgi::isFinished() const {
@@ -75,17 +77,23 @@ void Cgi::executeCgi(Client *client) {
 	LOG_ALARM("ALARM CGI EXECUTING");
 	// Add the socket to epoll event list and create an EventData object for it
 	try {
-		EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
-		client->getEventHandler()->addEventToList(eventData);
-		epoll_event ev;
-		ev.events = EPOLLIN | EPOLLOUT;
-		ev.data.ptr = eventData;
-		if (epoll_ctl(client->getEventHandler()->getEpollFd(), EPOLL_CTL_ADD, _sockets[0], &ev) < 0) {
+		if (client->getEventHandler()->registerEvent(_sockets[0], CGI, client) < 0) {
 			LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
 			_isFinished = true;
 			_errorCode = 500;
 			return;
 		}
+		// EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
+		// client->getEventHandler()->addEventToList(eventData);
+		// epoll_event ev;
+		// ev.events = EPOLLIN | EPOLLOUT;
+		// ev.data.ptr = eventData;
+		// if (epoll_ctl(client->getEventHandler()->getEpollFd(), EPOLL_CTL_ADD, _sockets[0], &ev) < 0) {
+		// 	LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
+		// 	_isFinished = true;
+		// 	_errorCode = 500;
+		// 	return;
+		// }
 	} catch (std::bad_alloc &e) {
 		LOG_ERROR_WITH_TAG("Failed to allocate memory", "CGI");
 		_isFinished = true;
