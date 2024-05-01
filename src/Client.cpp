@@ -12,7 +12,7 @@ Client::Client(int fd, EventHandler *eventHandler) :
 
 Client::~Client() {
 	// _eventHandler->unregisterEvent(_fd);
-	close(_fd);
+	// close(_fd);
 	delete _headerObject;
 }
 
