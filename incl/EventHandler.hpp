@@ -29,6 +29,9 @@ public:
 	EventsData *createNewEvent(int fd, EventType type, Client *client);
 	void addEventToList(EventsData *eventData);
 	int getEpollFd() const;
+	void registerEvent(int fd, EventType type, Client *client);
+	void unregisterEvent(int fd);
+	void unregisterEvent(EventsData *eventData);
 
 private:
 	int _epollFd;
