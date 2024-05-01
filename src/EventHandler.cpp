@@ -205,3 +205,35 @@ void EventHandler::addEventToList(EventsData *eventData) {
 int EventHandler::getEpollFd() const {
 	return _epollFd;
 }
+
+void EventHandler::registerEvent(int fd, EventType type, Client *client) {
+	struct epoll_event ev;
+	ev.events = EPOLLIN | EPOLLOUT;
+	ev.data.ptr = createNewEvent(fd, type, client);
+	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+		LOG_ERROR("EventHandler: epoll ADD failed.");
+	}
+	_eventDataList.push_back(static_cast<EventsData *>(ev.data.ptr));
+}
+
+void EventHandler::unregisterEvent(int fd) {
+	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+		if ((*it)->fd == fd) {
+			delete *it;
+			_eventDataList.erase(it);
+			break;
+		}
+	}
+	epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
+}
+
+void EventHandler::unregisterEvent(EventsData *eventData) {
+	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+		if (*it == eventData) {
+			delete *it;
+			_eventDataList.erase(it);
+			break;
+		}
+	}
+	epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL);
+}
