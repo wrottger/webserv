@@ -19,6 +19,7 @@ void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
 	std::list<EventsData *> cleanUpList;
+	bool testCgiOnce = true;
 
 	Cgi *testCgi = NULL;
 
@@ -41,8 +42,11 @@ void EventHandler::start() {
 						Client *client = static_cast<Client *>((*eventData).objectPointer);
 						readFromClient(*eventData, cleanUpList);
 						std::string testbody = "miau kakao body";
-						if (testCgi == NULL)
-							testCgi = new Cgi(testbody, client);
+						if (testCgiOnce) {
+							testCgiOnce = false;
+							testCgi = new Cgi(testbody, client, eventData);
+							(void)testCgi;
+						}
 						continue;
 					}
 					if (events[n].events & EPOLLOUT) {
@@ -78,11 +82,28 @@ void EventHandler::start() {
 					}
 					break;
 				case CGI:
-					LOG_DEBUG("CGI triggered");
 					if (events[n].events & EPOLLIN) {
-						char buffer[1000] = {0};
-						std::cout << read(eventData->fd, buffer, 1000);
-						std::cout << "buffer: " << buffer << std::endl;
+						LOG_DEBUG("CGI triggered");
+						char buffer[BUFFER_SIZE + 1] = { 0 };
+						Client *client = static_cast<Client *>((*eventData).objectPointer);
+						// std::cout << "EventType: " << eventData->eventType << std::endl;
+						ssize_t bytes_received = read(client->getFd(), buffer, BUFFER_SIZE);
+						// The client has closed the connection
+						if (bytes_received == 0) {
+							cleanUpList.push_back(eventData);
+							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
+							delete testCgi;
+							LOG_DEBUG("CGI connection closes 0");
+						} else if (bytes_received == -1) {
+							cleanUpList.push_back(eventData);
+							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
+							LOG_DEBUG("CGI connection closes -1");
+							delete testCgi;
+						} else {
+							buffer[bytes_received] = '\0';
+							std::string bufferDebug(buffer); //TODO: DELETE DEBUG
+							LOG_BUFFER(bufferDebug);
+						}
 					}
 					break;
 			}
@@ -118,8 +139,12 @@ EventHandler &EventHandler::operator=(EventHandler const &other) {
 void EventHandler::processCleanUpList(std::list<EventsData *> &cleanUpList) {
 	for (std::list<EventsData *>::iterator itCleanUp = cleanUpList.begin(); itCleanUp != cleanUpList.end(); itCleanUp++) {
 		for (std::list<EventsData *>::iterator itAllEvents = _eventDataList.begin(); itAllEvents != _eventDataList.end(); itAllEvents++) {
+			std::cout << "inside is: " << (*itCleanUp)->eventType << std::endl;
 			if (*itCleanUp == *itAllEvents) {
-				destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
+				std::cout << "cleaning: " << (*itCleanUp)->eventType << std::endl;
+				if ((*itCleanUp)->eventType == CLIENT) {
+					destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
+				}
 				delete *itCleanUp;
 				itAllEvents = _eventDataList.erase(itAllEvents);
 			}
@@ -153,7 +178,7 @@ void EventHandler::acceptNewClient(EventsData *eventData) {
 		newData->fd = newConnectionFd;
 		newData->eventType = CLIENT;
 		newData->objectPointer = NULL;
-		ev.data.ptr = newData;
+				ev.data.ptr = newData;
 		_eventDataList.push_back(newData);
 		newClient = new Client(newConnectionFd, this);
 		newData->objectPointer = newClient;
@@ -176,6 +201,7 @@ void EventHandler::readFromClient(EventsData &eventData, std::list<EventsData *>
 	// The client has closed the connection
 	if (bytes_received == 0) {
 		cleanUpList.push_back(&eventData);
+		(void)cleanUpList;
 		LOG_DEBUG("Client connection closes 0");
 	} else if (bytes_received == -1) {
 		cleanUpList.push_back(&eventData);
@@ -195,11 +221,12 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	eventData->fd = fd;
 	eventData->eventType = type;
 	eventData->objectPointer = client;
-	return eventData;
+		return eventData;
 }
 
 void EventHandler::addEventToList(EventsData *eventData) {
 	_eventDataList.push_back(eventData);
+	std::cout << "Added: " << eventData->eventType << std::endl; // TODO: Remove
 }
 
 int EventHandler::getEpollFd() const {
