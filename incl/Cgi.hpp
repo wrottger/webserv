@@ -27,6 +27,8 @@ private:
 	int _errorCode;
 	static const time_t _timeout = 5;
 	const std::string _bodyBuffer;
+	Client * _client;
+	EventsData * _event;
 
 private:
 	Cgi();
@@ -36,10 +38,9 @@ private:
 	char **createArguments();
 	void executeCgi(Client *client);
 	int executeChild(const HttpHeader *headerObject);
-	
 
 public:
-	Cgi(const std::string &bodyBuffer, Client *client);
+	Cgi(const std::string &bodyBuffer, Client *client, EventsData * event);
 	~Cgi();
 
 	bool isFinished() const;
