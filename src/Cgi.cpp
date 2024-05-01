@@ -5,7 +5,7 @@
 
 char** Cgi::createEnvironment(const HttpHeader *headerObject) {
     (void)headerObject;
-	char** env = new char*[12];
+	char** env = new char*[13];
     env[0] = strdup("REQUEST_METHOD=GET");
     env[1] = strdup("QUERY_STRING=param1=value1&param2=value2");
     env[2] = strdup("CONTENT_TYPE=application/x-www-form-urlencoded");
@@ -25,18 +25,18 @@ char** Cgi::createEnvironment(const HttpHeader *headerObject) {
 
 char **Cgi::createArguments() {
 	    char** argv = new char*[3];
-    // argv[0] = strdup("/bin/python3");
-    // argv[1] = strdup("overflow.py");
-    // argv[2] = NULL; // The environment list must be NULL-terminated
-	    argv[0] = strdup("steve");
-    	argv[1] = NULL; // The environment list must be NULL-terminated
+    argv[0] = strdup("/bin/python3");
+    argv[1] = strdup("overflow.py");
+    argv[2] = NULL; // The environment list must be NULL-terminated
 
 	return argv;
 }
 
-Cgi::Cgi(const std::string &bodyBuffer, Client *client) :
+Cgi::Cgi(const std::string &bodyBuffer, Client *client, EventsData * event) :
 		_isFinished(false), _errorCode(0),
-		_bodyBuffer(bodyBuffer) {
+		_bodyBuffer(bodyBuffer),
+		_client(client),
+		_event(event) {
 			_sockets[0] = -1;
 			_sockets[1] = -1;
 	executeCgi(client);
@@ -44,14 +44,16 @@ Cgi::Cgi(const std::string &bodyBuffer, Client *client) :
 
 Cgi::~Cgi() {
 	// TODO: fix epoll delete with epollfd
-	// if (_sockets[0] != -1) {
-	// 	epoll_ctl(7, EPOLL_CTL_DEL, _sockets[0], NULL);
-	// 	close(_sockets[0]);
-	// }
-	// if (_sockets[1] != -1) {
-	// 	epoll_ctl(7, EPOLL_CTL_DEL, _sockets[1], NULL);
-	// 	close(_sockets[1]);
-	// }
+	if (_sockets[0] != -1) {
+		epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[0], NULL);
+		close(_sockets[0]);
+	}
+	if (_sockets[1] != -1) {
+		epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[1], NULL);
+		close(_sockets[1]);
+	}
+	// _client->getEventHandler()->deleteFromList();
+	delete _event;
 }
 
 bool Cgi::isFinished() const {
