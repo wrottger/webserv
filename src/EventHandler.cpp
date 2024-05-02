@@ -3,14 +3,14 @@
 
 std::string createTestResponse() {
 	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-							  "<body><h1>Hello, World!</h1></body></html>";
+							   "<body><h1>Hello, World!</h1></body></html>";
 
 	std::ostringstream oss;
 	oss << responseBody.size();
 
 	std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-							  "Content-Type: text/html; charset=UTF-8\r\n"
-							  "Content-Length: " +
+							   "Content-Type: text/html; charset=UTF-8\r\n"
+							   "Content-Length: " +
 			oss.str() + "\r\n\r\n" + responseBody;
 	return httpResponse;
 }
@@ -74,8 +74,8 @@ void EventHandler::start() {
 							if (client->getHeaderObject()->getMethod() == "POST") {
 								// std::string testbody = "miau kakao body";
 								// Cgi test(testbody, client);
-							// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
-							// client->updateTime();
+								// Clientobjekt uebernimmt das eigene handling(Parsing check, response etc.)
+								// client->updateTime();
 								// _cleanUpList.push_back(events[n].data.fd);
 							}
 							// _cleanUpList.push_back(events[n].data.fd);
@@ -90,17 +90,14 @@ void EventHandler::start() {
 						ssize_t bytes_received = read(client->getFd(), buffer, BUFFER_SIZE);
 						// The client has closed the connection
 						if (bytes_received == 0) {
-							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
 							delete testCgi;
 							LOG_DEBUG("CGI connection closes 0");
 						} else if (bytes_received == -1) {
-							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
 							LOG_DEBUG("CGI connection closes -1");
 							delete testCgi;
 						} else {
 							buffer[bytes_received] = '\0';
-							std::string bufferDebug(buffer); //TODO: DELETE DEBUG
-							LOG_BUFFER(bufferDebug);
+							LOG_DEBUG_WITH_TAG("CGI buffer", buffer);
 						}
 					}
 					break;
@@ -147,39 +144,22 @@ void EventHandler::processCleanUpList() {
 
 // Accept and add new client to epoll and client list
 void EventHandler::acceptNewClient(EventsData *eventData) {
-	// struct epoll_event ev;
 	int newConnectionFd;
 	struct sockaddr_in addr;
 	socklen_t addrlen = sizeof(addr);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
-	// EventsData *newData;
 	newConnectionFd = accept(eventData->fd, (struct sockaddr *)&addr, &addrlen);
-	std::cout << "accepting client fd: " << eventData->fd << "newfd" << newConnectionFd << std::endl; // TODO: DELETE
 	if (newConnectionFd == -1) {
 		LOG_ERROR("EventHandler: accept failed.");
 		return;
 	}
-	// ev.events = EPOLLIN | EPOLLOUT;
 	Client *newClient = NULL;
 	try {
-		// newData = new EventsData;
-		// newData->fd = newConnectionFd;
-		// newData->eventType = CLIENT;
-		// newData->objectPointer = NULL;
-		// 		ev.data.ptr = newData;
-		// _eventDataList.push_back(newData);
 		newClient = new Client(newConnectionFd, this);
-		// newData->objectPointer = newClient;
-		// if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, newConnectionFd, &ev) == -1) {
-		// 	LOG_ERROR("EventHandler: epoll ADD failed.");
-		// 	throw std::runtime_error("EventHandler: epoll ADD failed.");
-		// 	return;
-		// }
 		registerEvent(newConnectionFd, CLIENT, newClient);
 		LOG_DEBUG("New client connection");
 	} catch (...) {
-		// delete newData;
 		delete newClient;
 		close(newConnectionFd);
 	}
@@ -215,12 +195,11 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	} else {
 		eventData->objectPointer = NULL;
 	}
-		return eventData;
+	return eventData;
 }
 
 void EventHandler::addEventToList(EventsData *eventData) {
 	_eventDataList.push_back(eventData);
-	std::cout << "Added: " << eventData->eventType << std::endl; // TODO: Remove
 }
 
 int EventHandler::getEpollFd() const {
