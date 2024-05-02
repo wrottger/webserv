@@ -16,5 +16,12 @@ class HttpResponse
         HttpResponse();
         HttpResponse(const HttpResponse &src);
         HttpResponse &operator=(const HttpResponse &src);
+
+        HttpHeader & header;
+        int fds;
+        bool isError;
+        bool isChunked;
+        bool isFinished;
+        std::string response;
 };
 #endif // HTTPRESPONSE_HPP
