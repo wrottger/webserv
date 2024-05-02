@@ -1,6 +1,20 @@
 #include "EventHandler.hpp"
 #include "Client.hpp"
 
+std::string createTestResponse() {
+	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
+							  "<body><h1>Hello, World!</h1></body></html>";
+
+	std::ostringstream oss;
+	oss << responseBody.size();
+
+	std::string httpResponse = "HTTP/1.1 200 OK\r\n"
+							  "Content-Type: text/html; charset=UTF-8\r\n"
+							  "Content-Length: " +
+			oss.str() + "\r\n\r\n" + responseBody;
+	return httpResponse;
+}
+
 EventHandler::EventHandler() {}
 
 EventHandler::EventHandler(SocketHandling &sockets) {
@@ -24,14 +38,13 @@ void EventHandler::start() {
 
 	signal(SIGPIPE, SIG_IGN);
 	while (true) {
-		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT);
+		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, -1);
 		if (epollTriggerCount == -1) {
 			LOG_ERROR("epoll_wait failed.");
 			continue;
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			EventsData *eventData = static_cast<EventsData *>(events[n].data.ptr);
-			// Accept new client
 			switch (eventData->eventType) {
 				case LISTENING:
 					acceptNewClient(eventData);
@@ -40,6 +53,7 @@ void EventHandler::start() {
 					if (events[n].events & EPOLLIN) {
 						Client *client = static_cast<Client *>((*eventData).objectPointer);
 						readFromClient(*eventData);
+						// CGI Test
 						std::string testbody = "miau kakao body";
 						if (testCgiOnce) {
 							testCgiOnce = false;
@@ -50,23 +64,11 @@ void EventHandler::start() {
 					}
 					if (events[n].events & EPOLLOUT) {
 						Client *client = static_cast<Client *>((*eventData).objectPointer);
-						// Response // DELETE: DEBUG
-						std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-												   "<body><h1>Hello, World!</h1></body></html>";
-
-						std::ostringstream oss;
-						oss << responseBody.size();
-
-						std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-												   "Content-Type: text/html; charset=UTF-8\r\n"
-												   "Content-Length: " +
-								oss.str() + "\r\n\r\n" + responseBody;
-						// TODO: checken nach Header ob Methode ueberhaupt erlaubt
 						if (client->isHeaderComplete()) {
-							// Reponse logic
+							std::string httpResponse = createTestResponse();
 							if (client->getHeaderObject()->getMethod() == "GET") {
 								if (send((client)->getFd(), httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-									perror("Send");
+									LOG_ERROR_WITH_TAG("send failed", "EventHandler");
 								}
 							}
 							if (client->getHeaderObject()->getMethod() == "POST") {
@@ -85,17 +87,14 @@ void EventHandler::start() {
 						LOG_DEBUG("CGI triggered");
 						char buffer[BUFFER_SIZE + 1] = { 0 };
 						Client *client = static_cast<Client *>((*eventData).objectPointer);
-						// std::cout << "EventType: " << eventData->eventType << std::endl;
 						ssize_t bytes_received = read(client->getFd(), buffer, BUFFER_SIZE);
 						// The client has closed the connection
 						if (bytes_received == 0) {
-							// _cleanUpList.push_back(eventData);
-							// std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
+							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
 							delete testCgi;
 							LOG_DEBUG("CGI connection closes 0");
 						} else if (bytes_received == -1) {
-							// _cleanUpList.push_back(eventData);
-							// std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
+							std::cout << "adding to cleanuplist: " << eventData->eventType << std::endl;
 							LOG_DEBUG("CGI connection closes -1");
 							delete testCgi;
 						} else {
@@ -136,32 +135,14 @@ EventHandler &EventHandler::operator=(EventHandler const &other) {
 // }
 
 void EventHandler::processCleanUpList() {
-	// for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
-	// 	for (std::list<EventsData *>::iterator itAllEvents = _eventDataList.begin(); itAllEvents != _eventDataList.end(); itAllEvents++) {
-	// 		std::cout << "inside is: " << (*itCleanUp)->eventType << std::endl;
-	// 		if (*itCleanUp == *itAllEvents) {
-	// 			std::cout << "cleaning: " << (*itCleanUp)->eventType << std::endl;
-	// 			if ((*itCleanUp)->eventType == CLIENT) {
-	// 				destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
-	// 			}
-	// 			// delete *itCleanUp;
-	// 			// itAllEvents = _eventDataList.erase(itAllEvents);
-	// 		}
-	// 	}
-	// }
 	for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
 		if ((*itCleanUp)->eventType == CLIENT) {
-			destroyClient(static_cast<Client *>((*itCleanUp)->objectPointer));
+			delete static_cast<Client *>((*itCleanUp)->objectPointer);
 		}
 	}
 	for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
 		unregisterEvent(*itCleanUp);
 	}
-}
-
-void EventHandler::destroyClient(Client *client) {
-	// epoll_ctl(_epollFd, EPOLL_CTL_DEL, client->getFd(), NULL);
-	delete client;
 }
 
 // Accept and add new client to epoll and client list
