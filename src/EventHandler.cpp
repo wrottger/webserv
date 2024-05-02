@@ -32,7 +32,7 @@ EventHandler::~EventHandler() {
 void EventHandler::start() {
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
-	bool testCgiOnce = true;
+	// bool testCgiOnce = true;
 
 	Cgi *testCgi = NULL;
 
@@ -51,15 +51,15 @@ void EventHandler::start() {
 					continue;
 				case CLIENT:
 					if (events[n].events & EPOLLIN) {
-						Client *client = static_cast<Client *>((*eventData).objectPointer);
+						// Client *client = static_cast<Client *>((*eventData).objectPointer);
 						readFromClient(*eventData);
 						// CGI Test
 						std::string testbody = "miau kakao body";
-						if (testCgiOnce) {
-							testCgiOnce = false;
-							testCgi = new Cgi(testbody, client, eventData);
-							(void)testCgi;
-						}
+						// if (testCgiOnce) {
+						// 	testCgiOnce = false;
+						// 	testCgi = new Cgi(testbody, client, eventData);
+						// 	(void)testCgi;
+						// }
 						continue;
 					}
 					if (events[n].events & EPOLLOUT) {
