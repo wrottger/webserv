@@ -14,8 +14,6 @@
 #include <new>
 
 #define MAX_EVENTS 64
-#define BUFFER_SIZE 8192
-#define CLIENT_TIMEOUT 3 // Seconds
 
 class Client;
 
@@ -25,14 +23,6 @@ public:
 	EventHandler(SocketHandling &sockets);
 	~EventHandler();
 	void start();
-	EventsData *createNewEvent(int fd, EventType type, Client *client);
-	void addEventToList(EventsData *eventData);
-	int getEpollFd() const;
-	int registerEvent(int fd, EventType type, Client *client);
-	void unregisterEvent(int fd);
-	void unregisterEvent(EventsData *eventData);
-	void addToCleanUpList(int fd);
-	void addToCleanUpList(EventsData *eventData);
 
 private:
 	int _epollFd;
@@ -44,10 +34,16 @@ private:
 	EventHandler(EventHandler const &other);
 	EventHandler &operator=(EventHandler const &other);
 
-	void handleClientTimeouts();
+	EventsData *createNewEvent(int fd, EventType type, Client *client);
+	int getEpollFd() const;
+	int registerEvent(int fd, EventType type, Client *client);
+	void unregisterEvent(int fd);
+	void unregisterEvent(EventsData *eventData);
+	void addToCleanUpList(int fd);
+	void addToCleanUpList(EventsData *eventData);
+	void removeInactiveClients();
 	void processCleanUpList();
 	void acceptNewClient(EventsData *eventData);
-	void readFromClient(EventsData &eventData);
 };
 
 #endif

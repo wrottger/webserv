@@ -3,59 +3,50 @@
 #include <cstdlib>
 #include <cstring>
 
-char** Cgi::createEnvironment(const HttpHeader *headerObject) {
-    (void)headerObject;
-	char** env = new char*[13];
-    env[0] = strdup("REQUEST_METHOD=GET");
-    env[1] = strdup("QUERY_STRING=param1=value1&param2=value2");
-    env[2] = strdup("CONTENT_TYPE=application/x-www-form-urlencoded");
-    env[3] = strdup("CONTENT_LENGTH=");
-    env[4] = strdup("SCRIPT_NAME=/path/to/script");
-    env[5] = strdup("REQUEST_URI=/path/to/script?param1=value1&param2=value2");
-    env[6] = strdup("DOCUMENT_URI=/path/to/script");
-    env[7] = strdup("DOCUMENT_ROOT=/path/to/webroot");
-    env[8] = strdup("SERVER_PROTOCOL=HTTP/1.1");
-    env[9] = strdup("REMOTE_ADDR=127.0.0.1");
-    env[10] = strdup("SERVER_NAME=localhost");
-    env[11] = strdup("SERVER_PORT=80");
-    env[12] = NULL; // The environment list must be NULL-terminated
+char **Cgi::createEnvironment(const HttpHeader *headerObject) {
+	(void)headerObject;
+	char **env = new char *[13];
+	env[0] = strdup("REQUEST_METHOD=GET");
+	env[1] = strdup("QUERY_STRING=param1=value1&param2=value2");
+	env[2] = strdup("CONTENT_TYPE=application/x-www-form-urlencoded");
+	env[3] = strdup("CONTENT_LENGTH=");
+	env[4] = strdup("SCRIPT_NAME=/path/to/script");
+	env[5] = strdup("REQUEST_URI=/path/to/script?param1=value1&param2=value2");
+	env[6] = strdup("DOCUMENT_URI=/path/to/script");
+	env[7] = strdup("DOCUMENT_ROOT=/path/to/webroot");
+	env[8] = strdup("SERVER_PROTOCOL=HTTP/1.1");
+	env[9] = strdup("REMOTE_ADDR=127.0.0.1");
+	env[10] = strdup("SERVER_NAME=localhost");
+	env[11] = strdup("SERVER_PORT=80");
+	env[12] = NULL; // The environment list must be NULL-terminated
 
-    return env;
+	return env;
 }
 
 char **Cgi::createArguments() {
-	    char** argv = new char*[3];
-    argv[0] = strdup("/bin/python3");
-    argv[1] = strdup("overflow.py");
-    argv[2] = NULL; // The environment list must be NULL-terminated
+	char **argv = new char *[3];
+	argv[0] = strdup("/bin/python3");
+	argv[1] = strdup("overflow.py");
+	argv[2] = NULL; // The environment list must be NULL-terminated
 
 	return argv;
 }
 
-Cgi::Cgi(const std::string &bodyBuffer, Client *client, EventsData * event) :
-		_isFinished(false), _errorCode(0),
+Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject) :
+		_timeCreated(0),
+		_isFinished(false),
+		_errorCode(0),
 		_bodyBuffer(bodyBuffer),
-		_client(client),
-		_event(event) {
-			_sockets[0] = -1;
-			_sockets[1] = -1;
-	executeCgi(client);
+		_headerObject(headerObject) {
+	_sockets[0] = -1;
+	_sockets[1] = -1;
+	executeCgi();
 }
 
 Cgi::~Cgi() {
-	// TODO: fix epoll delete with epollfd
 	if (_sockets[0] != -1) {
-		// epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[0], NULL);
 		close(_sockets[0]);
 	}
-	// if (_sockets[1] != -1) {
-	// 	epoll_ctl(_client->getEventHandler()->getEpollFd(), EPOLL_CTL_DEL, _sockets[1], NULL);
-	// 	close(_sockets[1]);
-	// }
-	// _client->getEventHandler()->deleteFromList();
-	// delete _event;
-	// _client->getEventHandler()->unregisterEvent(_sockets[0]);
-	_client->getEventHandler()->addToCleanUpList(_sockets[0]);
 }
 
 bool Cgi::isFinished() const {
@@ -66,7 +57,7 @@ int Cgi::getErrorCode() const {
 	return _errorCode;
 }
 
-void Cgi::executeCgi(Client *client) {
+void Cgi::executeCgi() {
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
 		_isFinished = true;
@@ -76,30 +67,30 @@ void Cgi::executeCgi(Client *client) {
 
 	LOG_ALARM("ALARM CGI EXECUTING");
 	// Add the socket to epoll event list and create an EventData object for it
-	try {
-		if (client->getEventHandler()->registerEvent(_sockets[0], CGI, client) < 0) {
-			LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
-			_isFinished = true;
-			_errorCode = 500;
-			return;
-		}
-		// EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
-		// client->getEventHandler()->addEventToList(eventData);
-		// epoll_event ev;
-		// ev.events = EPOLLIN | EPOLLOUT;
-		// ev.data.ptr = eventData;
-		// if (epoll_ctl(client->getEventHandler()->getEpollFd(), EPOLL_CTL_ADD, _sockets[0], &ev) < 0) {
-		// 	LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
-		// 	_isFinished = true;
-		// 	_errorCode = 500;
-		// 	return;
-		// }
-	} catch (std::bad_alloc &e) {
-		LOG_ERROR_WITH_TAG("Failed to allocate memory", "CGI");
-		_isFinished = true;
-		_errorCode = 500;
-		return;
-	}
+	// try {
+	// if (client->getEventHandler()->registerEvent(_sockets[0], CGI, client) < 0) {
+	// 	LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
+	// 	_isFinished = true;
+	// 	_errorCode = 500;
+	// 	return;
+	// }
+	// EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
+	// client->getEventHandler()->addEventToList(eventData);
+	// epoll_event ev;
+	// ev.events = EPOLLIN | EPOLLOUT;
+	// ev.data.ptr = eventData;
+	// if (epoll_ctl(client->getEventHandler()->getEpollFd(), EPOLL_CTL_ADD, _sockets[0], &ev) < 0) {
+	// 	LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
+	// 	_isFinished = true;
+	// 	_errorCode = 500;
+	// 	return;
+	// }
+	// } catch (std::bad_alloc &e) {
+	// 	LOG_ERROR_WITH_TAG("Failed to allocate memory", "CGI");
+	// 	_isFinished = true;
+	// 	_errorCode = 500;
+	// 	return;
+	// }
 
 	// Update the last modified time
 	_timeCreated = std::time(0);
@@ -115,7 +106,7 @@ void Cgi::executeCgi(Client *client) {
 		close(_sockets[1]); // Close child's end of the socket pair
 
 	} else { // Child process
-		executeChild(client->getHeaderObject());
+		executeChild(_headerObject);
 	}
 	// close(_sockets[0]);
 }

@@ -15,20 +15,21 @@
 #include <vector>
 
 #define SEND_SIZE 8192
+#define CGI_TIMEOUT 5
+#define MAX_CGI_BUFFER_SIZE 1024 * 1024
 
 class Cgi {
 private:
+	static const size_t _maxBufferSize = MAX_CGI_BUFFER_SIZE;
 	std::string _outputBuffer;
-	static const size_t _maxBufferSize = 1024 * 1024;
 	size_t _currentBufferSize;
 	int _sockets[2];
 	time_t _timeCreated;
 	bool _isFinished;
 	int _errorCode;
-	static const time_t _timeout = 5;
+	static const time_t _timeout = CGI_TIMEOUT;
 	const std::string _bodyBuffer;
-	Client * _client;
-	EventsData * _event;
+	HttpHeader *_headerObject;
 
 private:
 	Cgi();
@@ -36,11 +37,11 @@ private:
 	Cgi &operator=(const Cgi &other);
 	char **createEnvironment(const HttpHeader *headerObject);
 	char **createArguments();
-	void executeCgi(Client *client);
+	void executeCgi();
 	int executeChild(const HttpHeader *headerObject);
 
 public:
-	Cgi(const std::string &bodyBuffer, Client *client, EventsData * event);
+	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject);
 	~Cgi();
 
 	bool isFinished() const;

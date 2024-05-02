@@ -2,32 +2,41 @@
 #define CLIENT_HPP
 
 #include "HttpHeader.hpp"
+#include <sys/epoll.h>
 #include <unistd.h>
 #include <ctime>
 
 class EventHandler;
 
+#define BUFFER_SIZE 8192
+#define CLIENT_TIMEOUT 3
+
 class Client {
 public:
-	Client(int fd, EventHandler *eventHandler);
+	Client(int fd);
 	~Client();
-	int getFd() const;
-	std::time_t getLastModified() const;
-	void updateTime();
-	bool isHeaderComplete() const;
-	bool isBodyComplete() const;
-	void parseBuffer(const char *buffer);
-	EventHandler *getEventHandler() const;
-	HttpHeader *getHeaderObject() const;
+	void process(uint32_t events);
+	bool canBeDeleted() const;
+	bool isTimeouted() const;
 
 private:
 	Client();
 	Client(Client const &other);
 	Client &operator=(Client const &other);
+
+	int getFd() const;
+	void updateTime();
+	bool isHeaderComplete() const;
+	void parseBuffer(const char *buffer);
+	std::time_t getLastModified() const;
+	HttpHeader *getHeaderObject() const;
+	void readFromClient();
+
+private:
 	HttpHeader *_headerObject;
-	int _fd;
 	std::time_t _lastModified;
-	EventHandler *_eventHandler;
+	int _fd;
+	bool _canBeDeleted;
 };
 
 #endif
