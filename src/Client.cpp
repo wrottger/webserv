@@ -1,18 +1,31 @@
 #include "Client.hpp"
 #include "EventHandler.hpp"
 
+ // TODO: Delete this function
+std::string createTestResponse() {
+	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
+							   "<body><h1>Hello, World!</h1></body></html>";
+
+	std::ostringstream oss;
+	oss << responseBody.size();
+
+	std::string httpResponse = "HTTP/1.1 200 OK\r\n"
+							   "Content-Type: text/html; charset=UTF-8\r\n"
+							   "Content-Length: " +
+			oss.str() + "\r\n\r\n" + responseBody;
+	return httpResponse;
+}
+
 Client::Client() {}
 
-Client::Client(int fd, EventHandler *eventHandler) :
+Client::Client(int fd):
 		_fd(fd),
-		_eventHandler(eventHandler) {
+		_canBeDeleted(false) {
 	_headerObject = new HttpHeader;
 	updateTime();
 }
 
 Client::~Client() {
-	// _eventHandler->unregisterEvent(_fd);
-	// close(_fd);
 	delete _headerObject;
 }
 
@@ -20,31 +33,76 @@ int Client::getFd() const {
 	return _fd;
 }
 
+// MAIN LOOP for processing client requests
+void Client::process(uint32_t events) {
+	if (events & EPOLLIN) {
+		readFromClient();
+	}
+	if (events & EPOLLOUT) {
+		if (isHeaderComplete()) {
+			std::string httpResponse = createTestResponse();
+			if (send(_fd, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+				LOG_ERROR_WITH_TAG("send failed", "Client");
+			}
+			_canBeDeleted = true;
+		}
+	}
+}
+
+// Returns the last time the client was modified
 std::time_t Client::getLastModified() const {
 	return _lastModified;
 }
 
+// Updates the last modified time to the current time
 void Client::updateTime() {
 	_lastModified = std::time(0);
 }
 
+// Returns true if the header is complete
 bool Client::isHeaderComplete() const {
 	return _headerObject->isComplete();
 }
 
+// TODO: Rename to parseHeaderBuffer or something similar
 void Client::parseBuffer(const char *buffer) {
 	_headerObject->parseBuffer(buffer);
 }
 
-EventHandler *Client::getEventHandler() const{
-	return _eventHandler;
+// Returns true if the client can be deleted
+bool Client::canBeDeleted() const {
+	return _canBeDeleted;
 }
 
 HttpHeader *Client::getHeaderObject() const {
 	return _headerObject;
 }
 
+// Returns true if the client has exceeded the timeout
+bool Client::isTimeouted() const {
+	return (std::time(0) - _lastModified) > CLIENT_TIMEOUT;
+}
+
 Client &Client::operator=(Client const &other) {
 	(void)other;
 	return *this;
+}
+
+// Reads from the client and parses the buffer
+void Client::readFromClient() {
+	char buffer[BUFFER_SIZE + 1] = { 0 };
+	ssize_t bytes_received = read(_fd, buffer, BUFFER_SIZE);
+	// The client has closed the connection
+	if (bytes_received == 0) { // TODO: Merge with -1 for readability
+		_canBeDeleted = true;
+		LOG_DEBUG("Client connection closes 0");
+	} else if (bytes_received == -1) {
+		_canBeDeleted = true;
+		LOG_DEBUG("Client connection closes -1");
+	} else {
+		buffer[bytes_received] = '\0';
+		parseBuffer(buffer);
+		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
+		LOG_BUFFER(bufferDebug);
+	}
 }
