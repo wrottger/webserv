@@ -44,7 +44,7 @@ private:
 	EventHandler(EventHandler const &other);
 	EventHandler &operator=(EventHandler const &other);
 
-	void handleTimeouts();
+	void handleClientTimeouts();
 	void processCleanUpList();
 	void acceptNewClient(EventsData *eventData);
 	void readFromClient(EventsData &eventData);
