@@ -103,9 +103,9 @@ void EventHandler::start() {
 					break;
 			}
 		}
+		handleClientTimeouts();
 		processCleanUpList();
 		_cleanUpList.clear();
-		// handleTimeouts();
 	}
 }
 
@@ -118,19 +118,23 @@ EventHandler &EventHandler::operator=(EventHandler const &other) {
 	return *this;
 }
 
-// void EventHandler::handleClientTimeouts() { // TODO: rethink Timeout logic
-// 	time_t current_time = std::time(0);
-// 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end();) {
-// 		if (current_time - (*it)->getLastModified() > CLIENT_TIMEOUT) {
-// 			LOG_DEBUG("Kicked timeout client");
-// 			destroyClient(*it);
-// 			it = _eventDataList.erase(it);
-// 		} else {
-// 			it++;
-// 		}
-// 	}
-// }
+// Check if any clients have timed out and add them to the cleanup list
+void EventHandler::handleClientTimeouts() {
+	time_t current_time = std::time(0);
+	Client *client;
+	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+		if ((*it)->eventType != CLIENT) {
+			continue;
+		}
+		client = static_cast<Client *>((*it)->objectPointer);
+		if (current_time - client->getLastModified() >= CLIENT_TIMEOUT) {
+			LOG_DEBUG("Client timeouted");
+			_cleanUpList.push_back(*it);
+		}
+	}
+}
 
+// Process the cleanup list and remove the clients from the epoll list
 void EventHandler::processCleanUpList() {
 	for (std::list<EventsData *>::iterator itCleanUp = _cleanUpList.begin(); itCleanUp != _cleanUpList.end(); itCleanUp++) {
 		if ((*itCleanUp)->eventType == CLIENT) {
