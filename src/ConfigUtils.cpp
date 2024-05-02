@@ -91,7 +91,7 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string route, std::st
         }
     }
     if (paths.size() == 0)
-        return std::make_pair(std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::max());
+        return std::make_pair(std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::max()); // max value on failure
 
     std::pair<std::string, position > temp = paths[0];
     for (size_t i = 0; i != paths.size(); i++)
@@ -119,6 +119,28 @@ bool Config::isDirectiveAllowed(const std::string& route, const std::string& hos
             return true;
     }
     return false;
+}
+
+// returns the value of the directive for the given route, host, and directive (shouldn't be used for directives with special cases like root)
+std::string Config::getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use getDirectiveValue without a valid Config instance.");
+    std::pair<size_t, size_t> l = config->getClosestPathMatch(route, host);
+    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
+        return "";
+    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    {
+        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == directive)
+            return config->_serverBlocks[l.first]._locations[l.second]._directives[i].second;
+    }
+    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    {
+        if (config->_serverBlocks[l.first]._directives[i].first == directive)
+            return config->_serverBlocks[l.first]._directives[i].second;
+    }
+    return "";
 }
 
 bool Config::isValidPath(const std::string& path)
