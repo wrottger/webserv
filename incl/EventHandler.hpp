@@ -14,7 +14,6 @@
 #include <new>
 
 #define MAX_EVENTS 64
-#define EPOLL_TIMEOUT 300
 #define BUFFER_SIZE 8192
 #define CLIENT_TIMEOUT 3 // Seconds
 
@@ -45,10 +44,8 @@ private:
 	EventHandler(EventHandler const &other);
 	EventHandler &operator=(EventHandler const &other);
 
-	bool isListeningSocketTriggered(epoll_event events_arr[], int n) const;
 	void handleTimeouts();
 	void processCleanUpList();
-	void destroyClient(Client *client);
 	void acceptNewClient(EventsData *eventData);
 	void readFromClient(EventsData &eventData);
 };
