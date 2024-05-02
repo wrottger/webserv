@@ -1,5 +1,4 @@
 #include "Config.hpp"
-#include "Tokens.hpp"
 #include "colors.hpp"
 
 
@@ -178,7 +177,7 @@ void Config::parseScopes(void)
         throw std::runtime_error(RBOLD(ss.str()));
     }
     //erase braces
-    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end(); /* no increment here */)
+    for (std::vector<Node>::iterator it = _nodes.begin(); it != _nodes.end();)
     {
         if (it->_token == OpenBrace || it->_token == CloseBrace)
             it = _nodes.erase(it);
@@ -243,7 +242,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 }
 
 // This method is supposed to parse the server block and its directives;
-ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
+Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
 {
     ServerBlock block;
     std::vector<Node>::iterator start = it - 1;
@@ -258,7 +257,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
             std::vector<Node>::iterator locationStart = it; // starting node of the location block
             it++;
             if (it == end)
-                error("pure data tokens i.e. all tokens except delimitersSyntax error: expected location block", it);
+                error("Syntax error: expected location block", it);
             while (it != end && it->_level > locationStart->_level) // iterate until the end of the location block
                 it++;
             // parse the location block and add it to the vector of location blocks
@@ -302,6 +301,17 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
                     }
                     else
                         error("Syntax error: port directive requires a value", it);
+                    break;
+                case CGI:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after cgi directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: cgi directive requires a value", it);
                     break;
                 case ServerName:
                     if (it + 1 != end && (it + 1)->_token == Data)
@@ -375,7 +385,7 @@ ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vecto
     return block;
 }
 
-LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
+Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
 {
     LocationBlock block;
     std::vector<Node>::iterator it = start;
@@ -387,11 +397,13 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
         {
             if (it->_token != Data)
                 error("Syntax error: expected path in location block", it);
-            else
+            else if (isValidPath(it->_value))
             {
                 block._path = it->_value;
                 it++;
             }
+            else
+                error("Syntax error: invalid path in location block", it);
         }
         else
         {
@@ -411,7 +423,10 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                 case Root:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(Root, (it + 1)->_value));
+                        if (isValidPath((it + 1)->_value))
+                            block._directives.push_back(std::make_pair(Root, (it + 1)->_value));
+                        else
+                            error("Syntax error: invalid path in root directive", it + 1);
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after root directive", it - 2);
@@ -474,7 +489,7 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                             if (it->_value == "GET" || it->_value == "POST" || it->_value == "PUT" || it->_value == "DELETE")
                             {
                                 if (!methods.empty())
-                                    methods += ":";
+                                    methods += " ";
                                 methods += it->_value;
                                 it++;
                             }
@@ -502,13 +517,19 @@ LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std
                 case CGI:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing interpreter path in cgi directive", it - 2);
+                        it++;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
+                        pair.second += " " + (it - 1)->_value;
+                        block._directives.push_back(pair);
                     }
                     else
-                        error("Syntax error: cgi directive requires a value", it);
+                        error("Syntax error: cgi directive requires file extension + interpreter path", it);
                     break;
                 case Semicolon:
                 {

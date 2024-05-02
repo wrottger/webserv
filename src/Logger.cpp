@@ -55,9 +55,21 @@ void Logging::Logger::logMessage(const char* level, const char* text) {
 	writeLog(logline);
 }
 
+// Creates and writes log message with tag
+void Logging::Logger::logMessage(const char* level, const char* text, const char* tag) {
+	std::string logline;
+	createLogMessage(logline, level, text, tag);
+	writeLog(logline);
+}
+
 // Creates log message
 void Logging::Logger::createLogMessage(std::string &buffer, const char *logLevel, const char *text) {
 	buffer.append(insertMetaInformations(logLevel));
+	buffer.append(text);
+}
+
+void Logging::Logger::createLogMessage(std::string &buffer, const char *logLevel, const char *text, const char *tag) {
+	buffer.append(insertMetaInformations(logLevel, tag));
 	buffer.append(text);
 }
 
@@ -71,7 +83,7 @@ void Logging::Logger::writeLog(const std::string &data) {
 	}
 	// Write log into console
 	if (LOG_TO_CONSOLE == static_cast<LogTarget>(_logTarget & LOG_TO_CONSOLE)) {
-		std::cout << data << std::endl;
+		std::cerr << data << std::endl;
 	}
 }
 
@@ -84,7 +96,26 @@ std::string Logging::Logger::insertMetaInformations(const char *logLevel) {
 	}
 
 	if (_logLevelInLog) {
-		data.append("[").append(logLevel).append("]").append(": ");
+		data.append("[").append(logLevel).append("] ");
+	}
+
+	return data;
+}
+
+// Inserts timestamp, log level and tag in log
+std::string Logging::Logger::insertMetaInformations(const char *logLevel, const char *tag) {
+	std::string data;
+
+	if (_timeStampInLog) {
+		data.append(getCurrentTime()).append(" ");
+	}
+
+	if (tag != NULL) {
+		data.append("[").append(tag).append("] ");
+	}
+
+	if (_logLevelInLog) {
+		data.append("[").append(logLevel).append("] ");
 	}
 	return data;
 }
@@ -109,6 +140,26 @@ void Logging::Logger::error(std::ostringstream &stream) {
 	error(text.data());
 }
 
+// log error message with tag
+void Logging::Logger::error(const char *text, const char *tag) {
+	if (_logTarget == LOG_NONE) {
+		return;
+	}
+	// ERROR must be captured
+	logMessage("ERROR", text, tag);
+}
+
+// log error message with tag
+void Logging::Logger::error(std::string &text, const char *tag) {
+	error(text.data(), tag);
+}
+
+// log error message with tag
+void Logging::Logger::error(std::ostringstream &stream, const char *tag) {
+	std::string text = stream.str();
+	error(text.data(), tag);
+}
+
 // log alarm message
 void Logging::Logger::alarm(const char *text) {
 	if (_logTarget == LOG_NONE) {
@@ -127,6 +178,26 @@ void Logging::Logger::alarm(std::string &text) {
 void Logging::Logger::alarm(std::ostringstream &stream) {
 	std::string text = stream.str();
 	alarm(text.data());
+}
+
+// log alarm message with tag
+void Logging::Logger::alarm(const char *text, const char *tag) {
+	if (_logTarget == LOG_NONE) {
+		return;
+	}
+	// ALARM must be captured
+	logMessage("ALARM", text, tag);
+}
+
+// log alarm message with tag
+void Logging::Logger::alarm(std::string &text, const char *tag) {
+	alarm(text.data(), tag);
+}
+
+// log alarm message with tag
+void Logging::Logger::alarm(std::ostringstream &stream, const char *tag) {
+	std::string text = stream.str();
+	alarm(text.data(), tag);
 }
 
 // log always message
@@ -149,6 +220,26 @@ void Logging::Logger::always(std::ostringstream &stream) {
 	always(text.data());
 }
 
+// log always message with tag
+void Logging::Logger::always(const char *text, const char *tag) {
+	if (_logTarget == LOG_NONE) {
+		return;
+	}
+	// ALWAYS must be captured
+	logMessage("ALWAYS", text, tag);
+}
+
+// log always message with tag
+void Logging::Logger::always(std::string &text, const char *tag) {
+	always(text.data(), tag);
+}
+
+// log always message with tag
+void Logging::Logger::always(std::ostringstream &stream, const char *tag) {
+	std::string text = stream.str();
+	always(text.data(), tag);
+}
+
 // log RAW buffer message
 void Logging::Logger::buffer(const char *text) {
 	// Buffer is the special case. So don't add log level
@@ -161,7 +252,7 @@ void Logging::Logger::buffer(const char *text) {
 	}
 	// Write log into console
 	if (LOG_TO_CONSOLE == static_cast<LogTarget>(_logTarget & LOG_TO_CONSOLE)) {
-		std::cout << text;
+		std::cerr << text;
 	}
 }
 
@@ -197,6 +288,27 @@ void Logging::Logger::info(std::ostringstream &stream) {
 	info(text.data());
 }
 
+// log info message with tag
+void Logging::Logger::info(const char *text, const char *tag) {
+	if (_logTarget == LOG_NONE) {
+		return;
+	}
+	if (_logLevel >= LOG_LVL_INFO) {
+		logMessage("INFO", text, tag);
+	}
+}
+
+// log info message with tag
+void Logging::Logger::info(std::string &text, const char *tag) {
+	info(text.data(), tag);
+}
+
+// log info message with tag
+void Logging::Logger::info(std::ostringstream &stream, const char *tag) {
+	std::string text = stream.str();
+	info(text.data(), tag);
+}
+
 // log trace message
 void Logging::Logger::trace(const char *text) {
 	if (_logTarget == LOG_NONE) {
@@ -218,6 +330,27 @@ void Logging::Logger::trace(std::ostringstream &stream) {
 	trace(text.data());
 }
 
+// log trace message with tag
+void Logging::Logger::trace(const char *text, const char *tag) {
+	if (_logTarget == LOG_NONE) {
+		return;
+	}
+	if (_logLevel >= LOG_LVL_TRACE) {
+		logMessage("TRACE", text, tag);
+	}
+}
+
+// log trace message with tag
+void Logging::Logger::trace(std::string &text, const char *tag) {
+	trace(text.data(), tag);
+}
+
+// log debug message with tag
+void Logging::Logger::trace(std::ostringstream &stream, const char *tag) {
+	std::string text = stream.str();
+	trace(text.data(), tag);
+}
+
 // log debug message
 void Logging::Logger::debug(const char *text) {
 	if (_logTarget == LOG_NONE) {
@@ -237,6 +370,27 @@ void Logging::Logger::debug(std::string &text) {
 void Logging::Logger::debug(std::ostringstream &stream) {
 	std::string text = stream.str();
 	debug(text.data());
+}
+
+// log debug message with tag
+void Logging::Logger::debug(const char *text, const char *tag) {
+	if (_logTarget == LOG_NONE) {
+		return;
+	}
+	if (_logLevel >= LOG_LVL_DEBUG) {
+		logMessage("DEBUG", text, tag);
+	}
+}
+
+// log debug message with tag
+void Logging::Logger::debug(std::string &text, const char *tag) {
+	debug(text.data(), tag);
+}
+
+// log debug message with tag
+void Logging::Logger::debug(std::ostringstream &stream, const char *tag) {
+	std::string text = stream.str();
+	debug(text.data(), tag);
 }
 
 // Set log level

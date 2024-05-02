@@ -14,14 +14,19 @@
 # include <sys/epoll.h>  // für epoll_create1()
 # include <vector>
 # include <stdexcept>
+# include <signal.h>
 # include "Config.hpp"
+# include "EventsData.hpp"
+# include <list>
 
 class SocketHandling
 {
 	private:
-		std::vector<ServerBlock> &_config;
+
+		std::vector<Config::ServerBlock> &_config;
 		std::vector<int> _openFds;
-		int	_epollFd;
+		int _epollFd;
+		std::list<EventsData *> eventDataList;
 
 		SocketHandling(SocketHandling const &other);
 		SocketHandling operator =(SocketHandling const &other);
@@ -29,8 +34,8 @@ class SocketHandling
 		void setUpSocket(int port);
 		void setUpEpoll();
 
-	public:
-		SocketHandling(std::vector<ServerBlock> &config);
+		public:
+		SocketHandling(std::vector<Config::ServerBlock> &config);
 		~SocketHandling();
 		int getEpollFd();
 		std::vector<int> getOpenFds();
