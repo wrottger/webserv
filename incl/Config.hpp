@@ -36,25 +36,8 @@ class Config {
             CGI,
             Data,
             Semicolon,
-            Error,
             ErrorPage,
         };
-        
-    private:
-
-        Config();
-        Config& operator=(const Config& src); 
-        Config(const Config& src);
-        static Config* _instance;
-
-        std::vector<Node> _nodes;
-        std::vector<ServerBlock> _serverBlocks;
-        size_t _lines;
-        bool _isLoaded;
-
-
-    public:
-
 
         // getters
         static Config* getInstance();
@@ -64,13 +47,13 @@ class Config {
         bool isLoaded(void) const;
         bool isValidPath(const std::string& path);
         bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
+        bool isHostSet(const std::string& host, const std::string& port);
         std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
         std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);
         std::string getErrorPage(int code, const std::string& route, const std::string& host);
         std::string getRootDirectory(const std::string route, const std::string host);
         std::string getFilePath(const std::string filePath, const std::string host);
         std::string getDir(const std::string filePath, const std::string host);
-
         // config parsing methods
         void parseConfigFile(std::string filename);
         void scanTokens(std::ifstream& file);
@@ -87,6 +70,19 @@ class Config {
 
         // utils
         std::map<std::string, TokenType> _tokens;
+
+    private:
+
+        Config();
+        Config& operator=(const Config& src); 
+        Config(const Config& src);
+        static Config* _instance;
+
+        std::vector<Node> _nodes;
+        std::vector<ServerBlock> _serverBlocks;
+        size_t _lines;
+        bool _isLoaded;
+
 };
 
 struct Config::Node {
