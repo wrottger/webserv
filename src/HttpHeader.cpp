@@ -2,6 +2,7 @@
 #include <typeinfo>
 #include <algorithm>
 #include <iostream>
+#include "Logger.hpp"
 #include "HttpHeader.hpp"
 #include "HttpError.hpp"
 
@@ -24,7 +25,10 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
     {
         request_size++;
         if (request_size > 8192) // TODO check against config
+        {
+            LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
             throw HttpError(413, "Request Entity Too Large");
+        }
         c = requestLine[i];
         try
         {
@@ -38,10 +42,19 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
     }
     if (state->func == States::headerFinished)
     {
+        LOG_DEBUG_WITH_TAG("header parsing finished", "HttpHeader::parseBuffer");
         message.path = percentDecode(message.path);
         complete = true;
-        if (headers.count("host") == 0)
+        if (message.headers.count("host") == 0)
+        {
+            // print headers
+            for (auto &header : message.headers)
+            {
+                std::cout << header.first << ": " << header.second << std::endl;
+            }
+            LOG_INFO_WITH_TAG("host header not found", "HttpHeader::parseBuffer");
             parseError = HttpError(400, "Host header is required");
+        }
     }
     return i;
 }
