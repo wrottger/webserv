@@ -30,11 +30,14 @@ private:
 	static const time_t _timeout = CGI_TIMEOUT;
 	const std::string _bodyBuffer;
 	HttpHeader *_headerObject;
+	char **_enviromentVariables;
+	size_t _bodyLength;
 
 private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
+
 	char **createEnvironment(const HttpHeader *headerObject);
 	char **createArguments();
 	void executeCgi();
