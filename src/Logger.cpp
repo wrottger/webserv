@@ -83,7 +83,7 @@ void Logging::Logger::writeLog(const std::string &data) {
 	}
 	// Write log into console
 	if (LOG_TO_CONSOLE == static_cast<LogTarget>(_logTarget & LOG_TO_CONSOLE)) {
-		std::cout << data << std::endl;
+		std::cerr << data << std::endl;
 	}
 }
 
@@ -252,7 +252,7 @@ void Logging::Logger::buffer(const char *text) {
 	}
 	// Write log into console
 	if (LOG_TO_CONSOLE == static_cast<LogTarget>(_logTarget & LOG_TO_CONSOLE)) {
-		std::cout << text;
+		std::cerr << text;
 	}
 }
 
