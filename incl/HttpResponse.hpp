@@ -7,8 +7,8 @@
 class HttpResponse
 {
     public:
-        HttpResponse(HttpHeader &header, int fds);
-        ~HttpResponse();
+		HttpResponse(HttpHeader &header, int fds);
+		~HttpResponse();
         size_t readBuffer(const char* buffer);
         void write();
         bool finished();
@@ -17,6 +17,7 @@ class HttpResponse
         HttpResponse();
         HttpResponse(const HttpResponse &src);
         HttpResponse &operator=(const HttpResponse &src);
+		std::string generateErrorResponse(int code, const std::string &message);
 
         HttpHeader & header;
         Config *config;
@@ -25,5 +26,10 @@ class HttpResponse
         bool isChunked;
         bool isFinished;
         std::string response;
+
+        // CHUNKED response
+        std::ifstream getFile;
+        char ChunkedBuffer[1024];
+        size_t bufferIndex;
 };
 #endif // HTTPRESPONSE_HPP
