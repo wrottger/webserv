@@ -33,6 +33,7 @@ char **Cgi::createArguments() {
 }
 
 Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject) :
+		_currentBufferSize(0),
 		_timeCreated(0),
 		_isFinished(false),
 		_errorCode(0),
@@ -65,7 +66,7 @@ void Cgi::executeCgi() {
 		return;
 	}
 
-	LOG_ALARM("ALARM CGI EXECUTING");
+	LOG_DEBUG("CGI EXECUTING");
 	// Add the socket to epoll event list and create an EventData object for it
 	// try {
 	// if (client->getEventHandler()->registerEvent(_sockets[0], CGI, client) < 0) {

@@ -19,8 +19,10 @@ std::string createTestResponse() {
 Client::Client() {}
 
 Client::Client(int fd):
+		_lastModified(0),
 		_fd(fd),
-		_canBeDeleted(false) {
+		_canBeDeleted(false),
+		_state(READING_HEADER) {
 	_headerObject = new HttpHeader;
 	updateTime();
 }
@@ -35,17 +37,53 @@ int Client::getFd() const {
 
 // MAIN LOOP for processing client requests
 void Client::process(uint32_t events) {
-	if (events & EPOLLIN) {
-		readFromClient();
-	}
-	if (events & EPOLLOUT) {
-		if (isHeaderComplete()) {
-			std::string httpResponse = createTestResponse();
-			if (send(_fd, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-				LOG_ERROR_WITH_TAG("send failed", "Client");
+	switch (_state) {
+		case READING_HEADER:
+			if (events & EPOLLIN) {
+				readFromClient();
+				if (isHeaderComplete()) {
+					_state = SENDING_RESPONSE;
+					// TODO: Copy the rest of the buffer to the response object
+					// TODO: Create a response object
+					
+				}
 			}
+			break;
+		case READING_BODY:
+			// responeObject->parseBuffer(buffer);
+			// if (responseObject->isBodyisComplete()) {
+				// if (responseObject->isCgi()) {
+					// _cgi_object = new Cgi(responseObject->getBody(), _headerObject);
+					// _state = WAITING_FOR_CGI;
+				// } else {
+					// _state = SENDING_RESPONSE;
+				// }
+			// }
+			break;
+		case WAITING_FOR_CGI:
+			// processCgi();
+			// if (cgi->isFinished()) {
+				// _state = SENDING_RESPONSE;
+			// }
+			break;
+		case SENDING_RESPONSE:
+			// sendResponse();
+			// if (response->isSent()) {
+				// _state = FINISHED;
+			// }
+			if (events & EPOLLOUT) {
+				if (isHeaderComplete()) {
+					std::string httpResponse = createTestResponse();
+					if (send(_fd, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
+						LOG_ERROR_WITH_TAG("send failed", "Client");
+					}
+					_state = FINISHED;
+				}
+			}
+			break;
+		case FINISHED:
 			_canBeDeleted = true;
-		}
+			break;
 	}
 }
 

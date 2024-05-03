@@ -121,7 +121,7 @@ void EventHandler::unregisterEvent(int fd) {
 	}
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		if ((*it)->fd == fd) {
-			LOG_ALARM_WITH_TAG("Unregistered something with fd", "EventHandler");
+			LOG_DEBUG_WITH_TAG("Unregistered something with fd", "EventHandler");
 			delete *it;
 			_eventDataList.erase(it);
 			break;
@@ -138,7 +138,7 @@ void EventHandler::unregisterEvent(EventsData *eventData) {
 	}
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		if (*it == eventData) {
-			LOG_ALARM_WITH_TAG("Unregistered something with pointer", "EventHandler");
+			LOG_DEBUG_WITH_TAG("Unregistered something with pointer", "EventHandler");
 			close(eventData->fd);
 			delete *it;
 			_eventDataList.erase(it);

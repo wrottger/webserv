@@ -20,6 +20,15 @@ public:
 	bool isTimeouted() const;
 
 private:
+	enum State {
+		READING_HEADER,
+		READING_BODY,
+		WAITING_FOR_CGI,
+		SENDING_RESPONSE,
+		FINISHED
+	};
+
+private:
 	Client();
 	Client(Client const &other);
 	Client &operator=(Client const &other);
@@ -37,6 +46,7 @@ private:
 	std::time_t _lastModified;
 	int _fd;
 	bool _canBeDeleted;
+	State _state;
 };
 
 #endif
