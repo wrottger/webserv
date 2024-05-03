@@ -143,6 +143,38 @@ std::string Config::getDirectiveValue(const std::string& route, const std::strin
     return "";
 }
 
+std::string Config::getErrorPage(int code, const std::string& route, const std::string& host)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use getErrorPage without a valid Config instance.");
+    std::pair<size_t, size_t> l = config->getClosestPathMatch(route, host);
+    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
+        return "";
+    std::stringstream ss;
+    ss << code;
+    std::string codeStr = ss.str();
+    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    {
+        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == ErrorPage)
+        {
+            size_t pos = config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.find(' ');
+            if (codeStr == config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(0, pos))
+                return config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(pos + 1);
+        }
+    }
+    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    {
+        if (config->_serverBlocks[l.first]._directives[i].first == ErrorPage)
+        {
+            size_t pos = config->_serverBlocks[l.first]._directives[i].second.find(' ');
+            if (codeStr == config->_serverBlocks[l.first]._directives[i].second.substr(0, pos))
+                return config->_serverBlocks[l.first]._directives[i].second.substr(pos + 1);
+        }
+    }
+    return "";
+
+}
 bool Config::isValidPath(const std::string& path)
 {
     std::string specialChars = "*?|<>:\"~\t ";

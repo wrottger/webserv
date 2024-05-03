@@ -66,6 +66,7 @@ class Config {
         bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
         std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
         std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);
+        std::string getErrorPage(int code, const std::string& route, const std::string& host);
         std::string getRootDirectory(const std::string route, const std::string host);
         std::string getFilePath(const std::string filePath, const std::string host);
         std::string getDir(const std::string filePath, const std::string host);
