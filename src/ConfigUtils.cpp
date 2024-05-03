@@ -201,6 +201,31 @@ bool Config::isValidPath(const std::string& path)
     return true;
 }
 
+//returns true the first time a host is set with the given port and false otherwise
+bool Config::isHostSet(const std::string& host, const std::string& port)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use isHostSet without a valid Config instance.");
+    if (port.empty())
+        return false;
+    for (size_t i = 0; i != config->_serverBlocks.size(); i++)
+    {
+        for (size_t j = 0; j != config->_serverBlocks[i]._directives.size(); j++)
+        {
+            if (config->_serverBlocks[i]._directives[j].first == ServerName && config->_serverBlocks[i]._directives[j].second == host)
+            {
+                for (size_t k = 0; k != config->_serverBlocks[i]._directives.size(); k++)
+                {
+                    if (config->_serverBlocks[i]._directives[k].first == Port && config->_serverBlocks[i]._directives[k].second == port)
+                        return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 std::string Config::getFilePath(const std::string filePath, const std::string host)
 {
     Config* config = getInstance();

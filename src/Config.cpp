@@ -26,7 +26,6 @@ void Config::parseConfigFile(std::string filename)
     _tokens["{"] = OpenBrace;
     _tokens["}"] = CloseBrace;
     _tokens[";"] = Semicolon;
-    _tokens["error"] = Error;
     _tokens["error_page"] = ErrorPage;
 
     this->scanTokens(_fileStream);
@@ -36,35 +35,6 @@ void Config::parseConfigFile(std::string filename)
     if (_serverBlocks.empty())
         throw std::runtime_error(RBOLD("Error: no server blocks found in config file"));
     _isLoaded = true;
-}
-
-//iterate through the server blocks and check if the server_name and ports are unique across all server blocks
-void Config::addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator& start)
-{
-    static std::map<std::pair<std::string, std::string>, bool> hostPortMap;
-    std::string serverName;
-    std::vector<std::string> ports;
-
-    for (std::vector<std::pair<TokenType, std::string> >::iterator it = newBlock._directives.begin(); it != newBlock._directives.end(); it++) {
-        switch (it->first) {
-            case ServerName:
-                serverName = it->second;
-                break;
-            case Port:
-                ports.push_back(it->second);
-                break;
-            default:
-                break;
-        }
-    }
-    for (std::vector<std::string>::iterator it = ports.begin(); it != ports.end(); it++) {
-        std::pair<std::string, std::string> hostPortPair(serverName, *it);
-        if (hostPortMap.find(hostPortPair) != hostPortMap.end()) {
-            error("Duplicate server name and port combination", start);
-        }
-        hostPortMap[hostPortPair] = true;
-    }
-    _serverBlocks.push_back(newBlock);
 }
 
 // This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
@@ -212,7 +182,6 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
             if (it->_token == Server)
             {
                 std::vector<Node>::iterator start = it; // starting node of the server block
-                std::vector<Node>::iterator start2 = start;
                 it++;
                 if (it == end)
                     error("Syntax error: incomplete server block", start);
@@ -225,7 +194,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 if (serverBlock._directives.size())
                 {
-                    addServerBlock(serverBlock , start2);
+                    _serverBlocks.push_back(serverBlock);
                     if (it->_line < _lines)
                         printProgressBar(it->_line, _lines);
                 }
@@ -399,7 +368,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
     else if (!portFound)
         error("Syntax error: server block requires a port directive", start);
     else if (!serverName)
-        error("Syntax error: server block requires a server_name directive", start);
+        block._directives.push_back(std::make_pair(ServerName, ""));
     else if (serverName > 1)
         error("Syntax error: server block can only have one server_name directive", start);
     return block;
