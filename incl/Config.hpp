@@ -9,28 +9,15 @@
 # include <sstream>
 # include <cstdlib>
 # include <algorithm>
+# include <limits>
 
 class Config {
 
     public:
 
         struct ServerBlock;
-        
-    private:
-
         struct Node;
         struct LocationBlock;
-
-        Config();
-        Config& operator=(const Config& src); 
-        Config(const Config& src);
-        static Config* _instance;
-
-        std::vector<Node> _nodes;
-        std::vector<ServerBlock> _serverBlocks;
-        size_t _lines;
-        bool _isLoaded;
-
         enum TokenType
         {
             OpenBrace,
@@ -52,6 +39,19 @@ class Config {
             Error,
             ErrorPage,
         };
+        
+    private:
+
+        Config();
+        Config& operator=(const Config& src); 
+        Config(const Config& src);
+        static Config* _instance;
+
+        std::vector<Node> _nodes;
+        std::vector<ServerBlock> _serverBlocks;
+        size_t _lines;
+        bool _isLoaded;
+
 
     public:
 
@@ -62,6 +62,12 @@ class Config {
         std::vector<ServerBlock>& getServerBlocks(void);
         bool isLoaded(void) const;
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
+        std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
+        bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
+        std::string getRootDirectory(const std::string route, const std::string host);
+        std::string getFilePath(const std::string filePath, const std::string host);
+        std::string getDir(const std::string filePath, const std::string host);
+        bool isValidPath(const std::string& path);
 
         // config parsing methods
         void parseConfigFile(std::string filename);
