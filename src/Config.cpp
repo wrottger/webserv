@@ -340,6 +340,26 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                     it++;
                     break;
                 }
+                case ErrorPage:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(ErrorPage, (it + 1)->_value);
+                        it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing path to error page", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: invalid path in error page directive", it);
+                        it++;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after error page directive", it - 2);
+                        block._directives.push_back(pair);
+                    }
+                    else
+                        error("Syntax error: error page directive requires error code + error page path", it);
+                    break;
                 default:
                     error("Syntax error: unexpected token in server block", it);
             }
@@ -434,27 +454,25 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                     else
                         error("Syntax error: root directive requires a value", it);
                     break;
-                case Error:
-                    if (it + 1 != end && (it + 1)->_token == Data)
-                    {
-                        block._directives.push_back(std::make_pair(Error, (it + 1)->_value));
-                        it += 2;
-                        if (it == end || it->_token != Semicolon)
-                            error("Syntax error: missing semicolon after error directive", it - 2);
-                    }
-                    else
-                        error("Syntax error: error directive requires a value", it);
-                    break;
                 case ErrorPage:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(ErrorPage, (it + 1)->_value));
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(ErrorPage, (it + 1)->_value);
                         it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing path to error page", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: invalid path in error page directive", it);
+                        it++;
                         if (it == end || it->_token != Semicolon)
-                            error("Syntax error: missing semicolon after error_page directive", it - 2);
+                            error("Syntax error: missing semicolon after error page directive", it - 2);
+                        block._directives.push_back(pair);
                     }
                     else
-                        error("Syntax error: error_page directive requires a value", it);
+                        error("Syntax error: error page directive requires error code + error page path", it);
                     break;
                 case Index:
                     if (it + 1 != end && (it + 1)->_token == Data)
@@ -486,7 +504,7 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                     {
                         if (it->_token == Data)
                         {
-                            if (it->_value == "GET" || it->_value == "POST" || it->_value == "PUT" || it->_value == "DELETE")
+                            if (it->_value == "GET" || it->_value == "POST" || it->_value == "DELETE")
                             {
                                 if (!methods.empty())
                                     methods += " ";
