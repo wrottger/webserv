@@ -2,6 +2,7 @@
 #define HTTPRESPONSE_HPP
 
 #include "HttpHeader.hpp"
+#include "Config.hpp"
 
 class HttpResponse
 {
@@ -18,8 +19,9 @@ class HttpResponse
         HttpResponse &operator=(const HttpResponse &src);
 
         HttpHeader & header;
+        Config *config;
         int fds;
-        bool isError;
+        HttpError error;
         bool isChunked;
         bool isFinished;
         std::string response;
