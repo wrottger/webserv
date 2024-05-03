@@ -41,13 +41,6 @@ private:
 
     HttpError parseError;
 
-    std::string method; // GET, POST etc.
-    std::string host; // localhost, google.com etc.
-    std::string path; // /, /index.html etc.
-    std::string query; // ?key=value etc.
-    std::string fragment; // #fragment etc.
-    std::map<std::string, std::string> headers;
-
     HttpHeader(const HttpHeader &other);
     std::string percentDecode(std::string &str);
     HttpHeader &operator=(const HttpHeader &other);
