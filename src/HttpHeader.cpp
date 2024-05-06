@@ -289,6 +289,8 @@ void HttpHeader::States::minorDigit(char c, HttpMessage& message, StateHandler& 
 void HttpHeader::States::query(char c, HttpMessage& message, StateHandler& nextState) {
     if (isPchar(c) || c == '/' || c == '?') {
         message.query += c;
+    } else if (c == ' ') {
+        nextState.func = httpVersion;
     } else if (c == '#') {
         nextState.func = fragment;
     } else {
