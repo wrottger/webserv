@@ -15,8 +15,13 @@ public:
     const std::string &getPath() const;
     const std::string &getFileExtension() const;
     const std::string &getQuery() const;
+
     const std::string getHeader(const std::string &name) const;
     const std::string &getBody() const;
+
+    int getPort();
+    const std::string &getHost() const;
+
 
     HttpError getError() const;
     bool isError() const;
@@ -29,6 +34,8 @@ private:
         std::string path;
         std::string query;
         std::string fragment;
+        std::string host;
+        int         port;
         std::string fieldName;
         std::string fieldValue;
         std::map<std::string, std::string> headers;

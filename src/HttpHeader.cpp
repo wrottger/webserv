@@ -2,6 +2,7 @@
 #include <typeinfo>
 #include <algorithm>
 #include <iostream>
+#include <cstdlib>
 #include "Logger.hpp"
 #include "HttpHeader.hpp"
 #include "HttpError.hpp"
@@ -12,6 +13,7 @@ HttpHeader::HttpHeader() : parseError(0, ""){
     state->func = States::method;
     message = HttpMessage();
     request_size = 0;
+    message.port = 80;
 }
 
 HttpHeader::~HttpHeader() { delete state; }
@@ -52,7 +54,9 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         }
         if (message.headers.find("host")->second.find(":") != std::string::npos)
         {
-            message.headers["host"] = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
+            message.host = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
+            message.port = std::strtol(message.headers.find("host")->second.substr(message.headers.find("host")->second.find(":") + 1).c_str(), NULL, 10);
+            message.headers["host"] = message.host;
         }
     }
     return i;
@@ -70,9 +74,18 @@ const std::string &HttpHeader::getQuery() const {  return message.query; }
 
 const std::string HttpHeader::getHeader(const std::string &name) const {
     std::map<std::string, std::string>::const_iterator it = message.headers.find(name);
-    if (it == message.headers.end())
+    if (it == message.headers.end()) {
         return "";
+	}
     return it->second;
+}
+
+int HttpHeader::getPort() {
+	return message.port;
+}
+
+const std::string &HttpHeader::getHost() const {
+	return message.host;
 }
 
 bool HttpHeader::isError() const { return parseError.code() != 0;}
