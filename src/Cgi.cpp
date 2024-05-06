@@ -157,7 +157,9 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	}
 
 	// Set the enviroment variables
-	char **envp = createEnvironment(headerObject);
+	// char **envp = createEnvironment(headerObject);
+	char **envp = NULL;
+	(void)headerObject;
 	char **argv = createArguments();
 
 	execve(argv[0], argv, envp);
