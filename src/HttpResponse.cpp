@@ -11,10 +11,10 @@ std::string HttpResponse::generateErrorResponse(int code, const std::string &mes
 	response = "HTTP/1.1 ";
 	if (error_path.empty())
 	{
-		char *code = new char[4];
-		sprintf(code, "%d", error.code());
+		std::stringstream errCode;
+		errCode << error.code();
 		std::string error_html = "<HTML><body><p><strong>";
-		error_html += code;
+		error_html += errCode.str();
 		error_html += " </strong>";
 		error_html += message;
 		error_html += "</p></body>";
@@ -25,9 +25,9 @@ std::string HttpResponse::generateErrorResponse(int code, const std::string &mes
 		response += "Connection: close\r\n";
 		response += "Content-Type: text/html\r\n";
 		response += "Content-Length: ";
-		char *length = new char[4];
-		sprintf(length, "%ld", error_html.size());
-		response += length;
+		std::stringstream errSize;
+		errSize << error_html.size();
+		response += errSize.str();
 		response += "\r\n\r\n";
 		response += error_html;
 	}
@@ -66,10 +66,13 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 	{
 		if (config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "GET"))
 		{
+			LOG_DEBUG("GET ALLOWED");
 			std::string filePath = config->getFilePath(header.getPath(), header.getHeader("host"));
 			getFile.open(filePath.c_str());
 			if (!getFile.is_open())
 				error = HttpError(404, "Not Found");
+			response += "200 OK\r\n";
+			response += "Connection: close\r\n";
 			response += "transfer-encoding: chunked\r\n\r\n";
 		}
 		else
@@ -86,7 +89,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 		else if (remove(header.getPath().c_str()) != 0)
 			error = HttpError(500, "Internal Server Error");
 		else {
-			response += "200 OK\r\n";
+			response += "200 OK\r\n\r\n";
 			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
 		}
 	}
@@ -115,37 +118,42 @@ void HttpResponse::write() {
 		return;
 	}
 
-	if (error.code() != 0 || header.getMethod() == "DELETE"){
-		size_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
-		if (sentBytes != response.size())
-			response = response.substr(sentBytes);
-		if (response.empty())
-			isFinished = true;
-	} else if (header.getMethod() == "GET") {
-		LOG_DEBUG("HttpResponse::sending GET response");
-		if (!response.empty())
+	if (header.getMethod() == "GET" && !error.code()) {
+		if (response.size())
 		{
-			size_t sentBytes =  (size_t) send(fds, response.c_str(), response.size(), 0);
-			if (sentBytes != response.size())
+			LOG_DEBUG("HttpResponse sending response buffer");
+			// sending headers
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
-		} else if (getFile.eof()) {
-			response = "0\r\n\r\n";
-			size_t sentBytes =  (size_t) send(fds, response.c_str(), response.size(), 0);
-			if (sentBytes != response.size())
-				response = response.substr(sentBytes);
-			if (response.empty())
-				isFinished = true;
-		} else {
-			getFile.read(ChunkedBuffer, 1024);
+		} else if (getFile.is_open()) {
+			// sending file
+			LOG_DEBUG("HttpResponse reading chunk from file");
+			getFile.read(chunkedBuffer, 1023);
+			if (getFile.gcount() == 0)
+			{
+				getFile.close();
+				response += "0\r\n\r\n";
+				return;
+			}
 			size_t readBytes = getFile.gcount();
-			response += readBytes;
+			chunkedBuffer[readBytes] = '\0';
+			std::stringstream ss;
+			ss << std::hex << readBytes;
+			response += ss.str();
 			response += "\r\n";
-			response += ChunkedBuffer;
+			response += chunkedBuffer;
 			response += "\r\n";
+		} else {
+			isFinished = true;
 		}
-
 	} else {
-		LOG_ERROR("HttpResponse::IMPOSSIBLE STATE");
+		ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+		LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
+		if (sentBytes > 0)
+			response = response.substr(sentBytes);
+		else
+			isFinished = true;
 	}
 }
 
