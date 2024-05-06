@@ -74,7 +74,7 @@ UTEST(HttpHeader, wrongWhitespaces)
   r2.parseBuffer("GET / HTTP/1.1\r\nhost :localhost\r\n\r\n");
   EXPECT_EQ(400, r2.getError().code());
   HttpHeader r3;
-  r3.parseBuffer("GET / HTTP/1.1\r\nhost: localhost \r\n\r\n");
+  r3.parseBuffer("G ET / HTTP/1.1\r\nhost: localhost\r\n\r\n");
   EXPECT_EQ(400, r3.getError().code());
 }
 
@@ -190,4 +190,12 @@ UTEST(HttpHeader, percentDecode)
   HttpHeader r;
   r.parseBuffer("GET /%20 HTTP/1.1\r\nhost: localhost\r\n\r\n");
   ASSERT_STREQ("/ ", r.getPath().c_str());
+}
+
+UTEST(HttpHeader, portInHost)
+{
+  HttpHeader r;
+  r.parseBuffer("GET / HTTP/1.1\r\nhost: localhost:8080\r\n\r\n");
+  ASSERT_STREQ("localhost", r.getHost().c_str());
+  ASSERT_EQ(8080, r.getPort());
 }
