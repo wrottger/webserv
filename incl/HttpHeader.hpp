@@ -15,9 +15,10 @@ public:
     const std::string &getPath() const;
     const std::string &getFileExtension() const;
     const std::string &getQuery() const;
-
-    const std::string getHeader(const std::string &name) const;
-    const std::string &getBody() const;
+    int getPort();
+    const std::string &getHost() const;
+    const std::string &getHeader(const std::string &name) const;
+    std::map<std::string, std::string> getHeaders() const;
 
     int getPort();
     const std::string &getHost() const;

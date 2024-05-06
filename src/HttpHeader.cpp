@@ -70,20 +70,16 @@ const std::string &HttpHeader::getPath() const { return message.path; }
 
 const std::string &HttpHeader::getQuery() const {  return message.query; }
 
-const std::string HttpHeader::getHeader(const std::string &name) const {
-    std::map<std::string, std::string>::const_iterator it = message.headers.find(name);
-    if (it == message.headers.end()) {
-        return "";
-	}
-    return it->second;
-}
-
 int HttpHeader::getPort() {
 	return message.port;
 }
 
 const std::string &HttpHeader::getHost() const {
 	return message.host;
+}
+
+const std::string &HttpHeader::getHeader(const std::string &name) const {
+    return message.headers.find(name)->second;
 }
 
 bool HttpHeader::isError() const { return parseError.code() != 0;}
