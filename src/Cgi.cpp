@@ -8,50 +8,44 @@ char *dupString(const std::string &str) {
 	return cstr;
 }
 
-void createMetaEnviromentVariables(char **envp, size_t &pos) {
-	envp[pos++] = dupString("AUTH_TYPE="); // TODO: Change to actual auth type
-	envp[pos++] = dupString("CONTENT_LENGTH="); // TODO: Change to actual content length
-	envp[pos++] = dupString("CONTENT_TYPE=application/x-www-form-urlencoded"); // TODO: Change to actual content type
-	envp[pos++] = dupString("GATEWAY_INTERFACE=CGI/1.1");
-	envp[pos++] = dupString("PATH_INFO=/path/to/script"); // TODO: Change to actual path info
-	envp[pos++] = dupString("PATH_TRANSLATED=/path/to/script"); // TODO: Change to actual path translated
-	envp[pos++] = dupString("QUERY_STRING=param1=value1&param2=value2"); // TODO: Change to actual query string
-	envp[pos++] = dupString("REMOTE_ADDR="); // TODO: Change to actual remote address
-	envp[pos++] = dupString("SERVER_SOFTWARE=WebServ/1.0");
-	envp[pos++] = dupString("SERVER_NAME=localhost"); // TODO: Change to actual server name
-	envp[pos++] = dupString("SERVER_PROTOCOL=HTTP/1.1");
-	envp[pos++] = dupString("SERVER_PORT=8080"); // TODO: Change to actual server port
-	envp[pos++] = dupString("REQUEST_METHOD=GET"); // TODO: Change to actual request method
-	envp[pos++] = dupString("SCRIPT_NAME=/path/to/script"); // TODO: Change to actual script name
+std::string Cgi::toString(size_t number) {
+	std::stringstream result;
 
-
+	result << number;
+	return result.str();
 }
 
-char **Cgi::createEnvironment(const HttpHeader *headerObject) {
-	const std::map<std::string, std::string> headers = headerObject->getHeaders();
-	char **env = new char *[headers.size() + 1];
-	int i = 0;
-	for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-	std::string envVar = it->first + "=" + it->second;
-			env[i] = strdup(envVar.c_str());
-			++i;
-	}
-	// char **env = new char *[13];
-	// env[0] = strdup("REQUEST_METHOD=GET");
-	// env[1] = strdup("QUERY_STRING=param1=value1&param2=value2");
-	// env[2] = strdup("CONTENT_TYPE=application/x-www-form-urlencoded");
-	// env[3] = strdup("CONTENT_LENGTH=");
-	// env[4] = strdup("SCRIPT_NAME=/path/to/script");
-	// env[5] = strdup("REQUEST_URI=/path/to/script?param1=value1&param2=value2");
-	// env[6] = strdup("DOCUMENT_URI=/path/to/script");
-	// env[7] = strdup("DOCUMENT_ROOT=/path/to/webroot");
-	// env[8] = strdup("SERVER_PROTOCOL=HTTP/1.1");
-	// env[9] = strdup("REMOTE_ADDR=127.0.0.1");
-	// env[10] = strdup("SERVER_NAME=localhost");
-	// env[11] = strdup("SERVER_PORT=80");
-	// env[12] = NULL; // The environment list must be NULL-terminated
+std::vector<std::string> Cgi::createEnviromentVariables() {
+	std::vector<std::string> result;
+	std::string contentType = _headerObject->getHeader("content-type");
 
-	return env;
+	result.push_back("AUTH_TYPE=");
+	result.push_back("CONTENT_LENGTH=" + toString(_bodyLength));
+	if (!contentType.empty()) {
+		result.push_back("CONTENT_TYPE=" + contentType);
+	}
+	result.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	result.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_headerObject->getPath(), _headerObject->getHeader("host")));
+	result.push_back("PATH_TRANSLATED=");
+	result.push_back("QUERY_STRING=" + _headerObject->getQuery());
+	result.push_back("REMOTE_ADDR=" + _clientIp);
+	result.push_back("REMOTE_HOST=" + _clientIp);
+	// result.push_back("REMOTE_IDENT=");
+	result.push_back("REQUEST_METHOD=" + _headerObject->getMethod());
+	result.push_back("SCRIPT_NAME=" + _headerObject->getPath()); // FIXME: Maybe wrong when: /path/to/script.py/param1/param2
+	result.push_back("SERVER_NAME=" + _headerObject->getHeader("host"));
+	// result.push_back("SERVER_PORT=" + _headerObject->getPort()); // TODO: Change to actual server port
+	result.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	result.push_back("SERVER_SOFTWARE=WebServ/1.0");
+
+	for (std::map<std::string, std::string>::const_iterator it = _headerObject->getHeaders().begin(); it != _headerObject->getHeaders().end(); ++it) {
+		std::string key = it->first;
+		std::transform(key.begin(), key.end(), key.begin(), ::toupper);
+		std::replace(key.begin(), key.end(), '-', '_');
+		result.push_back("HTTP_" + key + "=" + it->second);
+	}
+
+	return result;
 }
 
 char **Cgi::createArguments() {
@@ -63,13 +57,14 @@ char **Cgi::createArguments() {
 	return argv;
 }
 
-Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject) :
+Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp) :
 		_currentBufferSize(0),
 		_timeCreated(0),
 		_isFinished(false),
 		_errorCode(0),
 		_bodyBuffer(bodyBuffer),
-		_headerObject(headerObject) {
+		_headerObject(headerObject),
+		_clientIp(clientIp){
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	_bodyLength = bodyBuffer.size();

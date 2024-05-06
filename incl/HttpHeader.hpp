@@ -15,7 +15,7 @@ public:
     const std::string &getPath() const;
     const std::string &getFileExtension() const;
     const std::string &getQuery() const;
-    const std::string &getHeader(const std::string &name) const;
+    const std::string getHeader(const std::string &name) const;
     const std::string &getBody() const;
 
     HttpError getError() const;

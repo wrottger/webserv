@@ -32,19 +32,21 @@ private:
 	HttpHeader *_headerObject;
 	char **_enviromentVariables;
 	size_t _bodyLength;
+	std::string _clientIp;
 
 private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
 
-	char **createEnvironment(const HttpHeader *headerObject);
+	std::vector<std::string> createEnviromentVariables();
 	char **createArguments();
+	std::string toString(size_t number);
 	void executeCgi();
 	int executeChild(const HttpHeader *headerObject);
 
 public:
-	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject);
+	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp);
 	~Cgi();
 
 	bool isFinished() const;

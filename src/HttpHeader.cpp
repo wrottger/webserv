@@ -56,8 +56,11 @@ const std::string &HttpHeader::getPath() const { return message.path; }
 
 const std::string &HttpHeader::getQuery() const {  return message.query; }
 
-const std::string &HttpHeader::getHeader(const std::string &name) const {
-    return message.headers.find(name)->second;
+const std::string HttpHeader::getHeader(const std::string &name) const {
+    std::string result = message.headers.find(name)->second;
+    if (result.empty())
+        return "";
+    return result;
 }
 
 bool HttpHeader::isError() const { return parseError.code() != 0;}
