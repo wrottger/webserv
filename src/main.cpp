@@ -37,10 +37,13 @@ int main(int argc, char *argv[], char *envp[]) {
 	config->printProgressBar(1, 1);
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 
-  LOG_INFO("Server started");
-  SocketHandling sockets(config->getServerBlocks());
-  EventHandler event(sockets);
-  event.start();
+	LOG_INFO("Server started");
+	// LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
+	// LOG_DISABLE_CONSOLE_LOGGING();
+	// LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
+	SocketHandling sockets(config->getServerBlocks());
+	EventHandler event(sockets);
+	event.start();
 }
 
 // int main()
