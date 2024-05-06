@@ -25,7 +25,7 @@ std::vector<std::string> Cgi::createEnviromentVariables() {
 		result.push_back("CONTENT_TYPE=" + contentType);
 	}
 	result.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	result.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_headerObject->getPath(), _headerObject->getHeader("host")));
+	result.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_headerObject->getPath(), "localhost"));
 	result.push_back("PATH_TRANSLATED=");
 	result.push_back("QUERY_STRING=" + _headerObject->getQuery());
 	result.push_back("REMOTE_ADDR=" + _clientIp);
