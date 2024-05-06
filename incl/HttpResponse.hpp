@@ -29,7 +29,7 @@ class HttpResponse
 
         // CHUNKED response
         std::ifstream getFile;
-        char chunkedBuffer[1025] = {};
+        char chunkedBuffer[1025];
         std::string chunks;
         size_t bufferIndex;
 };
