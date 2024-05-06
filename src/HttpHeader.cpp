@@ -55,6 +55,10 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
             LOG_INFO_WITH_TAG("host header not found", "HttpHeader::parseBuffer");
             parseError = HttpError(400, "Host header is required");
         }
+        if (message.headers.find("host")->second.find(":") != std::string::npos)
+        {
+            message.headers["host"] = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
+        }
     }
     return i;
 }

@@ -81,7 +81,6 @@ void Client::process(uint32_t events) {
 					LOG_DEBUG("HttpResponse::finished");
 					_state = FINISHED;
 				} else {
-					LOG_DEBUG("HttpResponse::write");
 					httpResponse->write();
 				}
 			}
