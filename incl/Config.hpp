@@ -56,6 +56,7 @@ class Config {
         bool isValidPath(const std::string& path);
         bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
         bool isHostSet(const std::string& host, const std::string& port);
+        bool isCGIAllowed(const std::string& route, const std::string& host);
         std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
         std::string getErrorPage(int code, const std::string& route, const std::string& host);
         std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);

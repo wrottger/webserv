@@ -175,6 +175,54 @@ std::string Config::getErrorPage(int code, const std::string& route, const std::
     return "";
 
 }
+
+bool Config::isCGIAllowed(const std::string& route, const std::string& host)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
+    std::string path;
+    std::string extension;
+    std::istringstream iss(route);
+    for (std::string token; std::getline(iss, token, '/');)
+    {
+        path += token;
+        if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
+        {
+            extension = token.substr(token.find_last_of('.') + 1);
+            break;
+        }
+    }
+    std::pair<size_t, size_t> l = config->getClosestPathMatch(path, host);
+    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max() || extension.empty())
+        return false;
+    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    {
+        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == CGI)
+        {
+            std::stringstream ss(config->_serverBlocks[l.first]._locations[l.second]._directives[i].second);
+            for (std::string token; std::getline(ss, token, ' ');)
+            {
+                if (token == extension)
+                    return true;
+            }
+        }
+    }
+    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    {
+        if (config->_serverBlocks[l.first]._directives[i].first == CGI)
+        {
+            std::stringstream ss(config->_serverBlocks[l.first]._directives[i].second);
+            for (std::string token; std::getline(ss, token, ' ');)
+            {
+                if (token == extension)
+                    return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool Config::isValidPath(const std::string& path)
 {
     std::string specialChars = "*?|<>:\"~\t ";
