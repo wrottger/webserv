@@ -11,9 +11,25 @@ std::string HttpResponse::generateErrorResponse(int code, const std::string &mes
 	response = "HTTP/1.1 ";
 	if (error_path.empty())
 	{
-		response += code + " ";
+		char *code = new char[4];
+		sprintf(code, "%d", error.code());
+		std::string error_html = "<HTML><body><p><strong>";
+		error_html += code;
+		error_html += " </strong>";
+		error_html += message;
+		error_html += "</p></body>";
+
+		response += code;
+		response += " ";
 		response += message + "\r\n";
-		response += "Connection: close\r\n\r\n";
+		response += "Connection: close\r\n";
+		response += "Content-Type: text/html\r\n";
+		response += "Content-Length: ";
+		char *length = new char[4];
+		sprintf(length, "%ld", error_html.size());
+		response += length;
+		response += "\r\n\r\n";
+		response += error_html;
 	}
 	else
 	{
@@ -38,6 +54,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 	LOG_DEBUG("HttpResponse::HttpResponse");
 	config = Config::getInstance();
 	response = "HTTP/1.1 ";
+	isFinished = false;
 	error = header.getError();
 	if (error.code() != 0)
 	{
@@ -81,6 +98,9 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 		response = generateErrorResponse(error.code(), error.message());
 }
 
+HttpResponse::~HttpResponse() {
+}
+
 size_t HttpResponse::readBuffer(const char *buffer) {
 	(void)buffer;
 	if (error.code() != 0)
@@ -89,7 +109,6 @@ size_t HttpResponse::readBuffer(const char *buffer) {
 }
 
 void HttpResponse::write() {
-	LOG_DEBUG("HttpResponse::write");
 	if (isFinished)
 	{
 		LOG_INFO("HttpResponse::write isFinished");
