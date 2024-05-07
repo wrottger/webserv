@@ -170,3 +170,37 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 
 	return 0;
 }
+
+int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+{
+    if (bodyBuffer.empty()) {
+        return 1;
+    }
+    std::stringstream bodyStream(bodyBuffer);
+    for (std::string line; std::getline(bodyStream, line);)
+    {
+		if (!line.empty() && line[line.size() - 1] == '\r')
+		    line.erase(line.size() - 1); // Remove the trailing \r
+		size_t chunkSize;
+		std::stringstream sizeStream(line);
+		if (!(sizeStream >> std::hex >> chunkSize)) // Parse the chunk size
+		    return 1;
+		if (chunkSize == 0)
+		{
+		    // Check for final CRLF
+		    char crlf[2];
+		    if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
+		        return 1;
+		    break;
+		}
+		size_t oldSize = decodedBody.size();
+		decodedBody.resize(oldSize + chunkSize); // Resize the decoded body buffer to fit the new chunk
+		if (!bodyStream.read(&decodedBody[oldSize], chunkSize)) // Write the chunk data to the decoded body buffer
+		    return 1;
+		// Check for CRLF after chunk
+		char crlf[2];
+		if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
+		    return 1;
+	    }
+    return 0;
+}
