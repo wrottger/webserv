@@ -108,11 +108,6 @@ bool Client::isHeaderComplete() const {
 	return _headerObject->isComplete();
 }
 
-// TODO: Rename to parseHeaderBuffer or something similar
-void Client::parseBuffer(const char *buffer) {
-	_headerObject->parseBuffer(buffer);
-}
-
 // Returns true if the client can be deleted
 bool Client::canBeDeleted() const {
 	return _canBeDeleted;
@@ -137,16 +132,17 @@ void Client::readFromClient() {
 	char buffer[BUFFER_SIZE + 1] = { 0 };
 	ssize_t bytes_received = read(_fd, buffer, BUFFER_SIZE);
 	// The client has closed the connection
-	if (bytes_received == 0) { // TODO: Merge with -1 for readability
+	if (bytes_received <= 0) {
 		_canBeDeleted = true;
-		LOG_DEBUG("Client connection closes 0");
-	} else if (bytes_received == -1) {
-		_canBeDeleted = true;
-		LOG_DEBUG("Client connection closes -1");
+		LOG_DEBUG("Client closed connection");
 	} else {
 		buffer[bytes_received] = '\0';
-		parseBuffer(buffer);
+		size_t parsedSize = _headerObject->parseBuffer(buffer);
+		if (parsedSize != BUFFER_SIZE) {
+			// save rest to bodybuffer
+			_bodyBuffer = std::string(&buffer[parsedSize]);
+		}
 		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
-		LOG_BUFFER(bufferDebug);
+		LOG_BUFFER(bufferDebug);		//TODO: DELETE DEBUG
 	}
 }

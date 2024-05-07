@@ -37,7 +37,6 @@ private:
 	int getFd() const;
 	void updateTime();
 	bool isHeaderComplete() const;
-	void parseBuffer(const char *buffer);
 	std::time_t getLastModified() const;
 	HttpHeader *getHeaderObject() const;
 	void readFromClient();
@@ -50,6 +49,7 @@ private:
 	bool _canBeDeleted;
 	State _state;
 	std::string _ip;
+	std::string _bodyBuffer;
 };
 
 #endif
