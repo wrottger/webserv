@@ -15,6 +15,11 @@ class Config {
 
     public:
 
+        // structs
+        struct TokenInfo {
+            std::string token;
+            size_t position;
+        };
         struct ServerBlock;
         struct Node;
         struct LocationBlock;
@@ -39,6 +44,8 @@ class Config {
             ErrorPage,
         };
 
+        std::map<std::string, TokenType> _tokens;
+        
         // getters
         static Config* getInstance();
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
@@ -48,12 +55,14 @@ class Config {
         bool isValidPath(const std::string& path);
         bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
         bool isHostSet(const std::string& host, const std::string& port);
+        bool isCGIAllowed(const std::string& route, const std::string& host);
         std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
-        std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);
         std::string getErrorPage(int code, const std::string& route, const std::string& host);
+        std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);
         std::string getRootDirectory(const std::string route, const std::string host);
         std::string getFilePath(const std::string filePath, const std::string host);
         std::string getDir(const std::string filePath, const std::string host);
+
         // config parsing methods
         void parseConfigFile(std::string filename);
         void scanTokens(std::ifstream& file);
@@ -66,10 +75,7 @@ class Config {
         void printProgressBar(size_t progress, size_t total);
         ServerBlock parseServerBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
         LocationBlock parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end);
-        std::vector<std::pair<std::string, size_t> > slice(std::string in, std::vector<char> delim);
-
-        // utils
-        std::map<std::string, TokenType> _tokens;
+        std::vector<TokenInfo> slice(std::string in, std::vector<char> delim);
 
     private:
 
@@ -82,7 +88,6 @@ class Config {
         std::vector<ServerBlock> _serverBlocks;
         size_t _lines;
         bool _isLoaded;
-
 };
 
 struct Config::Node {
@@ -98,14 +103,14 @@ struct Config::Node {
     Node(TokenType token, std::string value, size_t off, size_t line, size_t scope_level) : _token(token), _value(value), _offset(off), _line(line), _level(scope_level) {}
 };
 
-class Config; // Forward declaration
+class Config;
 
 struct Config::LocationBlock {
     std::vector<std::pair<Config::TokenType, std::string> > _directives;
     std::string _path;
 };
 
-class Config; // Forward declaration
+class Config;
 
 struct Config::ServerBlock {
     std::vector<LocationBlock> _locations;
