@@ -76,7 +76,8 @@ void EventHandler::acceptNewClient(EventsData *eventData) {
 	}
 	Client *newClient = NULL;
 	try {
-		newClient = new Client(newConnectionFd);
+		std::string ip = ft_inet_ntop(AF_INET, &addr.sin_addr);
+		newClient = new Client(newConnectionFd, ip);
 		registerEvent(newConnectionFd, CLIENT, newClient);
 		LOG_DEBUG("New client connection");
 	} catch (...) {
@@ -176,4 +177,17 @@ void EventHandler::removeInactiveClients() {
 		}
 	}
 	processCleanUpList();
+}
+
+std::string EventHandler::ft_inet_ntop(int af, const void* src) {
+	if (af == AF_INET) {
+		const unsigned char* bytes = (const unsigned char*)src;
+		std::ostringstream oss;
+		oss << static_cast<int>(bytes[0]) << ".";
+		oss << static_cast<int>(bytes[1]) << ".";
+		oss << static_cast<int>(bytes[2]) << ".";
+		oss << static_cast<int>(bytes[3]);
+		return oss.str();
+	}
+	return std::string();
 }

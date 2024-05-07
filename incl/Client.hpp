@@ -14,7 +14,7 @@ class EventHandler;
 
 class Client {
 public:
-	Client(int fd);
+	Client(int fd, std::string ip);
 	~Client();
 	void process(uint32_t events);
 	bool canBeDeleted() const;
@@ -49,6 +49,7 @@ private:
 	int _fd;
 	bool _canBeDeleted;
 	State _state;
+	std::string _ip;
 };
 
 #endif

@@ -62,6 +62,10 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
     return i;
 }
 
+const std::map<std::string, std::string> &HttpHeader::getHeaders() const {
+	return message.headers;
+}
+
 const std::string &HttpHeader::getMethod() const { return message.method; }
 
 const std::string &HttpHeader::getPath() const { return message.path; }

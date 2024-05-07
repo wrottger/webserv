@@ -10,6 +10,7 @@ public:
     HttpHeader();
     ~HttpHeader();
     size_t parseBuffer(const char *requestLine);
+    const std::map<std::string, std::string> &getHeaders() const;
     const std::string &getMethod() const;
     const std::string &getPath() const;
     const std::string &getFileExtension() const;
@@ -17,7 +18,7 @@ public:
     int getPort();
     const std::string &getHost() const;
     const std::string &getHeader(const std::string &name) const;
-    std::map<std::string, std::string> getHeaders() const;
+    // std::map<std::string, std::string> getHeaders() const;
 
     HttpError getError() const;
     bool isError() const;

@@ -6,20 +6,20 @@
 #include "Logger.hpp"
 #include "Config.hpp"
 
-std::string HttpResponse::generateErrorResponse(int code, const std::string &message) {
+std::string HttpResponse::generateErrorResponse(const std::string &message) {
 	std::string error_path = config->getErrorPage(error.code(), header.getPath(), header.getHeader("host"));
 	response = "HTTP/1.1 ";
+	std::stringstream errCode;
+	errCode << error.code();
 	if (error_path.empty())
 	{
-		std::stringstream errCode;
-		errCode << error.code();
 		std::string error_html = "<HTML><body><p><strong>";
 		error_html += errCode.str();
 		error_html += " </strong>";
 		error_html += message;
 		error_html += "</p></body>";
 
-		response += code;
+		response += errCode.str();
 		response += " ";
 		response += message + "\r\n";
 		response += "Connection: close\r\n";
@@ -40,7 +40,7 @@ std::string HttpResponse::generateErrorResponse(int code, const std::string &mes
 			response += "Connection: close\r\n\r\n";
 			return response;
 		}
-		response += code + " ";
+		response += errCode.str() + " ";
 		response += message + "\r\n";
 		response += "Connection: close\r\n";
 		response += "Content-Type: text/html\r\n\r\n";
@@ -58,7 +58,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 	error = header.getError();
 	if (error.code() != 0)
 	{
-		response = generateErrorResponse(error.code(), error.message());
+		response = generateErrorResponse(error.message());
 		return;
 	}
 
@@ -98,7 +98,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 		error = HttpError(405, "Method Not Allowed");
 	}
 	if (error.code() != 0)
-		response = generateErrorResponse(error.code(), error.message());
+		response = generateErrorResponse(error.message());
 }
 
 HttpResponse::~HttpResponse() {
@@ -148,12 +148,14 @@ void HttpResponse::write() {
 			isFinished = true;
 		}
 	} else {
-		ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
-		LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
-		if (sentBytes > 0)
+		if (response.size() > 0) {
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+			LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
 			response = response.substr(sentBytes);
-		else
+		}
+		else {
 			isFinished = true;
+		}
 	}
 }
 
