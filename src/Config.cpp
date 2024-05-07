@@ -281,7 +281,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                         pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
                         if (it->_token != Data)
-                            error("Syntax error: missing interpreter path in cgi directive", it - 2);
+                            error("Syntax error: cgi directive requires file extension + interpreter path", it - 2);
                         else if (isValidPath((it)->_value))
                             pair.second += " " + (it)->_value;
                         else
@@ -520,7 +520,7 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                         pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
                         if (it->_token != Data)
-                            error("Syntax error: missing interpreter path in cgi directive", it - 2);
+                            error("Syntax error: cgi directive requires file extension + interpreter path", it - 2);
                         else if (isValidPath((it)->_value))
                             pair.second += " " + (it)->_value;
                         else

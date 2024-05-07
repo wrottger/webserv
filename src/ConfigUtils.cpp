@@ -184,6 +184,7 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
     std::string path;
     std::string extension;
     std::istringstream iss(route);
+    // get the extension of the file
     for (std::string token; std::getline(iss, token, '/');)
     {
         path += token;
@@ -196,6 +197,7 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
     std::pair<size_t, size_t> l = config->getClosestPathMatch(path, host);
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max() || extension.empty())
         return false;
+    // check if the extension is allowed in the location CGI directive
     for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
     {
         if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == CGI)
@@ -208,6 +210,7 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
             }
         }
     }
+    // check if the extension is allowed in the server CGI directive
     for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
     {
         if (config->_serverBlocks[l.first]._directives[i].first == CGI)
