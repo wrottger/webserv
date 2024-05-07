@@ -19,35 +19,6 @@
 
 UTEST_STATE();
 
-
-static int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
-{
-    if (bodyBuffer.empty()) {
-        return 1;
-    }
-    std::stringstream bodyStream(bodyBuffer);
-    for (std::string line; std::getline(bodyStream, line);)
-    {
-		if (!line.empty() && line.size() - 1 == '\r')
-			line.erase(line.size() - 1); // Remove the trailing \r
-		std::cout << "line: " << line << std::endl;
-        size_t chunkSize;
-        std::stringstream sizeStream(line);
-		if (!(sizeStream >> std::hex >> chunkSize))
-        	return -1;
-		std::cout << "chunkSize: " << chunkSize << std::endl;
-        if (chunkSize == 0)
-            break;
-        std::string chunk;
-        chunk.resize(chunkSize);
-        if (!bodyStream.read(&chunk[0], chunkSize))
-            return -1;
-        bodyStream.ignore(1);  // Ignore the trailing \r
-        decodedBody += chunk;
-    }
-    return 0;
-}
-
 int main(int argc, char *argv[], char *envp[]) {
 	
 	if (argc != 2) {
