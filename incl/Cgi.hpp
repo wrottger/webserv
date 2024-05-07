@@ -45,7 +45,7 @@ private:
 	std::string toString(size_t number);
 	void executeCgi();
 	int executeChild(const HttpHeader *headerObject);
-	bool decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
+	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 
 public:
 	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp);
