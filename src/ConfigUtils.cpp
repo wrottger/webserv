@@ -181,7 +181,7 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
-    std::string path;
+    std::string path = "";
     std::string extension;
     std::istringstream iss(route);
     // get the extension of the file
@@ -190,10 +190,13 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
         path += token;
         if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
         {
-            extension = token.substr(token.find_last_of('.') + 1);
+            extension = token.substr(token.find_last_of('.'));
             break;
         }
+		path += "/";
     }
+	if(!path.size())
+		path = "/";
     std::pair<size_t, size_t> l = config->getClosestPathMatch(path, host);
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max() || extension.empty())
         return false;
