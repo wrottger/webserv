@@ -44,6 +44,8 @@ class Config {
             ErrorPage,
         };
 
+        std::map<std::string, TokenType> _tokens;
+        
         // getters
         static Config* getInstance();
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
