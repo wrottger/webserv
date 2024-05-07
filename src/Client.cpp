@@ -47,30 +47,40 @@ void Client::process(uint32_t events) {
 		case READING_HEADER:
 			if (events & EPOLLIN) {
 				readFromClient();
-				if (isHeaderComplete()) {
+				if (isHeaderComplete() && _headerObject->isError()) {
+						std::cerr << "aaaaaaaaaaaaaaaaaaaaa        getPath: " << _headerObject->getPath() << " header host: " << _headerObject->getHeader("host") << std::endl;
+					if (Config::getInstance()->isCGIAllowed(_headerObject->getPath(), _headerObject->getHeader("host"))) {
+						if (_headerObject->getMethod() == "POST")
+							_state = READING_BODY;
+						else if (_headerObject->getMethod() == "GET") {
+							_state = WAITING_FOR_CGI;
+							processCGI(withoutBody);
+						}
+
+					} else {
 					_state = SENDING_RESPONSE;
 					httpResponse = new HttpResponse(*_headerObject, _fd);
 					// TODO: Copy the rest of the buffer to the response object
 					// TODO: Create a response object
-					
+					}
 				}
 			}
 			break;
 		case READING_BODY:
-			// responeObject->parseBuffer(buffer);
-			// if (responseObject->isBodyisComplete()) {
-				// if (responseObject->isCgi()) {
-					// _cgi_object = new Cgi(responseObject->getBody(), _headerObject);
-					// _state = WAITING_FOR_CGI;
-				// } else {
-					// _state = SENDING_RESPONSE;
-				// }
-			// }
+				if (_headerObject->getHeader("transer-encoding").find("chunked")) {
+					// get chunked stuff;
+					// size_t bodySize = _headerObject->getHeader("content-length");
+				} else {
+					// read full body;
+				}
+				if body isBodyComplete
+				processCGI(body);
+				_state = WAITING_FOR_CGI;
 			break;
 		case WAITING_FOR_CGI:
 			// processCgi();
 			// if (cgi->isFinished()) {
-				// _state = SENDING_RESPONSE;
+			// 	_state = SENDING_RESPONSE;
 			// }
 			break;
 		case SENDING_RESPONSE:

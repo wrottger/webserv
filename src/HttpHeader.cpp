@@ -81,7 +81,11 @@ const std::string &HttpHeader::getHost() const {
 }
 
 const std::string &HttpHeader::getHeader(const std::string &name) const {
-    return message.headers.find(name)->second;
+	std::map<std::string, std::string>::const_iterator key = message.headers.find(name);
+	if (key != message.headers.end()) {
+		return key->second;
+	}
+    return "";
 }
 
 bool HttpHeader::isError() const { return parseError.code() != 0;}

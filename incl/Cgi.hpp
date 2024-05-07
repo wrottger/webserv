@@ -20,19 +20,30 @@
 
 class Cgi {
 private:
+	enum State {
+		READING_BODY,
+		CREATE_CHILD, // TODO Set flag in client that it should not check for timeout anymore
+		WAITING_FOR_CHILD,
+		SENDING_RESPONSE,
+		FINISHED
+	};
+
 	static const size_t _maxBufferSize = MAX_CGI_BUFFER_SIZE;
-	std::string _outputBuffer;
+	std::string _childReturnBuffer;
 	size_t _currentBufferSize;
 	int _sockets[2];
 	time_t _timeCreated;
 	bool _isFinished;
 	int _errorCode;
 	static const time_t _timeout = CGI_TIMEOUT;
-	const std::string _bodyBuffer;
+	std::string _bodyBuffer;
 	HttpHeader *_headerObject;
 	char **_enviromentVariables;
 	size_t _bodyLength;
 	std::string _clientIp;
+	State _currentState;
+	std::string _sendToChildBuffer;
+	int	_fd;
 
 private:
 	Cgi();
@@ -44,13 +55,15 @@ private:
 	std::string toString(size_t number);
 	void executeCgi();
 	int executeChild(const HttpHeader *headerObject);
+	void readBody();
 
 public:
-	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp);
+	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp, int fd);
 	~Cgi();
 
 	bool isFinished() const;
 	int getErrorCode() const;
+	void process();
 };
 
 #endif
