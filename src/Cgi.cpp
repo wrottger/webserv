@@ -170,3 +170,26 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 
 	return 0;
 }
+
+// int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+// {
+// 	if (bodyBuffer.empty()) {
+// 		return 1;
+// 	}
+// 	std::stringstream bodyStream(bodyBuffer);
+// 	for (std::string line; std::getline(bodyStream, line);)
+// 	{
+// 		size_t chunkSize;
+// 		std::stringstream sizeStream(line);
+// 		if (!(sizeStream >> std::hex >> chunkSize))
+// 			return -1;
+// 		if (chunkSize == 0)
+// 			break;
+// 		std::string chunk;
+// 		chunk.resize(chunkSize);
+// 		if (!bodyStream.read(&chunk[0], chunkSize))
+// 			return -1;
+// 		decodedBody += chunk;
+// 	}
+// 	return 0;
+// }

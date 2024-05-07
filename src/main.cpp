@@ -19,31 +19,53 @@
 
 UTEST_STATE();
 
+
+static int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+{
+    if (bodyBuffer.empty()) {
+        return 1;
+    }
+    std::stringstream bodyStream(bodyBuffer);
+    for (std::string line; std::getline(bodyStream, line);)
+    {
+		if (!line.empty() && line.size() - 1 == '\r')
+			line.erase(line.size() - 1); // Remove the trailing \r
+		std::cout << "line: " << line << std::endl;
+        size_t chunkSize;
+        std::stringstream sizeStream(line);
+		if (!(sizeStream >> std::hex >> chunkSize))
+        	return -1;
+		std::cout << "chunkSize: " << chunkSize << std::endl;
+        if (chunkSize == 0)
+            break;
+        std::string chunk;
+        chunk.resize(chunkSize);
+        if (!bodyStream.read(&chunk[0], chunkSize))
+            return -1;
+        bodyStream.ignore(1);  // Ignore the trailing \r
+        decodedBody += chunk;
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[], char *envp[]) {
+	
 	if (argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " <config file>" << std::endl;
 		return 1;
 	}
 	(void)envp;
-	Config *config = Config::getInstance();
-	try {
-		config->parseConfigFile(argv[1]);
-	} catch (std::exception &e) {
-		std::cerr << e.what() << std::endl;
-		return 1;
-	}
-	if (!config->isLoaded())
-		return 1;
-	config->printProgressBar(1, 1);
-	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
-
-	LOG_INFO("Server started");
-	// LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
-	// LOG_DISABLE_CONSOLE_LOGGING();
-	// LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
-	SocketHandling sockets(config->getServerBlocks());
-	EventHandler event(sockets);
-	event.start();
+	std::string input = "4E\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n";
+	std::string output;
+	std::cout << decodeChunkedBody(input, output) << std::endl;
+	std::cout << "|" << output << "|" << std::endl;
+	// LOG_INFO("Server started");
+	// // LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
+	// // LOG_DISABLE_CONSOLE_LOGGING();
+	// // LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
+	// SocketHandling sockets(config->getServerBlocks());
+	// EventHandler event(sockets);
+	// event.start();
 }
 
 // int main()
