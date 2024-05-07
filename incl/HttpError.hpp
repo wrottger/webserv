@@ -10,7 +10,7 @@ class HttpError : public std::exception {
   HttpError(int code, const std::string& message)
       : _code(code), _message(message) {}
 
-  const char* what() { return _message.c_str(); }
+  const char* what() const throw () { return _message.c_str(); }
 
   int code() const { return _code; }
 

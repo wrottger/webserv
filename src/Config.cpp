@@ -277,13 +277,22 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                 case CGI:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing interpreter path in cgi directive", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: expected a valid interpreter path", it);
+                        it++;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
+                        block._directives.push_back(pair);
                     }
                     else
-                        error("Syntax error: cgi directive requires a value", it);
+                        error("Syntax error: cgi directive requires file extension + interpreter path", it);
                     break;
                 case ServerName:
                     if (it + 1 != end && (it + 1)->_token == Data)
@@ -515,7 +524,7 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                         else if (isValidPath((it)->_value))
                             pair.second += " " + (it)->_value;
                         else
-                            error("Syntax error: invalid path in cgi directive", it);
+                            error("Syntax error: expected a valid interpreter path", it);
                         it++;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
