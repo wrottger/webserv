@@ -44,6 +44,7 @@ private:
 	void removeInactiveClients();
 	void processCleanUpList();
 	void acceptNewClient(EventsData *eventData);
+	std::string ft_inet_ntop(int af, const void* src);
 };
 
 #endif

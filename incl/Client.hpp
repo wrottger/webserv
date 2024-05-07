@@ -1,10 +1,11 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
-#include "HttpHeader.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <ctime>
+#include "HttpHeader.hpp"
+#include "HttpResponse.hpp"
 
 class EventHandler;
 
@@ -13,7 +14,7 @@ class EventHandler;
 
 class Client {
 public:
-	Client(int fd);
+	Client(int fd, std::string ip);
 	~Client();
 	void process(uint32_t events);
 	bool canBeDeleted() const;
@@ -44,9 +45,11 @@ private:
 private:
 	HttpHeader *_headerObject;
 	std::time_t _lastModified;
+	HttpResponse *httpResponse;
 	int _fd;
 	bool _canBeDeleted;
 	State _state;
+	std::string _ip;
 };
 
 #endif

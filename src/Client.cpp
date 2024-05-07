@@ -4,7 +4,7 @@
  // TODO: Delete this function
 std::string createTestResponse() {
 	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-							   "<body><h1>Hello, World!</h1></body></html>";
+							   "<body><h1>Keine pull request approve fuer Freddy!</h1></body></html>";
 
 	std::ostringstream oss;
 	oss << responseBody.size();
@@ -18,16 +18,22 @@ std::string createTestResponse() {
 
 Client::Client() {}
 
-Client::Client(int fd):
+Client::Client(int fd, std::string ip):
 		_lastModified(0),
 		_fd(fd),
 		_canBeDeleted(false),
-		_state(READING_HEADER) {
+		_state(READING_HEADER),
+		_ip(ip) {
+	LOG_DEBUG(ip);
 	_headerObject = new HttpHeader;
 	updateTime();
+	httpResponse = NULL;
 }
 
 Client::~Client() {
+	if (httpResponse != NULL) {
+		delete httpResponse;
+	}
 	delete _headerObject;
 }
 
@@ -43,6 +49,7 @@ void Client::process(uint32_t events) {
 				readFromClient();
 				if (isHeaderComplete()) {
 					_state = SENDING_RESPONSE;
+					httpResponse = new HttpResponse(*_headerObject, _fd);
 					// TODO: Copy the rest of the buffer to the response object
 					// TODO: Create a response object
 					
@@ -72,12 +79,11 @@ void Client::process(uint32_t events) {
 				// _state = FINISHED;
 			// }
 			if (events & EPOLLOUT) {
-				if (isHeaderComplete()) {
-					std::string httpResponse = createTestResponse();
-					if (send(_fd, httpResponse.c_str(), httpResponse.size(), 0) == -1) {
-						LOG_ERROR_WITH_TAG("send failed", "Client");
-					}
+				if (httpResponse->finished()) {
+					LOG_DEBUG("HttpResponse::finished");
 					_state = FINISHED;
+				} else {
+					httpResponse->write();
 				}
 			}
 			break;

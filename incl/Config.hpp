@@ -44,9 +44,6 @@ class Config {
             ErrorPage,
         };
 
-        std::map<std::string, TokenType> _tokens;
-
-
         // getters
         static Config* getInstance();
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
@@ -69,6 +66,7 @@ class Config {
         void scanTokens(std::ifstream& file);
         void parseScopes(void);
         void buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end);
+        void parseTokens(void);
         void error(const std::string &msg, const std::vector<Node>::iterator& it);
         void sortVector(std::vector<Node>& vec);
         void addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator& start);
