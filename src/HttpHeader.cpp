@@ -120,7 +120,7 @@ bool HttpHeader::States::isToken(char c) {
 }
 
 bool HttpHeader::States::isPchar(char c) {
-    const static std::string subDelis = std::string("!$&'()*+,;=");
+    const static std::string subDelis = std::string("-._~:/?#[]@!$&'()*+,;=");
     return isalnum(c) || subDelis.find(c) != std::string::npos || c == ':' || c == '@' || c == '%';
 }
 
