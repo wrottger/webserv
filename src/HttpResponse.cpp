@@ -148,10 +148,11 @@ void HttpResponse::write() {
 			isFinished = true;
 		}
 	} else {
-		if (response.size() > 0) {
+		if (response.size()) {
 			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
 			LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
-			response = response.substr(sentBytes);
+			if (sentBytes > 0)
+				response = response.substr(sentBytes);
 		}
 		else {
 			isFinished = true;
