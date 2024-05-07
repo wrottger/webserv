@@ -36,8 +36,8 @@ std::string HttpResponse::generateErrorResponse(const std::string &message) {
 		std::ifstream file(config->getFilePath(error_path, header.getHeader("host")).c_str());
 		if (!file.is_open())
 		{
-			response += "HTTP/1.1 500 Internal Server Error\r\n";
-			response += "Connection: close\r\n\r\n";
+			error = HttpError(500, "Couldn't open error file");
+			response = generateErrorResponse(error.message());
 			return response;
 		}
 		response += errCode.str() + " ";
@@ -48,6 +48,12 @@ std::string HttpResponse::generateErrorResponse(const std::string &message) {
 	}
 	LOG_DEBUG_WITH_TAG(response, "HttpResponse::generateErrorResponse");
 	return response;
+}
+
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
 HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fds) {
@@ -64,13 +70,37 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 
 	if (header.getMethod() == "GET")
 	{
-		if (config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "GET"))
+		LOG_DEBUG("GET");
+		if (ends_with(header.getPath(), "/") && config->getDirectiveValue(header.getPath(), header.getHost(), Config::Index).size() > 0)
 		{
-			LOG_DEBUG("GET ALLOWED");
-			std::string filePath = config->getFilePath(header.getPath(), header.getHeader("host"));
+			LOG_DEBUG("GET INDEX");
+			std::string filePath = header.getPath() + "/index.html";
 			getFile.open(filePath.c_str());
-			if (!getFile.is_open())
+			if (getFile.fail())
+			{
+				LOG_DEBUG("Couldn't open file");
 				error = HttpError(404, "Not Found");
+				response = generateErrorResponse(error.message());
+				return;
+			}
+			response += "200 OK\r\n";
+			response += "Connection: close\r\n";
+			response += "transfer-encoding: chunked\r\n\r\n";
+		}
+		else if (config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "GET"))
+		{
+			LOG_DEBUG("GET FILE");
+			std::string filePath = config->getFilePath(header.getPath(), header.getHeader("host"));
+			LOG_DEBUG(filePath);
+			getFile.open(filePath.c_str());
+			if (getFile.fail())
+			{
+				LOG_DEBUG("Couldn't open file");
+				error = HttpError(404, "Not Found");
+				response = generateErrorResponse(error.message());
+				return;
+			}
+			LOG_DEBUG("File opened");
 			response += "200 OK\r\n";
 			response += "Connection: close\r\n";
 			response += "transfer-encoding: chunked\r\n\r\n";
@@ -87,7 +117,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 		if (!config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "DELETE"))
 			error = HttpError(405, "Method Not Allowed");
 		else if (remove(header.getPath().c_str()) != 0)
-			error = HttpError(500, "Internal Server Error");
+			error = HttpError(500, "Couldn't delete file");
 		else {
 			response += "200 OK\r\n\r\n";
 			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
