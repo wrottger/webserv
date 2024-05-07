@@ -171,7 +171,7 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	return 0;
 }
 
-int CGI::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
 {
     if (bodyBuffer.empty()) {
         return 1;
