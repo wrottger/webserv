@@ -17,7 +17,7 @@ class HttpResponse
         HttpResponse();
         HttpResponse(const HttpResponse &src);
         HttpResponse &operator=(const HttpResponse &src);
-		std::string generateErrorResponse(int code, const std::string &message);
+		std::string generateErrorResponse(const std::string &message);
 
         HttpHeader & header;
         Config *config;

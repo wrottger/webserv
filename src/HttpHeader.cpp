@@ -26,7 +26,9 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
     for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++)
     {
         request_size++;
-        if (request_size > 8192) { // TODO check against config
+        if (request_size > 8192) // TODO check against config
+        {
+            LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
             throw HttpError(413, "Request Entity Too Large");
         }
         c = requestLine[i];
