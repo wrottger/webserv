@@ -36,8 +36,23 @@ std::string HttpResponse::generateErrorResponse(const std::string &message) {
 		std::ifstream file(config->getFilePath(error_path, header.getHeader("host")).c_str());
 		if (!file.is_open())
 		{
-			error = HttpError(500, "Couldn't open error file");
-			response = generateErrorResponse(error.message());
+			std::string error_html = "<HTML><body><p><strong>";
+			error_html += "500";
+			error_html += " </strong>";
+			error_html += "Couldn't open error file";
+			error_html += "</p></body>";
+
+			response += errCode.str();
+			response += " ";
+			response += "Couldn't open error file\r\n";
+			response += "Connection: close\r\n";
+			response += "Content-Type: text/html\r\n";
+			response += "Content-Length: ";
+			std::stringstream errSize;
+			errSize << error_html.size();
+			response += errSize.str();
+			response += "\r\n\r\n";
+			response += error_html;
 			return response;
 		}
 		response += errCode.str() + " ";
