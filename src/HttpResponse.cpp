@@ -123,7 +123,7 @@ void HttpResponse::write() {
 		{
 			LOG_DEBUG("HttpResponse sending response buffer");
 			// sending headers
-			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
 			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
 		} else if (getFile.is_open()) {
@@ -149,7 +149,7 @@ void HttpResponse::write() {
 		}
 	} else {
 		if (response.size()) {
-			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
 			LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
 			if (sentBytes > 0)
 				response = response.substr(sentBytes);
