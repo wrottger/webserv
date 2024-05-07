@@ -42,7 +42,6 @@ void Config::scanTokens(std::ifstream &file)
 {
     std::vector<char> delim;
     std::string line;
-    std::vector<std::pair<std::string, size_t> > out;
     delim.push_back(' ');
     delim.push_back('\t');
     delim.push_back('{');
@@ -53,36 +52,35 @@ void Config::scanTokens(std::ifstream &file)
         //adds delimiters to the vector of nodes
         for (size_t i = 0; i < line.size(); i++)
         {
-            if (line[i] == '{')
+            switch (line[i])
+            {
+            case '{':
                 _nodes.push_back(Node(OpenBrace, i, n));
-            else if (line[i] == '}')
+                break;
+            case '}':
                 _nodes.push_back(Node(CloseBrace, i, n));
-            else if (line[i] == ';')
+                break;
+            case ';':
                 _nodes.push_back(Node(Semicolon, i, n));
+                break;
+            }
         }
-        out = slice(line, delim); //slices the line into pure data tokens i.e. all tokens except delimiters
+        std::vector<TokenInfo> out = slice(line, delim); //slices the line into pure data tokens i.e. all tokens except delimiters
         if (out.size() == 0) //skips empty lines
             continue;
-        for (std::vector<std::pair<std::string, size_t> >::iterator it2 = out.begin(); it2 != out.end(); it2++)
+        for (size_t i = 0; i < out.size(); i++)
         {
-            bool tokenFound = false;
-            std::map<std::string, TokenType>::iterator it3 = _tokens.begin();
             //checks if the token is a valid token
-            for (; it3 != _tokens.end(); it3++)
+            std::map<std::string, TokenType>::iterator j = _tokens.find(out[i].token);
+            if (j != _tokens.end())
             {
-                if (it3->first == it2->first)
-                {
-                        _nodes.push_back(Node(it3->second, it2->second, n));
-                        tokenFound = true;
-                        break;
-                }
-            }
-            if (it2->first[0] == '#') //skips comments
+                _nodes.push_back(Node(_tokens[out[i].token], out[i].token, out[i].position, n));
                 continue;
-            else if (tokenFound == false) //all other tokens are considered data
-            {
-                _nodes.push_back(Node(Data, it2->first, it2->second, n));
             }
+            if (out[i].token[0] == '#') //skips comments
+                break;
+            else if (j == _tokens.end()) //all other tokens are considered data
+                _nodes.push_back(Node(Data, out[i].token, out[i].position, n));
         }
         _lines = n;
     }
@@ -90,11 +88,12 @@ void Config::scanTokens(std::ifstream &file)
 }
 
 // This method is supposed to slice a string into a vector of pairs of strings and their offsets;
-std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::vector<char> delim)
+std::vector<Config::TokenInfo> Config::slice(std::string in, std::vector<char> delim)
 {
     size_t comment = in.find("#");
     size_t start = 0;
-    std::vector<std::pair<std::string, size_t> > out;
+    TokenInfo token;
+    std::vector<TokenInfo> out;
     for (size_t i = 0; i < in.size(); i++)
     {
         for (size_t j = 0; j < delim.size(); j++)
@@ -102,7 +101,9 @@ std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::
             if (in[i] == delim[j] && i < comment)
             {
                 if (i > start) {
-                    out.push_back(std::make_pair(in.substr(start, i - start), start));
+                    token.token = in.substr(start, i - start);
+                    token.position = start;
+                    out.push_back(token);
                 }
                 start = i + 1;
                 break;
@@ -110,9 +111,28 @@ std::vector<std::pair<std::string, size_t> > Config::slice(std::string in, std::
         }
     }
     if (start < in.size()) {
-        out.push_back(std::make_pair(in.substr(start, in.size() - start), start));
+        token.token = in.substr(start, in.size() - start);
+        token.position = start;
+        out.push_back(token);
     }
     return out;
+}
+
+// Sorts the vector of nodes by order of line number and offset in the config file;
+void Config::sortVector(std::vector<Node>& vec)
+{
+    for (size_t i = 0; i < vec.size(); i++)
+    {
+        for (size_t j = i + 1; j < vec.size(); j++)
+        {
+            if (vec[j]._line < vec[i]._line || (vec[j]._line == vec[i]._line && vec[j]._offset < vec[i]._offset))
+            {
+                Node temp = vec[i];
+                vec[i] = vec[j];
+                vec[j] = temp;
+            }
+        }
+    }
 }
 
 // This method is supposed to parse the scopes of the config file, check for syntax errors and delete braces and comments;
@@ -153,23 +173,6 @@ void Config::parseScopes(void)
             it = _nodes.erase(it);
         else
             ++it;
-    }
-}
-
-// Sorts the vector of nodes by order of line number and offset in the config file;
-void Config::sortVector(std::vector<Node>& vec)
-{
-    for (size_t i = 0; i < vec.size(); i++)
-    {
-        for (size_t j = i + 1; j < vec.size(); j++)
-        {
-            if (vec[j]._line < vec[i]._line || (vec[j]._line == vec[i]._line && vec[j]._offset < vec[i]._offset))
-            {
-                Node temp = vec[i];
-                vec[i] = vec[j];
-                vec[j] = temp;
-            }
-        }
     }
 }
 
@@ -274,13 +277,22 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                 case CGI:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(CGI, (it + 1)->_value));
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: cgi directive requires file extension + interpreter path", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: expected a valid interpreter path", it);
+                        it++;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
+                        block._directives.push_back(pair);
                     }
                     else
-                        error("Syntax error: cgi directive requires a value", it);
+                        error("Syntax error: cgi directive requires file extension + interpreter path", it);
                     break;
                 case ServerName:
                     if (it + 1 != end && (it + 1)->_token == Data)
@@ -508,11 +520,14 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                         pair = std::make_pair(CGI, (it + 1)->_value);
                         it += 2;
                         if (it->_token != Data)
-                            error("Syntax error: missing interpreter path in cgi directive", it - 2);
+                            error("Syntax error: cgi directive requires file extension + interpreter path", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: expected a valid interpreter path", it);
                         it++;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after cgi directive", it - 2);
-                        pair.second += " " + (it - 1)->_value;
                         block._directives.push_back(pair);
                     }
                     else
