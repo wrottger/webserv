@@ -99,7 +99,6 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string route, std::st
         if (paths[i].first.size() > temp.first.size())
             temp = paths[i];
     }
-    std::cout << "temp.first: " << temp.first << std::endl;
     return std::make_pair(temp.second.serverBlock, temp.second.locationBlock);
 }
 
