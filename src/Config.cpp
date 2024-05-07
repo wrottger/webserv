@@ -26,7 +26,6 @@ void Config::parseConfigFile(std::string filename)
     _tokens["{"] = OpenBrace;
     _tokens["}"] = CloseBrace;
     _tokens[";"] = Semicolon;
-    _tokens["error"] = Error;
     _tokens["error_page"] = ErrorPage;
 
     this->scanTokens(_fileStream);
@@ -36,35 +35,6 @@ void Config::parseConfigFile(std::string filename)
     if (_serverBlocks.empty())
         throw std::runtime_error(RBOLD("Error: no server blocks found in config file"));
     _isLoaded = true;
-}
-
-//iterate through the server blocks and check if the server_name and ports are unique across all server blocks
-void Config::addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator& start)
-{
-    static std::map<std::pair<std::string, std::string>, bool> hostPortMap;
-    std::string serverName;
-    std::vector<std::string> ports;
-
-    for (std::vector<std::pair<TokenType, std::string> >::iterator it = newBlock._directives.begin(); it != newBlock._directives.end(); it++) {
-        switch (it->first) {
-            case ServerName:
-                serverName = it->second;
-                break;
-            case Port:
-                ports.push_back(it->second);
-                break;
-            default:
-                break;
-        }
-    }
-    for (std::vector<std::string>::iterator it = ports.begin(); it != ports.end(); it++) {
-        std::pair<std::string, std::string> hostPortPair(serverName, *it);
-        if (hostPortMap.find(hostPortPair) != hostPortMap.end()) {
-            error("Duplicate server name and port combination", start);
-        }
-        hostPortMap[hostPortPair] = true;
-    }
-    _serverBlocks.push_back(newBlock);
 }
 
 // This method is supposed to read the config file and tokenize it; output: Nodes with token, value, offset, line, and level;
@@ -212,7 +182,6 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
             if (it->_token == Server)
             {
                 std::vector<Node>::iterator start = it; // starting node of the server block
-                std::vector<Node>::iterator start2 = start;
                 it++;
                 if (it == end)
                     error("Syntax error: incomplete server block", start);
@@ -225,7 +194,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 if (serverBlock._directives.size())
                 {
-                    addServerBlock(serverBlock , start2);
+                    _serverBlocks.push_back(serverBlock);
                     if (it->_line < _lines)
                         printProgressBar(it->_line, _lines);
                 }
@@ -340,6 +309,26 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                     it++;
                     break;
                 }
+                case ErrorPage:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(ErrorPage, (it + 1)->_value);
+                        it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing path to error page", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: invalid path in error page directive", it);
+                        it++;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after error page directive", it - 2);
+                        block._directives.push_back(pair);
+                    }
+                    else
+                        error("Syntax error: error page directive requires error code + error page path", it);
+                    break;
                 default:
                     error("Syntax error: unexpected token in server block", it);
             }
@@ -379,7 +368,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
     else if (!portFound)
         error("Syntax error: server block requires a port directive", start);
     else if (!serverName)
-        error("Syntax error: server block requires a server_name directive", start);
+        block._directives.push_back(std::make_pair(ServerName, ""));
     else if (serverName > 1)
         error("Syntax error: server block can only have one server_name directive", start);
     return block;
@@ -434,27 +423,25 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                     else
                         error("Syntax error: root directive requires a value", it);
                     break;
-                case Error:
-                    if (it + 1 != end && (it + 1)->_token == Data)
-                    {
-                        block._directives.push_back(std::make_pair(Error, (it + 1)->_value));
-                        it += 2;
-                        if (it == end || it->_token != Semicolon)
-                            error("Syntax error: missing semicolon after error directive", it - 2);
-                    }
-                    else
-                        error("Syntax error: error directive requires a value", it);
-                    break;
                 case ErrorPage:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(ErrorPage, (it + 1)->_value));
+                        std::pair <TokenType, std::string> pair;
+                        pair = std::make_pair(ErrorPage, (it + 1)->_value);
                         it += 2;
+                        if (it->_token != Data)
+                            error("Syntax error: missing path to error page", it - 2);
+                        else if (isValidPath((it)->_value))
+                            pair.second += " " + (it)->_value;
+                        else
+                            error("Syntax error: invalid path in error page directive", it);
+                        it++;
                         if (it == end || it->_token != Semicolon)
-                            error("Syntax error: missing semicolon after error_page directive", it - 2);
+                            error("Syntax error: missing semicolon after error page directive", it - 2);
+                        block._directives.push_back(pair);
                     }
                     else
-                        error("Syntax error: error_page directive requires a value", it);
+                        error("Syntax error: error page directive requires error code + error page path", it);
                     break;
                 case Index:
                     if (it + 1 != end && (it + 1)->_token == Data)
@@ -486,7 +473,7 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                     {
                         if (it->_token == Data)
                         {
-                            if (it->_value == "GET" || it->_value == "POST" || it->_value == "PUT" || it->_value == "DELETE")
+                            if (it->_value == "GET" || it->_value == "POST" || it->_value == "DELETE")
                             {
                                 if (!methods.empty())
                                     methods += " ";

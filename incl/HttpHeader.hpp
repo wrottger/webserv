@@ -10,12 +10,15 @@ public:
     HttpHeader();
     ~HttpHeader();
     size_t parseBuffer(const char *requestLine);
+    const std::map<std::string, std::string> &getHeaders() const;
     const std::string &getMethod() const;
     const std::string &getPath() const;
     const std::string &getFileExtension() const;
     const std::string &getQuery() const;
+    int getPort();
+    const std::string &getHost() const;
     const std::string &getHeader(const std::string &name) const;
-    const std::string &getBody() const;
+    // std::map<std::string, std::string> getHeaders() const;
 
     HttpError getError() const;
     bool isError() const;
@@ -28,6 +31,8 @@ private:
         std::string path;
         std::string query;
         std::string fragment;
+        std::string host;
+        int         port;
         std::string fieldName;
         std::string fieldValue;
         std::map<std::string, std::string> headers;
@@ -39,13 +44,6 @@ private:
     size_t request_size;
 
     HttpError parseError;
-
-    std::string method; // GET, POST etc.
-    std::string host; // localhost, google.com etc.
-    std::string path; // /, /index.html etc.
-    std::string query; // ?key=value etc.
-    std::string fragment; // #fragment etc.
-    std::map<std::string, std::string> headers;
 
     HttpHeader(const HttpHeader &other);
     std::string percentDecode(std::string &str);

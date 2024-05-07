@@ -1,26 +1,51 @@
 #include "Cgi.hpp"
-
 #include <cstdlib>
 #include <cstring>
 
-char **Cgi::createEnvironment(const HttpHeader *headerObject) {
-	(void)headerObject;
-	char **env = new char *[13];
-	env[0] = strdup("REQUEST_METHOD=GET");
-	env[1] = strdup("QUERY_STRING=param1=value1&param2=value2");
-	env[2] = strdup("CONTENT_TYPE=application/x-www-form-urlencoded");
-	env[3] = strdup("CONTENT_LENGTH=");
-	env[4] = strdup("SCRIPT_NAME=/path/to/script");
-	env[5] = strdup("REQUEST_URI=/path/to/script?param1=value1&param2=value2");
-	env[6] = strdup("DOCUMENT_URI=/path/to/script");
-	env[7] = strdup("DOCUMENT_ROOT=/path/to/webroot");
-	env[8] = strdup("SERVER_PROTOCOL=HTTP/1.1");
-	env[9] = strdup("REMOTE_ADDR=127.0.0.1");
-	env[10] = strdup("SERVER_NAME=localhost");
-	env[11] = strdup("SERVER_PORT=80");
-	env[12] = NULL; // The environment list must be NULL-terminated
+char *dupString(const std::string &str) {
+	char *cstr = new char[str.length() + 1];
+	std::strcpy(cstr, str.c_str());
+	return cstr;
+}
 
-	return env;
+std::string Cgi::toString(size_t number) {
+	std::stringstream result;
+
+	result << number;
+	return result.str();
+}
+
+std::vector<std::string> Cgi::createEnviromentVariables() {
+	std::vector<std::string> result;
+	std::string contentType = _headerObject->getHeader("content-type");
+
+	result.push_back("AUTH_TYPE=");
+	result.push_back("CONTENT_LENGTH=" + toString(_bodyLength));
+	if (!contentType.empty()) {
+		result.push_back("CONTENT_TYPE=" + contentType);
+	}
+	result.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	result.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_headerObject->getPath(), "localhost"));
+	result.push_back("PATH_TRANSLATED=");
+	result.push_back("QUERY_STRING=" + _headerObject->getQuery());
+	result.push_back("REMOTE_ADDR=" + _clientIp);
+	result.push_back("REMOTE_HOST=" + _clientIp);
+	// result.push_back("REMOTE_IDENT=");
+	result.push_back("REQUEST_METHOD=" + _headerObject->getMethod());
+	result.push_back("SCRIPT_NAME=" + _headerObject->getPath()); // FIXME: Maybe wrong when: /path/to/script.py/param1/param2
+	result.push_back("SERVER_NAME=" + _headerObject->getHeader("host"));
+	// result.push_back("SERVER_PORT=" + _headerObject->getPort()); // TODO: Change to actual server port
+	result.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	result.push_back("SERVER_SOFTWARE=WebServ/1.0");
+
+	for (std::map<std::string, std::string>::const_iterator it = _headerObject->getHeaders().begin(); it != _headerObject->getHeaders().end(); ++it) {
+		std::string key = it->first;
+		std::transform(key.begin(), key.end(), key.begin(), ::toupper);
+		std::replace(key.begin(), key.end(), '-', '_');
+		result.push_back("HTTP_" + key + "=" + it->second);
+	}
+
+	return result;
 }
 
 char **Cgi::createArguments() {
@@ -32,15 +57,17 @@ char **Cgi::createArguments() {
 	return argv;
 }
 
-Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject) :
+Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp) :
 		_currentBufferSize(0),
 		_timeCreated(0),
 		_isFinished(false),
 		_errorCode(0),
 		_bodyBuffer(bodyBuffer),
-		_headerObject(headerObject) {
+		_headerObject(headerObject),
+		_clientIp(clientIp){
 	_sockets[0] = -1;
 	_sockets[1] = -1;
+	_bodyLength = bodyBuffer.size();
 	executeCgi();
 }
 
@@ -130,7 +157,9 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	}
 
 	// Set the enviroment variables
-	char **envp = createEnvironment(headerObject);
+	// char **envp = createEnvironment(headerObject);
+	char **envp = NULL;
+	(void)headerObject;
 	char **argv = createArguments();
 
 	execve(argv[0], argv, envp);
