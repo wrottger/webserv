@@ -18,10 +18,7 @@ public:
     int getPort();
     const std::string &getHost() const;
     const std::string &getHeader(const std::string &name) const;
-    std::map<std::string, std::string> getHeaders() const;
-
-    int getPort();
-    const std::string &getHost() const;
+    // std::map<std::string, std::string> getHeaders() const;
 
 
     HttpError getError() const;
