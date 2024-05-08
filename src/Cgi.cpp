@@ -177,6 +177,67 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	return 0;
 }
 
+void Cgi::readBody() {
+	if (_headerObject->getMethod() == "POST") {
+		if (_headerObject->getHeader("transfer-encoding").find("chunked")) {
+			if (!decodeChunkedBuffer(_bodyBuffer, _sendToChildBuffer)) {
+				_errorCode = 400;
+				_currentState = SENDING_RESPONSE;
+			}
+			// get chunked stuff;
+		} else {
+			if (_bodyBuffer.size()) {
+				_sendToChildBuffer += _bodyBuffer;
+				_bodyBuffer.clear();
+				if (_bodyLength == _sendToChildBuffer.size()) {
+					_currentState = CREATE_CHILD;
+					return;
+				}
+			}
+			char buffer[BUFFER_SIZE + 1];
+			ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
+			if (readSize > 0) {
+				buffer[readSize] = 0;
+				_sendToChildBuffer += buffer;
+				if (_bodyLength && _sendToChildBuffer.size() > _bodyLength) {
+					_errorCode = 400;
+					_currentState = SENDING_RESPONSE;
+				}
+				else if(_bodyLength == _sendToChildBuffer.size()) {
+				_currentState = CREATE_CHILD;
+				}
+			}
+			else if (readSize == -1) {
+				_currentState = FINISHED;
+			}
+			else {
+				_errorCode = 400;
+				_currentState = SENDING_RESPONSE;
+			} 
+		}
+	}
+	else if (_headerObject->getMethod() == "GET") {
+		_currentState = CREATE_CHILD;
+		return;
+	}
+}
+
+void Cgi::process() {
+	switch (_currentState) {
+		case READING_BODY:
+			readBody();
+			break;
+		case CREATE_CHILD:
+			break;
+		case WAITING_FOR_CHILD:
+			break;
+		case SENDING_RESPONSE:
+			break;
+		case FINISHED:
+			break;
+	}
+}
+
 int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
 {
     if (bodyBuffer.empty()) {
