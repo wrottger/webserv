@@ -19,6 +19,7 @@ public:
     const std::string &getHost() const;
     const std::string &getHeader(const std::string &name) const;
 	bool isInHeader(const std::string &name) const;
+    bool isTransferEncodingChunked() const;
     // std::map<std::string, std::string> getHeaders() const;
 
     HttpError getError() const;

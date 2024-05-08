@@ -47,7 +47,7 @@ void Client::process(uint32_t events) {
 		case READING_HEADER:
 			if (events & EPOLLIN) {
 				readFromClient();
-				if (isHeaderComplete()) {
+				if (isHeaderComplete() && _headerObject->isError() == false) {
 					if (Config::getInstance()->isCGIAllowed(_headerObject->getPath(), _headerObject->getHost())) {
 						if (_headerObject->getMethod() == "POST") {
 							_state = READING_BODY;

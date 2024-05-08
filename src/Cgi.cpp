@@ -179,13 +179,15 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 
 void Cgi::readBody() {
 	if (_headerObject->getMethod() == "POST") {
-		if (_headerObject->getHeader("transfer-encoding").find("chunked")) {
+		// Get unchunked bodydata
+		if (_headerObject->isInHeader("transfer-encoding")) {
+			if (_headerObject->getHeader("transfer-encoding").find("chunked") ) {}
 			if (!decodeChunkedBody(_bodyBuffer, _sendToChildBuffer)) {
 				_errorCode = 400;
 				_currentState = SENDING_RESPONSE;
 			}
-			// get chunked stuff;
 		} else {
+			// Get leftover bodydata from headerparsing
 			if (_bodyBuffer.size()) {
 				_sendToChildBuffer += _bodyBuffer;
 				_bodyBuffer.clear();
