@@ -180,7 +180,7 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 void Cgi::readBody() {
 	if (_headerObject->getMethod() == "POST") {
 		if (_headerObject->getHeader("transfer-encoding").find("chunked")) {
-			if (!decodeChunkedBuffer(_bodyBuffer, _sendToChildBuffer)) {
+			if (!decodeChunkedBody(_bodyBuffer, _sendToChildBuffer)) {
 				_errorCode = 400;
 				_currentState = SENDING_RESPONSE;
 			}
