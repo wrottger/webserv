@@ -23,7 +23,7 @@ std::string Cgi::toString(int number) {
 std::vector<std::string> Cgi::createEnviromentVariables() {
 	std::vector<std::string> result;
 	result.push_back("AUTH_TYPE=");
-	result.push_back("CONTENT_LENGTH=" + toString(_bodyLength));
+	result.push_back("CONTENT_LENGTH=" + toString(_contentLength));
 	if (_headerObject->isInHeader("content-type")) {
 		std::string contentType = _headerObject->getHeader("content-type");
 		result.push_back("CONTENT_TYPE=" + contentType);
@@ -73,7 +73,7 @@ Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string cl
 		_fd(fd) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
-	_bodyLength = bodyBuffer.size();
+	_contentLength = bodyBuffer.size();
 	executeCgi();
 }
 
@@ -102,11 +102,11 @@ void Cgi::executeCgi() {
 	LOG_DEBUG("CGI EXECUTING");
 	// Add the socket to epoll event list and create an EventData object for it
 	// try {
-	// if (client->getEventHandler()->registerEvent(_sockets[0], CGI, client) < 0) {
-	// 	LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
-	// 	_isFinished = true;
-	// 	_errorCode = 500;
-	// 	return;
+	// 	if (client->getEventHandler()->registerEvent(_sockets[0], CGI, client) < 0) {
+	// 		LOG_ERROR_WITH_TAG("Failed to add socket to epoll", "CGI");
+	// 		_isFinished = true;
+	// 		_errorCode = 500;
+	// 		return;
 	// }
 	// EventsData *eventData = client->getEventHandler()->createNewEvent(_sockets[0], CGI, client);
 	// client->getEventHandler()->addEventToList(eventData);
@@ -180,8 +180,7 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 void Cgi::readBody() {
 	if (_headerObject->getMethod() == "POST") {
 		// Get unchunked bodydata
-		if (_headerObject->isInHeader("transfer-encoding")) {
-			if (_headerObject->getHeader("transfer-encoding").find("chunked") ) {}
+		if (_headerObject->isTransferEncodingChunked()) {
 			if (!decodeChunkedBody(_bodyBuffer, _sendToChildBuffer)) {
 				_errorCode = 400;
 				_currentState = SENDING_RESPONSE;
@@ -191,51 +190,58 @@ void Cgi::readBody() {
 			if (_bodyBuffer.size()) {
 				_sendToChildBuffer += _bodyBuffer;
 				_bodyBuffer.clear();
-				if (_bodyLength == _sendToChildBuffer.size()) {
-					_currentState = CREATE_CHILD;
+				if (_contentLength == _sendToChildBuffer.size()) {
+					_currentState = CREATE_CGI_PROCESS;
 					return;
 				}
 			}
+			// Read the rest of the body
 			char buffer[BUFFER_SIZE + 1];
 			ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
 			if (readSize > 0) {
 				buffer[readSize] = 0;
 				_sendToChildBuffer += buffer;
-				if (_bodyLength && _sendToChildBuffer.size() > _bodyLength) {
+				// Check if the body is bigger then the content-length
+				if (_contentLength && _sendToChildBuffer.size() > _contentLength) {
 					_errorCode = 400;
 					_currentState = SENDING_RESPONSE;
 				}
-				else if(_bodyLength == _sendToChildBuffer.size()) {
-				_currentState = CREATE_CHILD;
+				else if(_contentLength == _sendToChildBuffer.size()) { // TODO: Could bug if we read the max buffersize and there is still stuff in the socket
+				_currentState = CREATE_CGI_PROCESS;
 				}
 			}
-			else if (readSize == -1) {
+			else if (readSize == -1 || readSize == 0) {
 				_currentState = FINISHED;
 			}
-			else {
-				_errorCode = 400;
-				_currentState = SENDING_RESPONSE;
-			} 
 		}
 	}
 	else if (_headerObject->getMethod() == "GET") {
-		_currentState = CREATE_CHILD;
+		_currentState = CREATE_CGI_PROCESS;
 		return;
+	} else {
+		_errorCode = 405;
+		_currentState = SENDING_RESPONSE;
 	}
 }
 
 void Cgi::process() {
 	switch (_currentState) {
 		case READING_BODY:
+			LOG_DEBUG_WITH_TAG("Reading body", "CGI");
 			readBody();
 			break;
-		case CREATE_CHILD:
+		case CREATE_CGI_PROCESS:
+			LOG_DEBUG_WITH_TAG("Creating CGI process", "CGI");
+			createCgiProcess();
 			break;
 		case WAITING_FOR_CHILD:
+			LOG_DEBUG_WITH_TAG("Waiting for child", "CGI");
 			break;
 		case SENDING_RESPONSE:
+			LOG_DEBUG_WITH_TAG("Sending response", "CGI");
 			break;
 		case FINISHED:
+			LOG_DEBUG_WITH_TAG("Finished", "CGI");
 			break;
 	}
 }
@@ -272,4 +278,15 @@ int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
 		    return 1;
 	    }
     return 0;
+}
+
+int Cgi::createCgiProcess() {
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
+		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
+		_isFinished = true;
+		_errorCode = 500;
+		return;
+	}
+
+	return 0;
 }
