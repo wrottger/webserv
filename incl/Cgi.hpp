@@ -13,6 +13,7 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
+#include <string>
 
 #define SEND_SIZE 8192
 #define CGI_TIMEOUT 5
@@ -53,9 +54,11 @@ private:
 	std::vector<std::string> createEnviromentVariables();
 	char **createArguments();
 	std::string toString(size_t number);
+	std::string toString(int number);
 	void executeCgi();
 	int executeChild(const HttpHeader *headerObject);
 	void readBody();
+	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 
 public:
 	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp, int fd);

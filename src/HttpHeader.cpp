@@ -23,24 +23,24 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         return 0;
     char c;
     size_t i = 0;
-    for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++)
+    try
     {
-        request_size++;
-        if (request_size > 8192) // TODO check against config
+        for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++)
         {
-            LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
-            throw HttpError(413, "Request Entity Too Large");
-        }
-        c = requestLine[i];
-        try
-        {
+            request_size++;
+            if (request_size > 8192) // TODO check against config
+            {
+                LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
+                throw HttpError(413, "Request Entity Too Large");
+            }
+            c = requestLine[i];
             state->func(c, message, *state);
         }
-        catch(HttpError &e)
-        {
-            parseError = e;
-            return i;
-        }
+    }
+    catch (HttpError &e)
+    {
+        parseError = e;
+        return i;
     }
     if (state->func == States::headerFinished)
     {
@@ -81,11 +81,11 @@ const std::string &HttpHeader::getHost() const {
 }
 
 const std::string &HttpHeader::getHeader(const std::string &name) const {
-	std::map<std::string, std::string>::const_iterator key = message.headers.find(name);
-	if (key != message.headers.end()) {
-		return key->second;
-	}
-    return "";
+    return message.headers.find(name)->second;
+}
+
+bool HttpHeader::isInHeader(const std::string &name) const {
+	return message.headers.find(name) != message.headers.end();
 }
 
 bool HttpHeader::isError() const { return parseError.code() != 0;}
@@ -115,7 +115,7 @@ std::string HttpHeader::percentDecode(std::string &str)
     return decoded;
 }
 
-bool HttpHeader::isComplete() const { return state->func == States::headerFinished; }
+bool HttpHeader::isComplete() const { return state->func == States::headerFinished || isError(); }
 
 
 bool HttpHeader::States::isToken(char c) {
@@ -124,7 +124,7 @@ bool HttpHeader::States::isToken(char c) {
 }
 
 bool HttpHeader::States::isPchar(char c) {
-    const static std::string subDelis = std::string("!$&'()*+,;=");
+    const static std::string subDelis = std::string("-._~:/?#[]@!$&'()*+,;=");
     return isalnum(c) || subDelis.find(c) != std::string::npos || c == ':' || c == '@' || c == '%';
 }
 
@@ -293,6 +293,8 @@ void HttpHeader::States::minorDigit(char c, HttpMessage& message, StateHandler& 
 void HttpHeader::States::query(char c, HttpMessage& message, StateHandler& nextState) {
     if (isPchar(c) || c == '/' || c == '?') {
         message.query += c;
+    } else if (c == ' ') {
+        nextState.func = httpVersion;
     } else if (c == '#') {
         nextState.func = fragment;
     } else {

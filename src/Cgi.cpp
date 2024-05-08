@@ -10,18 +10,22 @@ char *dupString(const std::string &str) {
 
 std::string Cgi::toString(size_t number) {
 	std::stringstream result;
+	result << number;
+	return result.str();
+}
 
+std::string Cgi::toString(int number) {
+	std::stringstream result;
 	result << number;
 	return result.str();
 }
 
 std::vector<std::string> Cgi::createEnviromentVariables() {
 	std::vector<std::string> result;
-	std::string contentType = _headerObject->getHeader("content-type");
-
 	result.push_back("AUTH_TYPE=");
 	result.push_back("CONTENT_LENGTH=" + toString(_bodyLength));
-	if (!contentType.empty()) {
+	if (_headerObject->isInHeader("content-type")) {
+		std::string contentType = _headerObject->getHeader("content-type");
 		result.push_back("CONTENT_TYPE=" + contentType);
 	}
 	result.push_back("GATEWAY_INTERFACE=CGI/1.1");
@@ -33,8 +37,8 @@ std::vector<std::string> Cgi::createEnviromentVariables() {
 	// result.push_back("REMOTE_IDENT=");
 	result.push_back("REQUEST_METHOD=" + _headerObject->getMethod());
 	result.push_back("SCRIPT_NAME=" + _headerObject->getPath()); // FIXME: Maybe wrong when: /path/to/script.py/param1/param2
-	result.push_back("SERVER_NAME=" + _headerObject->getHeader("host"));
-	// result.push_back("SERVER_PORT=" + _headerObject->getPort()); // TODO: Change to actual server port
+	result.push_back("SERVER_NAME=" + _headerObject->getHost());
+	result.push_back("SERVER_PORT=" + toString(_headerObject->getPort())); // TODO: Change to actual server port
 	result.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	result.push_back("SERVER_SOFTWARE=WebServ/1.0");
 
@@ -173,64 +177,36 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	return 0;
 }
 
-
-void Cgi::readBody() {
-	if (_headerObject->getMethod() == "POST") {
-		if (_headerObject->getHeader("transfer-encoding").find("chunked")) {
-			if (!decodeChunkedBuffer(_bodyBuffer, _sendToChildBuffer)) {
-				_errorCode = 400;
-				_currentState = SENDING_RESPONSE;
-			}
-			// get chunked stuff;
-		} else {
-			if (_bodyBuffer.size()) {
-				_sendToChildBuffer += _bodyBuffer;
-				_bodyBuffer.clear();
-				if (_bodyLength == _sendToChildBuffer.size()) {
-					_currentState = CREATE_CHILD;
-					return;
-				}
-			}
-			char buffer[BUFFER_SIZE + 1];
-			ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
-			if (readSize > 0) {
-				buffer[readSize] = 0;
-				_sendToChildBuffer += buffer;
-				if (_bodyLength && _sendToChildBuffer.size() > _bodyLength) {
-					_errorCode = 400;
-					_currentState = SENDING_RESPONSE;
-				}
-				else if(_bodyLength == _sendToChildBuffer.size()) {
-				_currentState = CREATE_CHILD;
-				}
-			}
-			else if (readSize == -1) {
-				_currentState = FINISHED;
-			}
-			else {
-				_errorCode = 400;
-				_currentState = SENDING_RESPONSE;
-			} 
+int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+{
+    if (bodyBuffer.empty()) {
+        return 1;
+    }
+    std::stringstream bodyStream(bodyBuffer);
+    for (std::string line; std::getline(bodyStream, line);)
+    {
+		if (!line.empty() && line[line.size() - 1] == '\r')
+		    line.erase(line.size() - 1); // Remove the trailing \r
+		size_t chunkSize;
+		std::stringstream sizeStream(line);
+		if (!(sizeStream >> std::hex >> chunkSize)) // Parse the chunk size
+		    return 1;
+		if (chunkSize == 0)
+		{
+		    // Check for final CRLF
+		    char crlf[2];
+		    if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
+		        return 1;
+		    break;
 		}
-	}
-	else if (_headerObject->getMethod() == "GET") {
-		_currentState = CREATE_CHILD;
-		return;
-	}
-}
-
-void Cgi::process() {
-	switch (_currentState) {
-		case READING_BODY:
-			readBody();
-			break;
-		case CREATE_CHILD:
-			break;
-		case WAITING_FOR_CHILD:
-			break;
-		case SENDING_RESPONSE:
-			break;
-		case FINISHED:
-			break;
-	}
+		size_t oldSize = decodedBody.size();
+		decodedBody.resize(oldSize + chunkSize); // Resize the decoded body buffer to fit the new chunk
+		if (!bodyStream.read(&decodedBody[oldSize], chunkSize)) // Write the chunk data to the decoded body buffer
+		    return 1;
+		// Check for CRLF after chunk
+		char crlf[2];
+		if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
+		    return 1;
+	    }
+    return 0;
 }

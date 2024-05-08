@@ -47,18 +47,21 @@ void Client::process(uint32_t events) {
 		case READING_HEADER:
 			if (events & EPOLLIN) {
 				readFromClient();
-				if (isHeaderComplete() && _headerObject->isError()) {
-						std::cerr << "aaaaaaaaaaaaaaaaaaaaa        getPath: " << _headerObject->getPath() << " header host: " << _headerObject->getHeader("host") << std::endl;
-					if (Config::getInstance()->isCGIAllowed(_headerObject->getPath(), _headerObject->getHeader("host"))) {
-						if (_headerObject->getMethod() == "POST")
+				if (isHeaderComplete()) {
+					if (Config::getInstance()->isCGIAllowed(_headerObject->getPath(), _headerObject->getHost())) {
+						if (_headerObject->getMethod() == "POST") {
 							_state = READING_BODY;
+							LOG_DEBUG("set State: Reading body");
+						}
 						else if (_headerObject->getMethod() == "GET") {
 							_state = WAITING_FOR_CGI;
-							processCGI(withoutBody);
+							LOG_DEBUG("set State: Waiting for CGI");
+							// processCGI(withoutBody);
 						}
 
 					} else {
 					_state = SENDING_RESPONSE;
+					LOG_DEBUG("set State: Sending response");
 					httpResponse = new HttpResponse(*_headerObject, _fd);
 					// TODO: Copy the rest of the buffer to the response object
 					// TODO: Create a response object
@@ -67,15 +70,23 @@ void Client::process(uint32_t events) {
 			}
 			break;
 		case READING_BODY:
+				if (_headerObject->isInHeader("transfer-encoding")) {
+					if (_headerObject->getHeader("transer-encoding").find("chunked") != std::string::npos) {
+						// get chunked stuff;
+						// size_t bodySize = _headerObject->getHeader("content-length");
+					} else {
+						// read full body;
+					}
+				}
 				if (_headerObject->getHeader("transer-encoding").find("chunked")) {
 					// get chunked stuff;
 					// size_t bodySize = _headerObject->getHeader("content-length");
 				} else {
 					// read full body;
 				}
-				if body isBodyComplete
-				processCGI(body);
-				_state = WAITING_FOR_CGI;
+				// if body isBodyComplete
+				// processCGI(body);
+				// _state = WAITING_FOR_CGI;
 			break;
 		case WAITING_FOR_CGI:
 			// processCgi();
