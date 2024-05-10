@@ -12,8 +12,8 @@
 #include <wait.h>
 #include <ctime>
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
 #define SEND_SIZE 8192
 #define CGI_TIMEOUT 5
@@ -45,19 +45,19 @@ private:
 	std::string _clientIp;
 	State _currentState;
 	std::string _sendToChildBuffer;
-	int	_fd;
+	int _fd;
 
 private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
 
-	std::vector<std::string> createEnviromentVariables();
+	char **createEnviromentVariables();
 	char **createArguments();
 	std::string toString(size_t number);
 	std::string toString(int number);
 	void executeCgi();
-	int executeChild(const HttpHeader &headerObject);
+	int executeChild();
 	void readBody();
 	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 	int createCgiProcess();
