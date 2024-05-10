@@ -154,11 +154,6 @@ namespace Logging {
 		void disablePrintTimeStamp();	// Disable time stamp in log
 		void disablePrintLogLevel();	// Disable log level in log
 
-	protected:
-		Logger();
-		~Logger();
-
-
 	private:
 		static Logger* _instance;
 		std::ofstream _logFile;
@@ -168,6 +163,8 @@ namespace Logging {
 		bool _logLevelInLog;
 
 	private:
+		Logger();
+		~Logger();
 		std::string getCurrentTime();
 		void logMessage(const char* level, const char* text);
 		void logMessage(const char* level, const char* text, const char* tag);
