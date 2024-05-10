@@ -1,6 +1,6 @@
 #include "Logger.hpp"
 
-Logging::Logger *Logging::Logger::_instance = NULL;
+Logging::Logger Logging::Logger::_instance;
 
 Logging::Logger::Logger() {
 	_logFile.open(LOG_SAVE_FILE.c_str(), std::ios::out | std::ios::app);
@@ -20,7 +20,6 @@ Logging::Logger::~Logger() {
 
 // Singleton instance
 Logging::Logger &Logging::Logger::getInstance() {
-	static Logger _instance;
 	return _instance;
 }
 
