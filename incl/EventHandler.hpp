@@ -20,13 +20,15 @@ class Client;
 class EventHandler {
 
 public:
-	void start();
 	static EventHandler &getInstance();
+	void start();
+	int registerEvent(int fd, EventType type, Client *client);
 
 private:
 	static EventHandler _instance;
 	int _epollFd;
 	bool isRunning;
+	EventsData *_currentEvent;
 	std::vector<int> _listeningSockets;
 	std::list<EventsData *> _eventDataList;
 	std::list<EventsData *> _cleanUpList;
@@ -37,8 +39,7 @@ private:
 	EventHandler &operator=(EventHandler const &other);
 
 	EventsData *createNewEvent(int fd, EventType type, Client *client);
-	int getEpollFd() const;
-	int registerEvent(int fd, EventType type, Client *client);
+	// int getEpollFd() const;
 	void unregisterEvent(int fd);
 	void unregisterEvent(EventsData *eventData);
 	void addToCleanUpList(int fd);

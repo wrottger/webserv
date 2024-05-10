@@ -3,11 +3,13 @@
 
 EventHandler EventHandler::_instance;
 
-EventHandler& EventHandler::getInstance() {
+EventHandler &EventHandler::getInstance() {
 	return _instance;
 }
 
-EventHandler::EventHandler() {}
+EventHandler::EventHandler() :
+		_epollFd(0),
+		isRunning(false) {}
 
 EventHandler::~EventHandler() {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
@@ -16,6 +18,7 @@ EventHandler::~EventHandler() {
 	_eventDataList.clear();
 }
 
+// Starts the event main loop, can only be called once
 void EventHandler::start() {
 	if (getInstance().isRunning) {
 		return;
@@ -35,12 +38,13 @@ void EventHandler::start() {
 			continue;
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
-			EventsData *eventData = static_cast<EventsData *>(events[n].data.ptr);
-			if (eventData->eventType == LISTENING) {
-				acceptNewClient(eventData);
+			_currentEvent = static_cast<EventsData *>(events[n].data.ptr);
+			EventType type = _currentEvent->eventType;
+			if (type == LISTENING) {
+				acceptNewClient(_currentEvent);
 				continue;
-			} else if (eventData->eventType == CLIENT || eventData->eventType == CGI) {
-				Client *client = static_cast<Client *>(eventData->objectPointer);
+			} else if (type == CLIENT || type == CGI) {
+				Client *client = static_cast<Client *>(_currentEvent->objectPointer);
 				client->process(events[n].events);
 			}
 		}
@@ -106,9 +110,9 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	return eventData;
 }
 
-int EventHandler::getEpollFd() const {
-	return _epollFd;
-}
+// int EventHandler::getEpollFd() const {
+// 	return _epollFd;
+// }
 
 int EventHandler::registerEvent(int fd, EventType type, Client *client) {
 	struct epoll_event ev;

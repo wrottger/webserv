@@ -285,7 +285,7 @@ int Cgi::createCgiProcess() {
 		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
 		_isFinished = true;
 		_errorCode = 500;
-		return;
+		return -1;
 	}
 
 	return 0;
