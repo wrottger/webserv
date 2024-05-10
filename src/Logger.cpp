@@ -11,7 +11,6 @@ Logging::Logger::Logger() {
 	_logTarget = LOG_TO_CONSOLE;	// Default log type
 	_timeStampInLog = true;			// Default timestamp in log
 	_logLevelInLog = true;			// Default log level in log
-	startLogging();
 }
 
 Logging::Logger::~Logger() {

@@ -154,6 +154,8 @@ namespace Logging {
 		void disablePrintTimeStamp();	// Disable time stamp in log
 		void disablePrintLogLevel();	// Disable log level in log
 
+		void startLogging(); // Start logging project specific information
+
 	private:
 		static Logger _instance;
 		std::ofstream _logFile;
@@ -171,7 +173,6 @@ namespace Logging {
 		void createLogMessage(std::string &buffer, const char *logLevel, const char *text);
 		void createLogMessage(std::string &buffer, const char *logLevel, const char *text, const char *tag);
 		void writeLog(const std::string &data);
-		void startLogging();
 		std::string insertMetaInformations(const char *logLevel);
 		std::string insertMetaInformations(const char *logLevel, const char *tag);
 
