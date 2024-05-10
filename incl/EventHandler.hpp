@@ -20,17 +20,19 @@ class Client;
 class EventHandler {
 
 public:
-	EventHandler(SocketHandling &sockets);
-	~EventHandler();
 	void start();
+	static EventHandler &getInstance();
 
 private:
+	static EventHandler _instance;
 	int _epollFd;
+	bool isRunning;
 	std::vector<int> _listeningSockets;
 	std::list<EventsData *> _eventDataList;
 	std::list<EventsData *> _cleanUpList;
 
 	EventHandler();
+	~EventHandler();
 	EventHandler(EventHandler const &other);
 	EventHandler &operator=(EventHandler const &other);
 

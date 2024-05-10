@@ -1,12 +1,13 @@
 #include "EventHandler.hpp"
 #include "Client.hpp"
 
-EventHandler::EventHandler() {}
+EventHandler EventHandler::_instance;
 
-EventHandler::EventHandler(SocketHandling &sockets) {
-	_epollFd = sockets.getEpollFd();
-	_listeningSockets = sockets.getOpenFds();
+EventHandler& EventHandler::getInstance() {
+	return _instance;
 }
+
+EventHandler::EventHandler() {}
 
 EventHandler::~EventHandler() {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
@@ -16,6 +17,13 @@ EventHandler::~EventHandler() {
 }
 
 void EventHandler::start() {
+	if (getInstance().isRunning) {
+		return;
+	}
+	getInstance().isRunning = true;
+	SocketHandling sockets(Config::getInstance()->getServerBlocks());
+	_epollFd = sockets.getEpollFd();
+	_listeningSockets = sockets.getOpenFds();
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
 
@@ -98,7 +106,6 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	return eventData;
 }
 
-
 int EventHandler::getEpollFd() const {
 	return _epollFd;
 }
@@ -179,9 +186,9 @@ void EventHandler::removeInactiveClients() {
 	processCleanUpList();
 }
 
-std::string EventHandler::ft_inet_ntop(int af, const void* src) {
+std::string EventHandler::ft_inet_ntop(int af, const void *src) {
 	if (af == AF_INET) {
-		const unsigned char* bytes = (const unsigned char*)src;
+		const unsigned char *bytes = (const unsigned char *)src;
 		std::ostringstream oss;
 		oss << static_cast<int>(bytes[0]) << ".";
 		oss << static_cast<int>(bytes[1]) << ".";
