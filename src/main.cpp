@@ -19,43 +19,16 @@
 
 UTEST_STATE();
 
-static size_t remaining = 0;
 
 static int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
 {
-    if (bodyBuffer.empty() && remaining != 0) {
-        return -1; // Return -1 when an error occurs
-    }
-    std::stringstream bodyStream(bodyBuffer);
-    for (std::string line; remaining == 0 && std::getline(bodyStream, line);)
+    static bool readChunk = false;
+    static bool readSize = true;
+
+    for (size_t i = 0; i < bodyBuffer.size(); i++)
     {
-        if (!line.empty() && line[line.size() - 1] == '\r')
-            line.erase(line.size() - 1); // Remove the trailing \r
-        std::stringstream sizeStream(line);
-        if (!(sizeStream >> std::hex >> remaining)) // Parse the chunk size
-            return -1; // Return -1 when an error occurs
-        if (remaining == 0)
-        {
-            // Check for final CRLF
-            char crlf[2];
-            if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
-                return -1; // Return -1 when an error occurs
-            return 0; // Return 0 when the entire body has been processed
-        }
-    }
-    if (remaining > 0)
-    {
-        size_t chunkSize = std::min(remaining, bodyBuffer.size());
-        size_t oldSize = decodedBody.size();
-        decodedBody.resize(oldSize + chunkSize); // Resize the decoded body buffer to fit the new chunk
-        if (!bodyStream.read(&decodedBody[oldSize], chunkSize)) // Write the chunk data to the decoded body buffer
-            return -1; // Return -1 when an error occurs
-        remaining -= chunkSize;
-        // Check for CRLF after chunk
-        std::cout << "Remaining: " << remaining << std::endl;
-        char crlf[2];
-        if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
-            return -1; // Return -1 when an error occurs
+        switch (bodyBuffer[i])
+        {}
     }
     return 1; // Return 1 when a chunk has been processed but there are more chunks to process
 }
@@ -71,12 +44,12 @@ int main(int argc, char *argv[], char *envp[]) {
     for (size_t i = 0; i < bodyBuffer.size(); i += 10)
     {
         std::string chunk = bodyBuffer.substr(i, 10);
-        std::cout << "Return value: " << decodeChunkedBody(chunk, decodedBody) << std::endl;
+        std::cout << decodeChunkedBody(chunk, decodedBody) << std::endl;
         std::cout << "Chunk: |" << chunk << "|" << std::endl;
         std::cout << "Decoded body: |" << decodedBody << "|" << std::endl;
         
     }
-    std::cout << "Finished: " << decodedBody << std::endl;
+    // std::cout << "Finished: " << decodedBody << std::endl;
 	// Config *config = Config::getInstance();
 	// try {
 	// 	config->parseConfigFile(argv[1]);
