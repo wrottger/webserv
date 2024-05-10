@@ -24,25 +24,25 @@ std::vector<std::string> Cgi::createEnviromentVariables() {
 	std::vector<std::string> result;
 	result.push_back("AUTH_TYPE=");
 	result.push_back("CONTENT_LENGTH=" + toString(_contentLength));
-	if (_headerObject->isInHeader("content-type")) {
-		std::string contentType = _headerObject->getHeader("content-type");
+	if (_header.isInHeader("content-type")) {
+		std::string contentType = _header.getHeader("content-type");
 		result.push_back("CONTENT_TYPE=" + contentType);
 	}
 	result.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	result.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_headerObject->getPath(), "localhost"));
+	result.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_header.getPath(), "localhost"));
 	result.push_back("PATH_TRANSLATED=");
-	result.push_back("QUERY_STRING=" + _headerObject->getQuery());
+	result.push_back("QUERY_STRING=" + _header.getQuery());
 	result.push_back("REMOTE_ADDR=" + _clientIp);
 	result.push_back("REMOTE_HOST=" + _clientIp);
 	// result.push_back("REMOTE_IDENT=");
-	result.push_back("REQUEST_METHOD=" + _headerObject->getMethod());
-	result.push_back("SCRIPT_NAME=" + _headerObject->getPath()); // FIXME: Maybe wrong when: /path/to/script.py/param1/param2
-	result.push_back("SERVER_NAME=" + _headerObject->getHost());
-	result.push_back("SERVER_PORT=" + toString(_headerObject->getPort())); // TODO: Change to actual server port
+	result.push_back("REQUEST_METHOD=" + _header.getMethod());
+	result.push_back("SCRIPT_NAME=" + _header.getPath()); // FIXME: Maybe wrong when: /path/to/script.py/param1/param2
+	result.push_back("SERVER_NAME=" + _header.getHost());
+	result.push_back("SERVER_PORT=" + toString(_header.getPort())); // TODO: Change to actual server port
 	result.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	result.push_back("SERVER_SOFTWARE=WebServ/1.0");
 
-	for (std::map<std::string, std::string>::const_iterator it = _headerObject->getHeaders().begin(); it != _headerObject->getHeaders().end(); ++it) {
+	for (std::map<std::string, std::string>::const_iterator it = _header.getHeaders().begin(); it != _header.getHeaders().end(); ++it) {
 		std::string key = it->first;
 		std::transform(key.begin(), key.end(), key.begin(), ::toupper);
 		std::replace(key.begin(), key.end(), '-', '_');
@@ -61,19 +61,20 @@ char **Cgi::createArguments() {
 	return argv;
 }
 
-Cgi::Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp, int fd) :
+Cgi::Cgi(Client *client) :
+		_client(client),
 		_currentBufferSize(0),
 		_timeCreated(0),
 		_isFinished(false),
 		_errorCode(0),
-		_bodyBuffer(bodyBuffer),
-		_headerObject(headerObject),
-		_clientIp(clientIp),
+		_bodyBuffer(_client->getBodyBuffer()),
+		_header(_client->getHeaderObject()),
+		_clientIp(_client->getIp()),
 		_currentState(READING_BODY),
-		_fd(fd) {
+		_fd(_client->getFd()) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
-	_contentLength = bodyBuffer.size();
+	_contentLength = _bodyBuffer.size();
 	executeCgi();
 }
 
@@ -140,12 +141,12 @@ void Cgi::executeCgi() {
 		close(_sockets[1]); // Close child's end of the socket pair
 
 	} else { // Child process
-		executeChild(_headerObject);
+		executeChild(_header);
 	}
 	// close(_sockets[0]);
 }
 
-int Cgi::executeChild(const HttpHeader *headerObject) {
+int Cgi::executeChild(const HttpHeader &headerObject) {
 	close(_sockets[0]); // Close parent's end of the socket pair
 	dup2(_sockets[1], STDIN_FILENO);
 	dup2(_sockets[1], STDOUT_FILENO);
@@ -178,9 +179,9 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 }
 
 void Cgi::readBody() {
-	if (_headerObject->getMethod() == "POST") {
+	if (_header.getMethod() == "POST") {
 		// Get unchunked bodydata
-		if (_headerObject->isTransferEncodingChunked()) {
+		if (_header.isTransferEncodingChunked()) {
 			if (!decodeChunkedBody(_bodyBuffer, _sendToChildBuffer)) {
 				_errorCode = 400;
 				_currentState = SENDING_RESPONSE;
@@ -215,7 +216,7 @@ void Cgi::readBody() {
 			}
 		}
 	}
-	else if (_headerObject->getMethod() == "GET") {
+	else if (_header.getMethod() == "GET") {
 		_currentState = CREATE_CGI_PROCESS;
 		return;
 	} else {
@@ -232,7 +233,10 @@ void Cgi::process() {
 			break;
 		case CREATE_CGI_PROCESS:
 			LOG_DEBUG_WITH_TAG("Creating CGI process", "CGI");
-			createCgiProcess();
+			if (createCgiProcess() < 0) {
+				_currentState = FINISHED;
+			}
+			_currentState = WAITING_FOR_CHILD;
 			break;
 		case WAITING_FOR_CHILD:
 			LOG_DEBUG_WITH_TAG("Waiting for child", "CGI");
@@ -287,6 +291,7 @@ int Cgi::createCgiProcess() {
 		_errorCode = 500;
 		return -1;
 	}
+	EventHandler::getInstance().registerEvent(_sockets[0], CGI, _client);
 
 	return 0;
 }

@@ -29,8 +29,8 @@ void EventHandler::start() {
 	_listeningSockets = sockets.getOpenFds();
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
-
 	signal(SIGPIPE, SIG_IGN);
+
 	while (true) {
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, -1);
 		if (epollTriggerCount == -1) {
@@ -40,11 +40,11 @@ void EventHandler::start() {
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			_currentEvent = static_cast<EventsData *>(events[n].data.ptr);
 			EventType type = _currentEvent->eventType;
+			Client *client = static_cast<Client *>(_currentEvent->objectPointer);
 			if (type == LISTENING) {
 				acceptNewClient(_currentEvent);
 				continue;
 			} else if (type == CLIENT || type == CGI) {
-				Client *client = static_cast<Client *>(_currentEvent->objectPointer);
 				client->process(events[n].events);
 			}
 		}
@@ -177,7 +177,7 @@ void EventHandler::removeInactiveClients() {
 		EventsData *eventData = *it;
 		if (eventData->eventType == CLIENT) {
 			Client *client = static_cast<Client *>(eventData->objectPointer);
-			if (client->canBeDeleted()) {
+			if (client->isDeletable()) {
 				LOG_DEBUG("Client can be deleted");
 				_cleanUpList.push_back(eventData);
 				continue;

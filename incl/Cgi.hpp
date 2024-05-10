@@ -29,6 +29,7 @@ private:
 		FINISHED
 	};
 
+	Client *_client;
 	static const size_t _maxBufferSize = MAX_CGI_BUFFER_SIZE;
 	std::string _childReturnBuffer;
 	size_t _currentBufferSize;
@@ -37,8 +38,8 @@ private:
 	bool _isFinished;
 	int _errorCode;
 	static const time_t _timeout = CGI_TIMEOUT;
-	std::string _bodyBuffer;
-	HttpHeader *_headerObject;
+	std::string &_bodyBuffer;
+	const HttpHeader &_header;
 	char **_enviromentVariables;
 	size_t _contentLength;
 	std::string _clientIp;
@@ -56,13 +57,13 @@ private:
 	std::string toString(size_t number);
 	std::string toString(int number);
 	void executeCgi();
-	int executeChild(const HttpHeader *headerObject);
+	int executeChild(const HttpHeader &headerObject);
 	void readBody();
 	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 	int createCgiProcess();
 
 public:
-	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp, int fd);
+	Cgi(Client *client);
 	~Cgi();
 
 	bool isFinished() const;
