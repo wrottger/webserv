@@ -155,7 +155,7 @@ namespace Logging {
 		void disablePrintLogLevel();	// Disable log level in log
 
 	private:
-		static Logger* _instance;
+		static Logger _instance;
 		std::ofstream _logFile;
 		LogLevel _logLevel;
 		LogTarget _logTarget;
