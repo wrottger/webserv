@@ -66,7 +66,7 @@ const std::string &HttpHeader::getPath() const { return message.path; }
 
 const std::string &HttpHeader::getQuery() const { return message.query; }
 
-int HttpHeader::getPort() {
+int HttpHeader::getPort() const{
 	return message.port;
 }
 
