@@ -62,7 +62,10 @@ char **Cgi::createEnviromentVariables() {
 
 char **Cgi::createArguments() {
 	char **argv = new char *[3];
+
+	// argv[0] = 
 	argv[0] = strdup("/bin/python3");
+	// argv[1] = Config::getFilePath(_header.getPath(), _header.getHost());
 	argv[1] = strdup("overflow.py");
 	argv[2] = NULL; // The environment list must be NULL-terminated
 

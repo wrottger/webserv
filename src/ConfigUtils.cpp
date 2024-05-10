@@ -175,6 +175,60 @@ std::string Config::getErrorPage(int code, const std::string& route, const std::
 
 }
 
+std::string Config::getCgiScriptPath(const std::string& route, const std::string& host)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
+    std::string path = "";
+    int file = 0;
+    std::istringstream iss(route);
+    // get the extension of the file
+    for (std::string token; std::getline(iss, token, '/');)
+    {
+        path += token;
+        if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
+        {
+            file = 1;
+            break;
+        }
+		path += "/";
+    }
+    if (!file)
+        return "";
+	else if (!path.size())
+		path = "/";
+    std::string absolutePath = getFilePath(path, host);
+    return absolutePath;
+}
+
+std::string Config::getCgiDir(const std::string& route, const std::string& host)
+{
+    Config* config = getInstance();
+    if (config == NULL) //prevent segfault
+        throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
+    std::string path = "";
+    int file = 0;
+    std::istringstream iss(route);
+    // get the extension of the file
+    for (std::string token; std::getline(iss, token, '/');)
+    {
+        path += token;
+        if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
+        {
+            file = 1;
+            break;
+        }
+		path += "/";
+    }
+    if (!file)
+        return "";
+	else if (!path.size())
+		path = "/";
+    std::string absolutePath = getDir(path, host);
+    return absolutePath;
+}
+
 bool Config::isCGIAllowed(const std::string& route, const std::string& host)
 {
     Config* config = getInstance();
