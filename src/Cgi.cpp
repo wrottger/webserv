@@ -61,13 +61,23 @@ char **Cgi::createEnviromentVariables() {
 }
 
 char **Cgi::createArguments() {
-	char **argv = new char *[3];
 
-	// argv[0] = 
-	argv[0] = strdup("/bin/python3");
-	// argv[1] = Config::getFilePath(_header.getPath(), _header.getHost());
-	argv[1] = strdup("overflow.py");
-	argv[2] = NULL; // The environment list must be NULL-terminated
+	std::string interpreterPath = Config::getInstance()->getCgiInterpreterPath(_header.getPath(), _header.getHost());
+	if (interpreterPath.empty()) {
+		perror("Failed to get interpreter path");
+		exit(255);
+	}
+	std::string scriptPath = Config::getInstance()->getCgiScriptPath(_header.getPath(), _header.getHost());
+	if (scriptPath.empty()) {
+		perror("Failed to get script path");
+		exit(255);
+	}
+	char **argv = new char *[3];
+	argv[0] = new char[interpreterPath.length() + 1];
+	std::strcpy(argv[0], interpreterPath.c_str());
+	argv[1] = new char[scriptPath.length() + 1];
+	std::strcpy(argv[1], scriptPath.c_str());
+	argv[2] = NULL;
 
 	return argv;
 }
@@ -163,18 +173,13 @@ int Cgi::executeChild() {
 	dup2(_sockets[1], STDOUT_FILENO);
 	close(_sockets[1]); // Close child's end of the socket pair
 
-	std::string dir = Config::getInstance()->getDir(_header.getPath(), _header.getHost());
+	std::string dir = Config::getInstance()->getCgiDir(_header.getPath(), _header.getHost());
 	const char *cgiDir = dir.c_str();
 	if (chdir(cgiDir) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to change directory", "CGI");
-		perror("chdir failed:"); // TODO: DELETE DEBUG
+		perror("chdir failed:");
 		std::exit(255);
 	}
-
-	// if (chdir("cgi/") < 0) {
-	// 	LOG_ERROR_WITH_TAG("Failed to change directory", "CGI");
-	// 	std::exit(255);
-	// }
 
 	// Set the enviroment variables
 	char **envp = createEnviromentVariables();
@@ -182,8 +187,7 @@ int Cgi::executeChild() {
 
 	execve(argv[0], argv, envp);
 	LOG_ERROR_WITH_TAG("Failed to execve CGI", "CGI");
-	perror("execve failed:"); // TODO: DELETE DEBUG
-
+	perror("execve failed:");
 	std::exit(255);
 
 	return 0;
@@ -306,15 +310,15 @@ int Cgi::createCgiProcess() {
 	}
 	_timeCreated = std::time(0);
 
-	pid_t pid = fork();
-	if (pid < 0) {
+	pid_t _childPid = fork();
+	if (_childPid < 0) {
 		LOG_ERROR_WITH_TAG("Failed to fork", "CGI");
 		_isFinished = true;
 		_errorCode = 500;
 		close(_sockets[0]);
 		close(_sockets[1]);
 		return -1;
-	} else if (pid != 0) { // Parent process
+	} else if (_childPid != 0) { // Parent process
 		close(_sockets[1]); // Close child's end of the socket pair
 	} else { // Child process
 		executeChild();
