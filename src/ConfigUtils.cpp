@@ -229,6 +229,10 @@ std::string Config::getCgiDir(const std::string& route, const std::string& host)
     return absolutePath;
 }
 
+std::string Config::getCgiInterpreterPath(const std::string& route, const std::string& host) {
+	return getDirectiveValue(route, host, Config::CGI);
+}
+
 bool Config::isCGIAllowed(const std::string& route, const std::string& host)
 {
     Config* config = getInstance();
