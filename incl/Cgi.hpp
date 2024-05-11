@@ -46,6 +46,7 @@ private:
 	State _currentState;
 	std::string _sendToChildBuffer;
 	int _fd;
+	pid_t _childPid;
 
 private:
 	Cgi();
