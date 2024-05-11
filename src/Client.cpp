@@ -19,19 +19,27 @@ std::string createTestResponse() {
 Client::Client() {}
 
 Client::Client(int fd, std::string ip):
+		_header(NULL),
+		_responseHttp(NULL),
+		_responseCgi(NULL),
 		_lastModified(0),
 		_fd(fd),
 		_canBeDeleted(false),
 		_state(READING_HEADER),
-		_ip(ip) {
+		_ip(ip),
+		_bodyBuffer("") {
 	_header = new HttpHeader;
 	updateTime();
 	_responseHttp = NULL;
 }
 
 Client::~Client() {
+	LOG_DEBUG_WITH_TAG("Client destructor called", "Client");
 	if (_responseHttp != NULL) {
 		delete _responseHttp;
+	}
+	if (_responseCgi != NULL) {
+		delete _responseCgi;
 	}
 	delete _header;
 }
@@ -92,7 +100,13 @@ void Client::process(uint32_t events) {
 				// _state = WAITING_FOR_CGI;
 			break;
 		case WAITING_FOR_CGI:
-			// processCgi();
+			if (_responseCgi == NULL) {
+				_responseCgi = new Cgi(this);
+			}
+			_responseCgi->process();
+			if (_responseCgi->isFinished()) {
+				_state = FINISHED;
+			}
 			// if (cgi->isFinished()) {
 			// 	_state = SENDING_RESPONSE;
 			// }
@@ -143,6 +157,14 @@ std::string &Client::getBodyBuffer() {
 
 const std::string& Client::getIp() const{
 	return _ip;
+}
+
+bool Client::hasCgi() const {
+	return _responseCgi != NULL;
+}
+
+Cgi *Client::getCgi() {
+	return _responseCgi;
 }
 
 // Returns true if the client has exceeded the timeout

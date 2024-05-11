@@ -24,6 +24,8 @@ public:
 	HttpHeader &getHeaderObject();
 	std::string &getBodyBuffer();
 	const std::string &getIp() const;
+	bool hasCgi() const;
+	Cgi *getCgi();
 
 private:
 	enum State {

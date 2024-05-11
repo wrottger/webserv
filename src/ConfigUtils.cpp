@@ -230,7 +230,18 @@ std::string Config::getCgiDir(const std::string& route, const std::string& host)
 }
 
 std::string Config::getCgiInterpreterPath(const std::string& route, const std::string& host) {
-	return getDirectiveValue(route, host, Config::CGI);
+	std::string temp = getDirectiveValue(route, host, Config::CGI);
+	
+	std::istringstream iss(temp);
+	std::string token;
+	
+	// Skip the first value
+	std::getline(iss, token, ' ');
+
+	// Get the second value
+	std::getline(iss, token, ' ');
+
+	return token;
 }
 
 bool Config::isCGIAllowed(const std::string& route, const std::string& host)

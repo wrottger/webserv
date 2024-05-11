@@ -1,5 +1,4 @@
 #include "EventHandler.hpp"
-#include "Client.hpp"
 
 EventHandler EventHandler::_instance;
 
@@ -114,31 +113,32 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 // 	return _epollFd;
 // }
 
-int EventHandler::registerEvent(int fd, EventType type, Client *client) {
+EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) {
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLOUT;
 	ev.data.ptr = createNewEvent(fd, type, client);
 	_eventDataList.push_back(static_cast<EventsData *>(ev.data.ptr));
 	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev) == -1) {
 		LOG_ERROR("RegisterEvent: epoll ADD failed.");
-		return -1;
+		return NULL;
 	}
-	return 0;
+	return static_cast<EventsData *>(ev.data.ptr);
 }
 
 void EventHandler::unregisterEvent(int fd) {
-	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL) == -1) {
-		std::cerr << "Fd: " << fd << std::endl; // TODO: DELETE
-		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
-	}
-	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
-		if ((*it)->fd == fd) {
-			LOG_DEBUG_WITH_TAG("Unregistered something with fd", "EventHandler");
-			delete *it;
-			_eventDataList.erase(it);
-			break;
-		}
-	}
+	(void) fd;
+	// if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL) == -1) {
+	// 	std::cerr << "Fd: " << fd << std::endl; // TODO: DELETE
+	// 	LOG_ERROR("UnregisterEvent: epoll DEL failed.");
+	// }
+	// for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+	// 	if ((*it)->fd == fd) {
+	// 		LOG_DEBUG_WITH_TAG("Unregistered something with fd", "EventHandler");
+	// 		delete *it;
+	// 		_eventDataList.erase(it);
+	// 		break;
+	// 	}
+	// }
 }
 
 void EventHandler::unregisterEvent(EventsData *eventData) {
@@ -148,13 +148,17 @@ void EventHandler::unregisterEvent(EventsData *eventData) {
 		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
 		perror("epoll_ctl");
 	}
-	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end();) {
 		if (*it == eventData) {
-			LOG_DEBUG_WITH_TAG("Unregistered something with pointer", "EventHandler");
+			std::string type = (eventData->eventType == CLIENT) ? "Client" : "CGI";
+			std::string unregisteredType = "Unregistered " + type + " with pointer.";
+			LOG_DEBUG_WITH_TAG(unregisteredType, "EventHandler");
 			close(eventData->fd);
 			delete *it;
-			_eventDataList.erase(it);
+			it = _eventDataList.erase(it);
 			break;
+		} else {
+			++it;
 		}
 	}
 }
@@ -177,14 +181,26 @@ void EventHandler::removeInactiveClients() {
 		EventsData *eventData = *it;
 		if (eventData->eventType == CLIENT) {
 			Client *client = static_cast<Client *>(eventData->objectPointer);
-			if (client->isDeletable()) {
-				LOG_DEBUG("Client can be deleted");
-				_cleanUpList.push_back(eventData);
-				continue;
-			} else if (client->isTimeouted()) {
-				LOG_DEBUG("Client timeout");
-				_cleanUpList.push_back(*it);
+			if (client->isDeletable() || client->isTimeouted()) {
+				addToCleanUpList(eventData);
+				if (client->hasCgi()) {
+					addToCleanUpList(client->getCgi()->getEventData());
+				}
 			}
+			// if (client->isDeletable()) {
+			// 	LOG_DEBUG("Client can be deleted");
+			// 	_cleanUpList.push_back(eventData);
+			// 	if (client->hasCgi()) {
+			// 		_cleanUpList.push_back(client->getCgi()->getEventData());
+			// 	}
+			// 	continue;
+			// } else if (client->isTimeouted()) {
+			// 	LOG_DEBUG("Client timeout");
+			// 	_cleanUpList.push_back(*it);
+			// 	if (client->hasCgi()) {
+			// 		_cleanUpList.push_back(client->getCgi()->getEventData());
+			// 	}
+			// }
 		}
 	}
 	processCleanUpList();

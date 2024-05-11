@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include "Config.hpp"
 #include "EventHandler.hpp"
+#include "EventsData.hpp"
 #include "Logger.hpp"
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -30,23 +31,28 @@ private:
 	};
 
 	Client *_client;
+	const HttpHeader &_header;
+	std::string &_requestBody;
+	std::string _clientIp;
+	int _fd;
+
 	static const size_t _maxBufferSize = MAX_CGI_BUFFER_SIZE;
-	std::string _childReturnBuffer;
-	size_t _currentBufferSize;
-	int _sockets[2];
+	size_t _contentLength;
+
+	std::string _cgiToServerBuffer;
+	size_t _currentCgiToServerBufferSize;
+
 	time_t _timeCreated;
+	int _sockets[2];
+
+	static const time_t _timeout = CGI_TIMEOUT;
 	bool _isFinished;
 	int _errorCode;
-	static const time_t _timeout = CGI_TIMEOUT;
-	std::string &_bodyBuffer;
-	const HttpHeader &_header;
-	char **_enviromentVariables;
-	size_t _contentLength;
-	std::string _clientIp;
 	State _currentState;
-	std::string _sendToChildBuffer;
-	int _fd;
+	std::string _serverToCgiBuffer;
 	pid_t _childPid;
+
+	EventsData *_eventData;
 
 private:
 	Cgi();
@@ -62,6 +68,8 @@ private:
 	void readBody();
 	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 	int createCgiProcess();
+	int sendToChild();
+	int readFromChild();
 
 public:
 	Cgi(Client *client);
@@ -70,6 +78,7 @@ public:
 	bool isFinished() const;
 	int getErrorCode() const;
 	void process();
+	EventsData *getEventData() const;
 };
 
 #endif
