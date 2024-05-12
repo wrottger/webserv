@@ -187,7 +187,9 @@ void EventHandler::removeInactiveClients() {
 			if (client->isDeletable() || client->isTimeouted()) {
 				addToCleanUpList(eventData);
 				if (client->hasCgi()) {
-					addToCleanUpList(client->getCgi()->getEventData());
+					if (client->getCgi()->getEventData() != NULL) {
+						addToCleanUpList(client->getCgi()->getEventData());
+					}
 				}
 			}
 			// if (client->isDeletable()) {
