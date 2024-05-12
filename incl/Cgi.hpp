@@ -23,6 +23,7 @@
 class Cgi {
 private:
 	enum State {
+		CHECK_METHOD,
 		READING_BODY,
 		CREATE_CGI_PROCESS, // TODO Set flag in client that it should not check for timeout anymore
 		WAITING_FOR_CHILD,
@@ -48,7 +49,7 @@ private:
 	static const time_t _timeout = CGI_TIMEOUT;
 	bool _isFinished;
 	int _errorCode;
-	State _currentState;
+	State _state;
 	std::string _serverToCgiBuffer;
 	pid_t _childPid;
 
@@ -65,7 +66,7 @@ private:
 	std::string toString(int number);
 	void executeCgi();
 	int executeChild();
-	void readBody();
+	void readBody(EventsData *eventData);
 	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 	int createCgiProcess();
 	int sendToChild();
@@ -77,7 +78,7 @@ public:
 
 	bool isFinished() const;
 	int getErrorCode() const;
-	void process();
+	void process(EventsData *eventData);
 	EventsData *getEventData() const;
 };
 
