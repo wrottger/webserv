@@ -3,6 +3,7 @@ import os
 import sys
 import time
 
+print("HTTP/1.0 200 OK")
 print("Content-type: text/html")
 print()
 print("<html><head>")
