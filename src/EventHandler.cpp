@@ -38,13 +38,14 @@ void EventHandler::start() {
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
 			_currentEvent = static_cast<EventsData *>(events[n].data.ptr);
+			_currentEvent->eventMask = events[n].events;
 			EventType type = _currentEvent->eventType;
 			Client *client = static_cast<Client *>(_currentEvent->objectPointer);
 			if (type == LISTENING) {
 				acceptNewClient(_currentEvent);
 				continue;
 			} else if (type == CLIENT || type == CGI) {
-				client->process(events[n].events);
+				client->process(_currentEvent);
 			}
 		}
 		removeInactiveClients();
@@ -100,6 +101,7 @@ void EventHandler::acceptNewClient(EventsData *eventData) {
 EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client) {
 	EventsData *eventData = new EventsData;
 	eventData->fd = fd;
+	eventData->eventMask = 0;
 	eventData->eventType = type;
 	if (type == CLIENT || type == CGI) {
 		eventData->objectPointer = client;
