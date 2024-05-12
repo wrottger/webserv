@@ -85,7 +85,7 @@ void Client::process(EventsData *eventData) {
 			if (_responseCgi == NULL) {
 				_responseCgi = new Cgi(this);
 			}
-			_responseCgi->process();
+			_responseCgi->process(eventData);
 			if (_responseCgi->isFinished()) {
 				_state = FINISHED;
 			}
