@@ -3,6 +3,7 @@
 
 #include "HttpHeader.hpp"
 #include "HttpResponse.hpp"
+#include "EventsData.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <ctime>
@@ -17,7 +18,7 @@ class Client {
 public:
 	Client(int fd, std::string ip);
 	~Client();
-	void process(uint32_t events);
+	void process(EventsData *eventData);
 	bool isDeletable() const;
 	bool isTimeouted() const;
 	int getFd();
@@ -30,9 +31,8 @@ public:
 private:
 	enum State {
 		READING_HEADER,
-		READING_BODY,
-		WAITING_FOR_CGI,
-		SENDING_RESPONSE,
+		CGI_RESPONSE,
+		NORMAL_RESPONSE,
 		FINISHED
 	};
 
