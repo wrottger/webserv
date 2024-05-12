@@ -127,6 +127,7 @@ EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) 
 
 void EventHandler::unregisterEvent(int fd) {
 	(void) fd;
+	LOG_DEBUG_WITH_TAG("Called unused function unregisterEvent with FD", "EventHandler");
 	// if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL) == -1) {
 	// 	std::cerr << "Fd: " << fd << std::endl; // TODO: DELETE
 	// 	LOG_ERROR("UnregisterEvent: epoll DEL failed.");
