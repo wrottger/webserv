@@ -188,7 +188,7 @@ void Client::readFromClient() {
 	} else {
 		buffer[bytes_received] = '\0';
 		size_t parsedSize = _header->parseBuffer(buffer);
-		if (parsedSize != BUFFER_SIZE) {
+		if (parsedSize < static_cast<size_t>(bytes_received)) {
 			// save rest to bodybuffer
 			_bodyBuffer = std::string(&buffer[parsedSize]);
 		}
