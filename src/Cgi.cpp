@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 
- // TODO: Delete this function
+// TODO: Delete this function
 std::string createCgiTestResponse() {
 	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
 							   "<body><h1>Kein pull request approve fuer Freddy!</h1></body></html>";
@@ -11,8 +11,8 @@ std::string createCgiTestResponse() {
 	oss << responseBody.size();
 
 	std::string _responseHttp = "HTTP/1.1 200 OK\r\n"
-							   "Content-Type: text/html; charset=UTF-8\r\n"
-							   "Content-Length: " +
+								"Content-Type: text/html; charset=UTF-8\r\n"
+								"Content-Length: " +
 			oss.str() + "\r\n\r\n" + responseBody;
 	return _responseHttp;
 }
@@ -75,16 +75,7 @@ char **Cgi::createEnviromentVariables() {
 	return result;
 }
 
-// char** Cgi::createEnviromentVariables() {
-// 	// Modify this function to create the environment variables you need
-// 	char** envp = new char*[2];
-// 	envp[0] = (char*)"EXAMPLE_ENV_VAR=example_value";
-// 	envp[1] = NULL;
-// 	return envp;
-// }
-
 char **Cgi::createArguments() {
-
 	std::string interpreterPath = Config::getInstance()->getCgiInterpreterPath(_header.getPath(), _header.getHost());
 	if (interpreterPath.empty()) {
 		perror("Failed to get interpreter path");
@@ -119,8 +110,7 @@ Cgi::Cgi(Client *client) :
 		_errorCode(0),
 		_currentState(READING_BODY),
 		_childPid(0),
-		_eventData(NULL)
-		{
+		_eventData(NULL) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	_contentLength = _requestBody.size();
