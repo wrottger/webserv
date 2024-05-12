@@ -47,7 +47,6 @@ private:
 	int _sockets[2];
 
 	static const time_t _timeout = CGI_TIMEOUT;
-	bool _isFinished;
 	int _errorCode;
 	State _state;
 	std::string _serverToCgiBuffer;
@@ -71,6 +70,7 @@ private:
 	int createCgiProcess();
 	int sendToChild();
 	int readFromChild();
+	std::string createErrorResponse(int errorCode);
 
 public:
 	Cgi(Client *client);
