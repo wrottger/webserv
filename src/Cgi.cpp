@@ -108,7 +108,7 @@ Cgi::Cgi(Client *client) :
 		_timeCreated(0),
 		_isFinished(false),
 		_errorCode(0),
-		_currentState(READING_BODY),
+		_state(CHECK_METHOD),
 		_childPid(0),
 		_eventData(NULL) {
 	_sockets[0] = -1;
@@ -157,26 +157,31 @@ int Cgi::executeChild() {
 	return 0;
 }
 
-void Cgi::readBody() {
-	if (_header.getMethod() == "POST") {
-		LOG_DEBUG_WITH_TAG("Post triggered", "CGI");
-		// Get unchunked bodydata
-		if (_header.isTransferEncodingChunked()) {
-			if (!decodeChunkedBody(_requestBody, _serverToCgiBuffer)) {
+void Cgi::readBody(EventsData *eventData) {
+	LOG_DEBUG_WITH_TAG("Post triggered", "CGI");
+	// Get unchunked bodydata
+	if (_header.isTransferEncodingChunked()) {
+		if (!decodeChunkedBody(_requestBody, _serverToCgiBuffer)) {
+			_errorCode = 400;
+			_state = SENDING_RESPONSE;
+		}
+	} else {
+		// Get leftover bodydata from headerparsing
+		if (_requestBody.size()) {
+			_serverToCgiBuffer += _requestBody;
+			_requestBody.clear();
+			if (_serverToCgiBuffer.size() == _contentLength) {
+				_state = CREATE_CGI_PROCESS;
+				return;
+			// Check if the body is bigger then the content-length and send error
+			} else if (_serverToCgiBuffer.size() > _contentLength) {
 				_errorCode = 400;
-				_currentState = SENDING_RESPONSE;
+				_state = SENDING_RESPONSE;
+				return;
 			}
-		} else {
-			// Get leftover bodydata from headerparsing
-			if (_requestBody.size()) {
-				_serverToCgiBuffer += _requestBody;
-				_requestBody.clear();
-				if (_contentLength == _serverToCgiBuffer.size()) {
-					_currentState = CREATE_CGI_PROCESS;
-					return;
-				}
-			}
-			// Read the rest of the body
+		}
+		// Read the rest of the body
+		if (eventData->eventMask & EPOLLIN && eventData->eventType == CLIENT) {
 			char buffer[BUFFER_SIZE + 1];
 			ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
 			if (readSize > 0) {
@@ -185,22 +190,14 @@ void Cgi::readBody() {
 				// Check if the body is bigger then the content-length
 				if (_contentLength && _serverToCgiBuffer.size() > _contentLength) {
 					_errorCode = 400;
-					_currentState = SENDING_RESPONSE;
+					_state = SENDING_RESPONSE;
 				} else if (_contentLength == _serverToCgiBuffer.size()) { // TODO: Could bug if we read the max buffersize and there is still stuff in the socket
-					_currentState = CREATE_CGI_PROCESS;
+					_state = CREATE_CGI_PROCESS;
 				}
 			} else if (readSize == -1 || readSize == 0) {
-				_currentState = FINISHED;
+				_state = FINISHED;
 			}
 		}
-	} else if (_header.getMethod() == "GET") {
-		LOG_DEBUG_WITH_TAG("GET Triggered", "CGI");
-		_currentState = CREATE_CGI_PROCESS;
-		return;
-	} else {
-		LOG_DEBUG_WITH_TAG("Invalid method", "CGI");
-		_errorCode = 405;
-		_currentState = SENDING_RESPONSE;
 	}
 }
 
@@ -233,19 +230,41 @@ int Cgi::readFromChild() {
 	return readSize;
 }
 
-void Cgi::process() {
-	switch (_currentState) {
+void Cgi::process(EventsData *eventData) {
+	switch (_state) {
+		case CHECK_METHOD:
+			LOG_DEBUG_WITH_TAG("Checking method", "CGI");
+			if (_header.getMethod() == "GET") {
+				if (!Config::getInstance()->isDirectiveAllowed(_header.getPath(), _header.getHeader("host"), Config::AllowedMethods, "GET")) {
+					_errorCode = 405;
+					_state = SENDING_RESPONSE;
+				}
+				LOG_DEBUG_WITH_TAG("GET method called", "CGI");
+				_state = CREATE_CGI_PROCESS;
+			} else if (_header.getMethod() == "POST") {
+				if (!Config::getInstance()->isDirectiveAllowed(_header.getPath(), _header.getHeader("host"), Config::AllowedMethods, "POST")) {
+					_errorCode = 405;
+					_state = SENDING_RESPONSE;
+				}
+				LOG_DEBUG_WITH_TAG("POST method called", "CGI");
+				_state = READING_BODY;
+			} else {
+				LOG_DEBUG_WITH_TAG("Method not allowed", "CGI");
+				_errorCode = 405;
+				_state = SENDING_RESPONSE;
+			}
+			break;
 		case READING_BODY:
 			LOG_DEBUG_WITH_TAG("Reading body", "CGI");
-			readBody();
-			LOG_DEBUG_WITH_TAG("Read body done", "CGI");
+			readBody(eventData);
+			LOG_DEBUG_WITH_TAG("Read body chunk done", "CGI");
 			break;
 		case CREATE_CGI_PROCESS:
 			LOG_DEBUG_WITH_TAG("Creating CGI process", "CGI");
 			if (createCgiProcess() < 0) {
-				_currentState = FINISHED;
+				_state = FINISHED;
 			}
-			_currentState = WAITING_FOR_CHILD;
+			_state = WAITING_FOR_CHILD;
 			break;
 		case WAITING_FOR_CHILD:
 			// LOG_DEBUG_WITH_TAG("Waiting for child", "CGI");
@@ -253,39 +272,39 @@ void Cgi::process() {
 			sleep(1);
 			if (readFromChild() <= 0) {
 				// LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
-				_currentState = SENDING_RESPONSE;
+				_state = SENDING_RESPONSE;
 			}
-			_currentState = SENDING_RESPONSE;
+			_state = SENDING_RESPONSE;
 			// if (waitpid(_childPid, &status, WNOHANG) == -1) {
 			// 	LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
 			// 	LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
 			// 	_isFinished = true;
 			// 	_errorCode = 500;
-			// 	_currentState = FINISHED;
+			// 	_state = FINISHED;
 			// } else if (WIFEXITED(status)) {
 			// 	int exit_status = WEXITSTATUS(status);
 			// 	std::string exit_status_str = "Child exited with status " + toString(exit_status);
 			// 	LOG_DEBUG_WITH_TAG(exit_status_str, "CGI");
 			// 	if (exit_status == 0) {
 			// 		LOG_DEBUG_WITH_TAG("Child exited successfully", "CGI");
-			// 		_currentState = SENDING_RESPONSE;
+			// 		_state = SENDING_RESPONSE;
 			// 	} else {
 			// 		LOG_DEBUG_WITH_TAG("Child exited with error", "CGI");
 			// 		_isFinished = true;
 			// 		_errorCode = 500;
-			// 		_currentState = FINISHED;
+			// 		_state = FINISHED;
 			// 	}
 			// }
 			// } else if (WIFSIGNALED(status)) {
 			// 	LOG_DEBUG_WITH_TAG("Child signaled", "CGI");
 			// 	_isFinished = true;
 			// 	_errorCode = 500;
-			// 	_currentState = FINISHED;
+			// 	_state = FINISHED;
 			// } else if (std::time(0) - _timeCreated > _timeout) {
 			// 	LOG_DEBUG_WITH_TAG("Timeout", "CGI");
 			// 	_isFinished = true;
 			// 	_errorCode = 500;
-			// 	_currentState = FINISHED;
+			// 	_state = FINISHED;
 			// }
 			break;
 		case SENDING_RESPONSE:
@@ -294,7 +313,7 @@ void Cgi::process() {
 			if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 				LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
 			}
-			_currentState = FINISHED;
+			_state = FINISHED;
 			break;
 		case FINISHED:
 			LOG_DEBUG_WITH_TAG("Finished", "CGI");
