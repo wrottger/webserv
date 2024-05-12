@@ -244,7 +244,7 @@ int Cgi::sendToChild() {
 
 int Cgi::readFromChild() {
 	char buffer[BUFFER_SIZE + 1];
-	ssize_t readSize = read(_sockets[0], buffer, BUFFER_SIZE);
+	ssize_t readSize = recv(_sockets[0], buffer, BUFFER_SIZE, MSG_DONTWAIT);
 	if (readSize > 0) {
 		buffer[readSize] = 0;
 		_cgiToServerBuffer += buffer;
@@ -299,12 +299,21 @@ void Cgi::process(EventsData *eventData) {
 		case WAITING_FOR_CHILD:
 			LOG_DEBUG_WITH_TAG("Waiting for child", "CGI");
 			// int status;
+			// if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
+				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
+				sendToChild();
+			// }
 			sleep(1);
-			if (readFromChild() <= 0) {
-				LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
-				_errorCode = 500;
-			}
+			LOG_DEBUG_WITH_TAG("Sleept for 1 second", "CGI");
+			// if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
+				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
+				if (readFromChild() <= 0) {
+					LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
+					_errorCode = 500;
+				}
+			// }
 			_state = SENDING_RESPONSE;
+
 			// if (waitpid(_childPid, &status, WNOHANG) == -1) {
 			// 	LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
 			// 	LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
@@ -337,11 +346,9 @@ void Cgi::process(EventsData *eventData) {
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
 				if (_errorCode != 0) {
-					std::cout << "Error code: " << _errorCode << std::endl;
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
 				}
-				// response = createCgiTestResponse();
 				if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
 				}
