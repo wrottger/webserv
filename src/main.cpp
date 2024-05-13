@@ -19,18 +19,77 @@
 
 UTEST_STATE();
 
-
-static int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+enum ChunkState
 {
-    static bool readChunk = false;
-    static bool readSize = true;
+	READ_SIZE,
+	READ_CHUNK,
+	READ_TRAILER_CR,
+    READ_TRAILER_LF,
+};
 
-    for (size_t i = 0; i < bodyBuffer.size(); i++)
+int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
+{
+    static ChunkState state = READ_SIZE;
+    static bool isLastChunk = false;
+    static bool isSizeRead = false;
+    static std::stringstream ss;
+    static unsigned int chunkSize = 0;
+
+    for (size_t i = 0; i < bodyBuffer.size(); ++i)
     {
-        switch (bodyBuffer[i])
-        {}
+        switch (state)
+        {
+            case READ_SIZE:
+            {
+                if (isLastChunk)
+                    return 1;
+                if (bodyBuffer[i] == '\n')
+                {
+                    if (!(ss >> std::hex >> chunkSize))
+                       throw std::runtime_error("Invalid chunk size");
+                    ss.clear();
+                    if (chunkSize == 0)
+                    {
+                        isLastChunk = true;
+                        state = READ_TRAILER_CR;
+                    }
+                    else
+                        state = READ_CHUNK;
+                }
+                else
+                    ss << bodyBuffer[i];
+                break;
+            }
+            case READ_CHUNK:
+            {
+                if (chunkSize == 0)
+                    state = READ_TRAILER_CR;
+                else
+                {
+                    decodedBody.push_back(bodyBuffer[i]);
+                    chunkSize--;
+                }
+                break;
+            }
+            case READ_TRAILER_CR:
+            {
+                if (bodyBuffer[i] == '\r')
+                    state = READ_TRAILER_LF;
+                else
+                    throw std::runtime_error("Invalid trailer");
+                break;
+            }
+            case READ_TRAILER_LF:
+            {
+                if (bodyBuffer[i] == '\n')
+                    state = READ_SIZE;
+                else
+                    throw std::runtime_error("Invalid trailer");
+                break;
+            }
+        }
     }
-    return 1; // Return 1 when a chunk has been processed but there are more chunks to process
+    return 0;
 }
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -39,16 +98,17 @@ int main(int argc, char *argv[], char *envp[]) {
 		return 1;
 	}
 	(void)envp;
-    std::string bodyBuffer = "4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n";
+    std::string bodyBuffer = "4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n8\r\nWiki\r\npedia\r\n";
     std::string decodedBody;
-    for (size_t i = 0; i < bodyBuffer.size(); i += 10)
+    int ret = 0;
+    for (size_t i = 0; i < bodyBuffer.size() && !ret; i += 1)
     {
-        std::string chunk = bodyBuffer.substr(i, 10);
-        std::cout << decodeChunkedBody(chunk, decodedBody) << std::endl;
-        std::cout << "Chunk: |" << chunk << "|" << std::endl;
-        std::cout << "Decoded body: |" << decodedBody << "|" << std::endl;
-        
+        std::string chunk = bodyBuffer.substr(i, 1);
+        ret = decodeChunkedBody(chunk, decodedBody);
+        std::cout << "[" << i << "] Chunk: |" << chunk << "|" << std::endl;
+        std::cout << "[" << i << "] Decoded body: |" << decodedBody << "|" << std::endl;
     }
+    std::cout << "Finished: " << decodedBody << std::endl;
     // std::cout << "Finished: " << decodedBody << std::endl;
 	// Config *config = Config::getInstance();
 	// try {
