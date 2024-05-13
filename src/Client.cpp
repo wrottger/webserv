@@ -61,22 +61,10 @@ void Client::process(EventsData *eventData) {
 				if (isHeaderComplete() && _header->isError() == false) {
 					if (Config::getInstance()->isCGIAllowed(_header->getPath(), _header->getHost())) {
 						_state = CGI_RESPONSE;
-						// if (_header->getMethod() == "GET") {
-						// 	if (Config::getInstance()->isDirectiveAllowed(_header->getPath(), _header->getHeader("host"), Config::AllowedMethods, "GET")) {
-						// 		_state = READING_BODY;
-						// 		LOG_DEBUG("set State: READING_BODY");
-						// 	}
-						// }
-						// else if (_header->getMethod() == "POST") {
-						// 	_state = CGI_RESPONSE;
-						// 	LOG_DEBUG("set State: CGI_RESPONSE");
-						// }
 					} else {
 						_state = NORMAL_RESPONSE;
 						LOG_DEBUG("set State: NORMAL_RESPONSE");
 						_responseHttp = new HttpResponse(*_header, _fd);
-						// TODO: Copy the rest of the buffer to the response object
-						// TODO: Create a response object
 					}
 				}
 			}

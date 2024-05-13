@@ -1,5 +1,6 @@
 #include "Config.hpp"
 #include "colors.hpp"
+#include "Logger.hpp"
 
 Config::Config(void) : _isLoaded(false)
 {
@@ -246,6 +247,8 @@ std::string Config::getCgiInterpreterPath(const std::string& route, const std::s
 
 bool Config::isCGIAllowed(const std::string& route, const std::string& host)
 {
+    std::string test = route;
+    LOG_DEBUG_WITH_TAG(test, "Route");
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");

@@ -71,6 +71,7 @@ private:
 	int sendToChild();
 	int readFromChild();
 	std::string createErrorResponse(int errorCode);
+	int checkIfValidMethod();
 
 public:
 	Cgi(Client *client);
