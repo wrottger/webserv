@@ -58,6 +58,9 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
             message.port = std::strtol(message.headers.find("host")->second.substr(message.headers.find("host")->second.find(":") + 1).c_str(), NULL, 10);
             message.headers["host"] = message.host;
         }
+        LOG_DEBUG(message.path);
+        LOG_DEBUG(message.query);
+        LOG_DEBUG(message.host);
     }
     return i;
 }
@@ -361,6 +364,7 @@ void HttpHeader::States::SP(char c, HttpMessage& message, StateHandler& nextStat
 }
 
 void HttpHeader::States::fieldValue(char c, HttpMessage& message, StateHandler& nextState) {
+    // TODO check duplicate headers transfer coding & content length
     if (c == '\r') {
         message.headers[message.fieldName] = message.fieldValue;
         message.fieldName = "";

@@ -3,10 +3,143 @@
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include <dirent.h>
 #include "Logger.hpp"
 #include "Config.hpp"
 
-std::string HttpResponse::generateErrorResponse(const std::string &message) {
+static bool isFolder(const std::string &path)
+{
+	struct stat s;
+	if (stat(path.c_str(), &s) == 0)
+	{
+		if (s.st_mode & S_IFDIR)
+			return true;
+	}
+	return false;
+}
+
+static bool isFile(const std::string &path)
+{
+	struct	stat s;
+	if (stat(path.c_str(), &s) == 0)
+	{
+		if (s.st_mode & S_IFREG)
+			return true;
+	}
+	return false;
+}
+
+HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fds) {
+	LOG_DEBUG("HttpResponse::HttpResponse");
+	config = Config::getInstance();
+	response = "HTTP/1.1 ";
+	isFinished = false;
+	error = header.getError();
+	if (error.code() != 0)
+	{
+		response = generateErrorResponse(error.message());
+		return;
+	}
+
+	std::string host = header.getHost();
+	std::string path = header.getPath();
+	LOG_DEBUG(config->getDirectiveValue(path, host, Config::Redir).c_str());
+	if (config->getDirectiveValue(path, host, Config::Redir).size())
+	{
+		LOG_DEBUG("Redirect");
+		response += "308 Permanent Redirect\r\n";
+		response += "Location: " + config->getDirectiveValue(path, header.getHost(), Config::Redir);
+		response += "\r\n\r\n";
+		return;
+	}
+	else if (header.getMethod() == "GET" && config->isDirectiveAllowed(path, host, Config::AllowedMethods, "GET"))
+	{
+		LOG_DEBUG("GET request");
+		if (isFile(config->getFilePath(path, host)))
+		{
+			LOG_DEBUG(config->getFilePath(path, host).c_str());
+			LOG_DEBUG("returning file");
+			std::string filePath = config->getFilePath(path, host);
+			LOG_DEBUG(filePath);
+			getFile.open(filePath.c_str());
+			if (getFile.fail())
+				error = HttpError(500, "Couldn't open File");
+			LOG_DEBUG("File opened");
+			response += "200 OK\r\n";
+			response += "Connection: close\r\n";
+			response += "transfer-encoding: chunked\r\n\r\n";
+		}
+		else if (isFolder(config->getFilePath(path, host)))
+		{
+			if (config->getDirectiveValue(path, header.getHost(), Config::Index).size() != 0)
+			{
+				LOG_DEBUG("returning index file");
+				std::string filePath = config->getFilePath(path, host) + config->getDirectiveValue(path, header.getHost(), Config::Index);
+				getFile.open(filePath.c_str());
+				if (getFile.fail())
+				{
+					if (config->getDirectiveValue(path, header.getHost(), Config::Listing) == "on")
+					{
+						LOG_DEBUG("returning listing");
+						generateDirListing();
+						return;
+					}
+					LOG_DEBUG("Couldn't open file");
+					error = HttpError(404, "Not Found");
+					response = generateErrorResponse(error.message());
+					return;
+				}
+				response += "200 OK\r\n";
+				response += "Connection: close\r\n";
+				response += "transfer-encoding: chunked\r\n\r\n";
+			}
+			else if (config->getDirectiveValue(path, header.getHost(), Config::Listing) == "on")
+			{
+				LOG_DEBUG("returning listing");
+				generateDirListing();
+				return;
+			}
+		}
+		else
+		{
+			error = HttpError(404, "Not Found");
+		}
+	}
+	else if (header.getMethod() == "POST" && config->isDirectiveAllowed(path, host, Config::AllowedMethods, "POST"))
+	{
+		if(header.getHeaders().count("transfer-encoding"))
+		{
+			if (header.getHeaders().find("transfer-encoding")->second == "chunked")
+			{
+				error = HttpError(501, header.getHeaders().find("transfer-encoding")->second + " encoding not supported")
+				response = generateErrorResponse("")
+			}
+		}
+		if (header.getHeaders().count(""))
+		
+		response += "200 OK";
+	}
+	else if (header.getMethod() == "DELETE")
+	{
+		if (!config->isDirectiveAllowed(path, host, Config::AllowedMethods, "DELETE"))
+			error = HttpError(405, "Method Not Allowed");
+		else if (remove(path.c_str()) != 0)
+			error = HttpError(500, "Couldn't delete file");
+		else {
+			response += "200 OK\r\n\r\n";
+			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
+		}
+	}
+	else
+	{
+		error = HttpError(405, "Method Not Allowed");
+	}
+
+	if (error.code() != 0)
+		response = generateErrorResponse(error.message());
+}
+
+std::string HttpResponse::generateErrorResponse(HttpError &error) {
 	std::string error_path = config->getErrorPage(error.code(), header.getPath(), header.getHeader("host"));
 	response = "HTTP/1.1 ";
 	std::stringstream errCode;
@@ -61,89 +194,100 @@ std::string HttpResponse::generateErrorResponse(const std::string &message) {
 		response += "Content-Type: text/html\r\n\r\n";
 		response += std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	}
-	LOG_DEBUG_WITH_TAG(response, "HttpResponse::generateErrorResponse");
+	LOG_DEBUG_WITH_TAG("Generated error response", "HttpResponse::generateErrorResponse");
 	return response;
 }
 
-inline bool ends_with(std::string const & value, std::string const & ending)
+int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 {
-    if (ending.size() > value.size()) return false;
-    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+	DIR *dp;
+	struct dirent *dirp;
+	if ((dp = opendir(dir.c_str())) == NULL)
+	{
+		LOG_ERROR("Couldn't open directory");
+		return 1;
+	}
+	while ((dirp = readdir(dp)) != NULL)
+	{
+		struct stat fileStat;
+		fileInfo fileInf;
+		std::string filename = dir + dirp->d_name;
+		LOG_DEBUG(dirp->d_name);
+		if (stat(filename.c_str(), &fileStat) == -1)
+		{
+			LOG_ERROR("Couldn't get file stats");
+		}
+		fileInf.name = dirp->d_name;
+		std::stringstream ss;
+		ss << fileStat.st_size;
+		fileInf.size = ss.str();
+		fileInf.date = std::string(ctime(&fileStat.st_mtime));
+		files.push_back(fileInf);
+	}
+	closedir(dp);
+	return 0;
 }
 
-HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fds) {
-	LOG_DEBUG("HttpResponse::HttpResponse");
-	config = Config::getInstance();
-	response = "HTTP/1.1 ";
-	isFinished = false;
-	error = header.getError();
-	if (error.code() != 0)
+void HttpResponse::generateDirListing()
+{
+	std::string filePath = config->getFilePath(header.getPath(), header.getHeader("host"));
+	std::vector<fileInfo> files;
+	if (listDir(filePath, files))
 	{
-		response = generateErrorResponse(error.message());
-		return;
+		LOG_DEBUG("Couldn't list directory");
+		error = HttpError(500, "Internal Server Error");
+		return ;
 	}
+	response += "200 OK\r\n";
+	response += "Connection: close\r\n";
+	response += "Content-Type: text/html\r\n";
+	std::string listing = "<!DOCTYPE html>"
+							"<html>"
+							"<head>"
+							"<style>"
+							"#files {"
+							"font-family: Arial, Helvetica, sans-serif;"
+							"border-collapse: collapse;"
+							"width: 100%;"
+							"}"
+							"#files td, #files th {"
+							"border: 1px solid #ddd;"
+							"padding: 8px;"
+							"}"
+							"#files tr:nth-child(even){background-color: #f2f2f2;}"
+							"#files tr:hover {background-color: #ddd;}"
+							"#files th {"
+							"padding-top: 12px;"
+							"padding-bottom: 12px;"
+							"text-align: left;"
+							"background-color: #04AA6D;"
+							"color: white;"
+							"}"
+							"</style>"
+							"</head>";
+	listing += "<body><h2>Directory listing</h2><table id=\"files\">";
+	listing += "<tr><th>Filename</th><th>Size (bytes)</th><th>Time of last data modification</th></tr>";
+	for (size_t i = 0; i < files.size(); i++)
+	{
+		listing += "<tr><td><a href=\"";
+		listing += files[i].name;
+		listing += "\">";
+		listing += files[i].name;
+		listing += "</a></td><td>";
 
-	if (header.getMethod() == "GET")
-	{
-		LOG_DEBUG("GET");
-		if (ends_with(header.getPath(), "/") && config->getDirectiveValue(header.getPath(), header.getHost(), Config::Index).size() > 0)
-		{
-			LOG_DEBUG("GET INDEX");
-			std::string filePath = header.getPath() + "/index.html";
-			getFile.open(filePath.c_str());
-			if (getFile.fail())
-			{
-				LOG_DEBUG("Couldn't open file");
-				error = HttpError(404, "Not Found");
-				response = generateErrorResponse(error.message());
-				return;
-			}
-			response += "200 OK\r\n";
-			response += "Connection: close\r\n";
-			response += "transfer-encoding: chunked\r\n\r\n";
-		}
-		else if (config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "GET"))
-		{
-			LOG_DEBUG("GET FILE");
-			std::string filePath = config->getFilePath(header.getPath(), header.getHeader("host"));
-			LOG_DEBUG(filePath);
-			getFile.open(filePath.c_str());
-			if (getFile.fail())
-			{
-				LOG_DEBUG("Couldn't open file");
-				error = HttpError(404, "Not Found");
-				response = generateErrorResponse(error.message());
-				return;
-			}
-			LOG_DEBUG("File opened");
-			response += "200 OK\r\n";
-			response += "Connection: close\r\n";
-			response += "transfer-encoding: chunked\r\n\r\n";
-		}
-		else
-			error = HttpError(405, "Method Not Allowed");
+		listing += files[i].size;
+		listing += "</td><td>";
+		listing += files[i].date;
+		listing += "</td></tr>";
 	}
-	else if (header.getMethod() == "POST")
-	{
-		error = HttpError(405, "Method Not Allowed");
-	}
-	else if (header.getMethod() == "DELETE")
-	{
-		if (!config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "DELETE"))
-			error = HttpError(405, "Method Not Allowed");
-		else if (remove(header.getPath().c_str()) != 0)
-			error = HttpError(500, "Couldn't delete file");
-		else {
-			response += "200 OK\r\n\r\n";
-			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
-		}
-	}
-	else
-	{
-		error = HttpError(405, "Method Not Allowed");
-	}
-	if (error.code() != 0)
-		response = generateErrorResponse(error.message());
+	listing += "</table></body></html>";
+	response += "Content-Type: text/html\r\n";
+	response += "Content-Length: ";
+	std::stringstream ss;
+	ss << listing.size();
+	response += ss.str();
+	response += "\r\n\r\n";
+	response += listing;
 }
 
 HttpResponse::~HttpResponse() {
@@ -187,7 +331,7 @@ void HttpResponse::write() {
 			ss << std::hex << readBytes;
 			response += ss.str();
 			response += "\r\n";
-			response += chunkedBuffer;
+			response += std::string(chunkedBuffer, readBytes);
 			response += "\r\n";
 		} else {
 			isFinished = true;
@@ -195,7 +339,6 @@ void HttpResponse::write() {
 	} else {
 		if (response.size() > 0) {
 			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
-			LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
 			response = response.substr(sentBytes);
 		}
 		else {

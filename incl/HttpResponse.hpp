@@ -14,15 +14,15 @@ class HttpResponse
         bool finished();
 
     private:
+		void generateDirListing();
         HttpResponse();
         HttpResponse(const HttpResponse &src);
         HttpResponse &operator=(const HttpResponse &src);
-		std::string generateErrorResponse(const std::string &message);
+		std::string generateErrorResponse(const HttpError &error);
 
         HttpHeader & header;
         Config *config;
         int fds;
-        HttpError error;
         bool isChunked;
         bool isFinished;
         std::string response;
@@ -32,5 +32,12 @@ class HttpResponse
         char chunkedBuffer[1025];
         std::string chunks;
         size_t bufferIndex;
+
+        struct fileInfo {
+            std::string name;
+            std::string size;
+            std::string date;
+        } typedef fileInfo;
+        int listDir(std::string dir, std::vector<fileInfo> &files);
 };
 #endif // HTTPRESPONSE_HPP
