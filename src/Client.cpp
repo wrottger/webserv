@@ -27,7 +27,6 @@ Client::Client(int fd, std::string ip):
 		_state(READING_HEADER),
 		_ip(ip),
 		_bodyBuffer("") {
-	// _header = new HttpHeader;
 	updateTime();
 	_responseHttp = NULL;
 }
@@ -40,7 +39,6 @@ Client::~Client() {
 	if (_responseCgi != NULL) {
 		delete _responseCgi;
 	}
-	// delete _header;
 }
 
 int Client::getFd() {
@@ -114,18 +112,22 @@ bool Client::isDeletable() const {
 	return _canBeDeleted;
 }
 
+// Returns the body buffer
 std::string &Client::getBodyBuffer() {
 	return _bodyBuffer;
 }
 
+// Returns the IP of the client
 const std::string& Client::getIp() const{
 	return _ip;
 }
 
+// Returns true if the client has a CGI response
 bool Client::hasCgi() const {
 	return _responseCgi != NULL;
 }
 
+// Returns the CGI response
 Cgi *Client::getCgi() {
 	return _responseCgi;
 }
