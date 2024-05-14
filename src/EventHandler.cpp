@@ -98,6 +98,7 @@ void EventHandler::acceptNewClient(EventsData *eventData) {
 	}
 }
 
+// Create new event data object
 EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client) {
 	EventsData *eventData = new EventsData;
 	eventData->fd = fd;
@@ -111,10 +112,7 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	return eventData;
 }
 
-// int EventHandler::getEpollFd() const {
-// 	return _epollFd;
-// }
-
+// Register new event to epoll
 EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) {
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLOUT;
@@ -127,6 +125,7 @@ EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) 
 	return static_cast<EventsData *>(ev.data.ptr);
 }
 
+// Unregister event from epoll
 void EventHandler::unregisterEvent(int fd) {
 	(void) fd;
 	LOG_DEBUG_WITH_TAG("Called unused function unregisterEvent with FD", "EventHandler");
@@ -144,6 +143,7 @@ void EventHandler::unregisterEvent(int fd) {
 	// }
 }
 
+// Unregister event from epoll
 void EventHandler::unregisterEvent(EventsData *eventData) {
 	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL) == -1) {
 		perror("epoll_ctl");
@@ -166,6 +166,7 @@ void EventHandler::unregisterEvent(EventsData *eventData) {
 	}
 }
 
+// Add event to cleanup list
 void EventHandler::addToCleanUpList(int fd) {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		if ((*it)->fd == fd) {
@@ -175,10 +176,12 @@ void EventHandler::addToCleanUpList(int fd) {
 	}
 }
 
+// Add event to cleanup list
 void EventHandler::addToCleanUpList(EventsData *eventData) {
 	_cleanUpList.push_back(eventData);
 }
 
+// Remove inactive clients from epoll and delete them
 void EventHandler::removeInactiveClients() {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		EventsData *eventData = *it;
@@ -192,20 +195,6 @@ void EventHandler::removeInactiveClients() {
 					}
 				}
 			}
-			// if (client->isDeletable()) {
-			// 	LOG_DEBUG("Client can be deleted");
-			// 	_cleanUpList.push_back(eventData);
-			// 	if (client->hasCgi()) {
-			// 		_cleanUpList.push_back(client->getCgi()->getEventData());
-			// 	}
-			// 	continue;
-			// } else if (client->isTimeouted()) {
-			// 	LOG_DEBUG("Client timeout");
-			// 	_cleanUpList.push_back(*it);
-			// 	if (client->hasCgi()) {
-			// 		_cleanUpList.push_back(client->getCgi()->getEventData());
-			// 	}
-			// }
 		}
 	}
 	processCleanUpList();
