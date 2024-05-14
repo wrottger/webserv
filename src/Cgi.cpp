@@ -180,13 +180,12 @@ int Cgi::executeChild() {
 	return 0;
 }
 
-void Cgi::readBody(EventsData *eventData) {
+int Cgi::readBody(EventsData *eventData) {
 	LOG_DEBUG_WITH_TAG("Reading body", "CGI");
 	// Get unchunked bodydata
 	if (_header.isTransferEncodingChunked()) {
 		if (!decodeChunkedBody(_requestBody, _serverToCgiBuffer)) {
-			_errorCode = 400;
-			_state = SENDING_RESPONSE;
+			return -1;
 		}
 	} else {
 		// Get leftover bodydata from headerparsing
@@ -196,13 +195,11 @@ void Cgi::readBody(EventsData *eventData) {
 			if (_serverToCgiBuffer.size() == _contentLength) {
 				LOG_DEBUG_WITH_TAG("Content-Length reached", "CGI");
 				_state = CREATE_CGI_PROCESS;
-				return;
+				return 0;
 			// Check if the body is bigger then the content-length and send error
 			} else if (_serverToCgiBuffer.size() > _contentLength) {
 				LOG_DEBUG_WITH_TAG("Content-Length exceeded", "CGI");
-				_errorCode = 400;
-				_state = SENDING_RESPONSE;
-				return;
+				return -1;
 			}
 		}
 		// Read the rest of the body
@@ -217,8 +214,7 @@ void Cgi::readBody(EventsData *eventData) {
 					_serverToCgiBuffer += buffer;
 					// Check if the body is bigger then the content-length
 					if (_contentLength && _serverToCgiBuffer.size() > _contentLength) {
-						_errorCode = 400;
-						_state = SENDING_RESPONSE;
+						return -1;
 					} else if (_contentLength == _serverToCgiBuffer.size()) { // TODO: Could bug if we read the max buffersize and there is still stuff in the socket
 						_state = CREATE_CGI_PROCESS;
 					}
@@ -232,6 +228,7 @@ void Cgi::readBody(EventsData *eventData) {
 		}
 	}
 	LOG_DEBUG_WITH_TAG("Read body chunk done", "CGI");
+	return 0;
 }
 
 int Cgi::sendToChild() {
@@ -268,20 +265,19 @@ int Cgi::checkIfValidMethod() {
 	if (_header.getMethod() == "GET") {
 		if (!Config::getInstance()->isDirectiveAllowed(_header.getPath(), _header.getHeader("host"), Config::AllowedMethods, "GET")) {
 			LOG_DEBUG_WITH_TAG("GET Method not allowed", "CGI");
-			_errorCode = 405;
+			return -1;
 		}
 		LOG_DEBUG_WITH_TAG("GET method called", "CGI");
 		_state = CREATE_CGI_PROCESS;
 	} else if (_header.getMethod() == "POST") {
 		if (!Config::getInstance()->isDirectiveAllowed(_header.getPath(), _header.getHeader("host"), Config::AllowedMethods, "POST")) {
 			LOG_DEBUG_WITH_TAG("POST Method not allowed", "CGI");
-			_errorCode = 405;
+			return -1;
 		}
 		LOG_DEBUG_WITH_TAG("POST method called", "CGI");
 		_state = READING_BODY;
 	} else {
 		LOG_DEBUG_WITH_TAG("Method not allowed", "CGI");
-		_errorCode = 405;
 		return -1;
 	}
 	return 0;
@@ -291,17 +287,24 @@ void Cgi::process(EventsData *eventData) {
 	switch (_state) {
 		case CHECK_METHOD:
 			if (checkIfValidMethod() < 0) {
+				_errorCode = 405;
 				_state = SENDING_RESPONSE;
 				break;
 			}
 			// Fallthrough!!!
 		case READING_BODY:
-			readBody(eventData);
+			if (readBody(eventData) < 0) {
+				_errorCode = 400;
+				_state = SENDING_RESPONSE;
+				break;
+			}
 			break;
 		case CREATE_CGI_PROCESS:
 			LOG_DEBUG_WITH_TAG("Creating CGI process", "CGI");
 			if (createCgiProcess() < 0) {
 				LOG_DEBUG_WITH_TAG("Failed to create CGI process", "CGI");
+				_errorCode = 500;
+				_state = SENDING_RESPONSE;
 			}
 			LOG_DEBUG_WITH_TAG("Created CGI process", "CGI");
 			_state = WAITING_FOR_CHILD;
@@ -409,8 +412,6 @@ int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody) {
 int Cgi::createCgiProcess() {
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
-		_errorCode = 500;
-		_state = SENDING_RESPONSE;
 		return -1;
 	}
 
@@ -427,7 +428,6 @@ int Cgi::createCgiProcess() {
 	_childPid = fork();
 	if (_childPid < 0) {
 		LOG_ERROR_WITH_TAG("Failed to fork", "CGI");
-		_errorCode = 500;
 		close(_sockets[0]);
 		close(_sockets[1]);
 		return -1;

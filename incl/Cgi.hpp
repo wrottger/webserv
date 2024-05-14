@@ -65,7 +65,7 @@ private:
 	std::string toString(int number);
 	void executeCgi();
 	int executeChild();
-	void readBody(EventsData *eventData);
+	int readBody(EventsData *eventData);
 	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 	int createCgiProcess();
 	int sendToChild();
