@@ -36,6 +36,15 @@ private:
 	std::string _clientIp;
 
 private:
+	enum State {
+		READ_SIZE,
+		READ_SIZE_END,
+		READ_CHUNK,
+		READ_TRAILER_CR,
+		READ_TRAILER_LF
+	};
+
+private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);

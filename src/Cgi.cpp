@@ -171,24 +171,17 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	return 0;
 }
 
-enum ChunkState
+// description: Decodes the chunked body and stores it in decodedBody until chunk size is 0;
+// returns 0 if the last chunk is reached, 1 if more data is needed, -1 if an error occurs
+int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
 {
-	READ_SIZE,
-    READ_SIZE_END,
-	READ_CHUNK,
-	READ_TRAILER_CR,
-    READ_TRAILER_LF
-};
-
-int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
-{
-    static ChunkState state = READ_SIZE;
+    static Cgi::State state = READ_SIZE;
     static std::stringstream ss;
     static bool lastChunk = false;
     static unsigned int chunkSize = 0;
 
     if (lastChunk)
-        return 1;
+        return 0; // More data will not be processed
     for (size_t i = 0; i < bodyBuffer.size(); ++i)
     {
         switch (state)
@@ -206,7 +199,7 @@ int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
                 if (bodyBuffer[i] == '\n')
                 {
                     if (!(ss >> std::hex >> chunkSize) || !ss.eof())
-                        throw std::runtime_error("Invalid chunk size");
+                        return -1; // string to hex conversion failed
                     std::cout << "|" << ss.str() << "|" << std::endl;
                     ss.clear();
                     if (chunkSize == 0)
@@ -230,7 +223,7 @@ int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
                 if (bodyBuffer[i] == '\r')
                     state = READ_TRAILER_LF;
                 else
-                    throw std::runtime_error("Invalid trailer [CR]");
+                    return -1; // Invalid trailer
                 break;
             }
             case READ_TRAILER_LF:
@@ -238,14 +231,14 @@ int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
                 if (bodyBuffer[i] == '\n')
                 {
                     if (lastChunk)
-                        return 1;
+                        return 0; // Finished decoding
                     state = READ_SIZE;
                 }
                 else
-                    throw std::runtime_error("Invalid trailer [LF]");
+                    return -1; // Invalid trailer
                 break;
             }
         }
     }
-    return 0;
+    return 1; // More data needed
 }
