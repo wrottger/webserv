@@ -74,8 +74,17 @@ const std::string &HttpHeader::getHost() const {
 	return message.host;
 }
 
+// Richtig schlechte Funktion, die verbrannt gehört, SEGVAULTING
 const std::string &HttpHeader::getHeader(const std::string &name) const {
 	return message.headers.find(name)->second;
+}
+
+std::string HttpHeader::getContentLength() const {
+	std::map<std::string, std::string>::const_iterator contentLength = message.headers.find("content-length");
+	if (contentLength != message.headers.end()) {
+		return contentLength->second;
+	}
+	return "";
 }
 
 bool HttpHeader::isInHeader(const std::string &name) const {

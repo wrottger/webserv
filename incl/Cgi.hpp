@@ -15,7 +15,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Utilities.hpp"
+#include "Utils.hpp"
 
 #define SEND_SIZE 8192
 #define CGI_TIMEOUT 5

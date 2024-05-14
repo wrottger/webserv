@@ -176,14 +176,14 @@ std::string Config::getErrorPage(int code, const std::string& route, const std::
 
 }
 
-std::string Config::getCgiScriptPath(const std::string& route, const std::string& host)
+std::string Config::getCgiScriptPath(const HttpHeader &header)
 {
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
     std::string path = "";
     int file = 0;
-    std::istringstream iss(route);
+    std::istringstream iss(header.getPath());
     // get the extension of the file
     for (std::string token; std::getline(iss, token, '/');)
     {
@@ -199,18 +199,18 @@ std::string Config::getCgiScriptPath(const std::string& route, const std::string
         return "";
 	else if (!path.size())
 		path = "/";
-    std::string absolutePath = getFilePath(path, host);
+    std::string absolutePath = getFilePath(path, header.getHost());
     return absolutePath;
 }
 
-std::string Config::getCgiDir(const std::string& route, const std::string& host)
+std::string Config::getCgiDir(const HttpHeader &header)
 {
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
     std::string path = "";
     int file = 0;
-    std::istringstream iss(route);
+    std::istringstream iss(header.getPath());
     // get the extension of the file
     for (std::string token; std::getline(iss, token, '/');)
     {
@@ -226,12 +226,12 @@ std::string Config::getCgiDir(const std::string& route, const std::string& host)
         return "";
 	else if (!path.size())
 		path = "/";
-    std::string absolutePath = getDir(path, host);
+    std::string absolutePath = getDir(header.getPath(), header.getHost());
     return absolutePath;
 }
 
-std::string Config::getCgiInterpreterPath(const std::string& route, const std::string& host) {
-	std::string temp = getDirectiveValue(route, host, Config::CGI);
+std::string Config::getCgiInterpreterPath(const HttpHeader &header) {
+	std::string temp = getDirectiveValue(header.getPath(), header.getHost(), Config::CGI);
 	
 	std::istringstream iss(temp);
 	std::string token;
@@ -245,16 +245,14 @@ std::string Config::getCgiInterpreterPath(const std::string& route, const std::s
 	return token;
 }
 
-bool Config::isCGIAllowed(const std::string& route, const std::string& host)
+bool Config::isCGIAllowed(const HttpHeader &header)
 {
-    std::string test = route;
-    LOG_DEBUG_WITH_TAG(test, "Route");
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
     std::string path = "";
     std::string extension;
-    std::istringstream iss(route);
+    std::istringstream iss(header.getPath());
     // get the extension of the file
     for (std::string token; std::getline(iss, token, '/');)
     {
@@ -268,7 +266,7 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
     }
 	if(!path.size())
 		path = "/";
-    std::pair<size_t, size_t> l = config->getClosestPathMatch(path, host);
+    std::pair<size_t, size_t> l = config->getClosestPathMatch(path, header.getHost());
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max() || extension.empty())
         return false;
     // check if the extension is allowed in the location CGI directive
@@ -327,7 +325,7 @@ bool Config::isValidPath(const std::string& path)
 }
 
 //returns true the first time a host is set with the given port and false otherwise
-bool Config::isHostSet(const std::string& host, const std::string& port)
+bool Config::isHostSet(const std::string& host, const std::string& port) const
 {
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
@@ -349,6 +347,10 @@ bool Config::isHostSet(const std::string& host, const std::string& port)
         }
     }
     return false;
+}
+
+bool Config::isMethodAllowed(const HttpHeader &header, const std::string &method) const {
+	return Config::getInstance()->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, method);
 }
 
 std::string Config::getFilePath(const std::string filePath, const std::string host)
@@ -380,6 +382,10 @@ std::string Config::getDir(const std::string filePath, const std::string host)
 {
     std::string path = getFilePath(filePath, host);
     return path.substr(0, path.find_last_of("/"));
+}
+
+size_t Config::getMaxBodySize(const std::string &route, const std::string &host) {
+	return Utils::stringToNumber(getDirectiveValue(route, host, ClientMaxBodySize));
 }
 
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)

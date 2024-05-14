@@ -19,12 +19,12 @@ std::string createCgiTestResponse() {
 
 std::string Cgi::createErrorResponse(int errorCode) {
 	std::string responseBody = "<!DOCTYPE html><html><head><title>Error</title></head>"
-							   "<body><h1>Error " + Utilities::toString(errorCode) + "</h1></body></html>";
+							   "<body><h1>Error " + Utils::toString(errorCode) + "</h1></body></html>";
 
 	std::ostringstream oss;
 	oss << responseBody.size();
 
-	std::string responseHttp = "HTTP/1.1 " + Utilities::toString(errorCode) + " Error\r\n"
+	std::string responseHttp = "HTTP/1.1 " + Utils::toString(errorCode) + " Error\r\n"
 							   "Content-Type: text/html; charset=UTF-8\r\n"
 							   "Content-Length: " +
 			oss.str() + "\r\n\r\n" + responseBody;
@@ -35,22 +35,22 @@ char **Cgi::createEnviromentVariables() {
 	std::vector<std::string> envp;
 
 	envp.push_back("AUTH_TYPE=");
-	envp.push_back("CONTENT_LENGTH=" + Utilities::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
+	envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
 	if (_header.isInHeader("content-type")) {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
 	}
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	envp.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_header.getPath(), "localhost"));
+	envp.push_back("PATH_INFO=" + Config::getInstance()->getFilePath(_header.getPath(), _header.getHost()));
 	envp.push_back("PATH_TRANSLATED=");
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
 	envp.push_back("REMOTE_HOST=" + _clientIp);
 	// envp.push_back("REMOTE_IDENT=");
 	envp.push_back("REQUEST_METHOD=" + _header.getMethod());
-	envp.push_back("SCRIPT_NAME=" + Config::getInstance()->getCgiScriptPath(_header.getPath(), _header.getHost()));
+	envp.push_back("SCRIPT_NAME=" + Config::getInstance()->getCgiScriptPath(_header));
 	envp.push_back("SERVER_NAME=" + _header.getHost());
-	envp.push_back("SERVER_PORT=" + Utilities::toString(_header.getPort()));
+	envp.push_back("SERVER_PORT=" + Utils::toString(_header.getPort()));
 	envp.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	envp.push_back("SERVER_SOFTWARE=WebServ/1.0");
 
@@ -73,12 +73,12 @@ char **Cgi::createEnviromentVariables() {
 }
 
 char **Cgi::createArguments() {
-	std::string interpreterPath = Config::getInstance()->getCgiInterpreterPath(_header.getPath(), _header.getHost());
+	std::string interpreterPath = Config::getInstance()->getCgiInterpreterPath(_header);
 	if (interpreterPath.empty()) {
 		perror("Failed to get interpreter path");
 		exit(255);
 	}
-	std::string scriptPath = Config::getInstance()->getCgiScriptPath(_header.getPath(), _header.getHost());
+	std::string scriptPath = Config::getInstance()->getCgiScriptPath(_header);
 	if (scriptPath.empty()) {
 		perror("Failed to get script path");
 		exit(255);
@@ -109,7 +109,8 @@ Cgi::Cgi(Client *client) :
 		_eventData(NULL) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
-	_contentLength = Utilities::stringToNumber(_header.getHeader("content-length"));
+	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
+	_contentLength = Utils::stringToNumber(_header.getContentLength());
 }
 
 Cgi::~Cgi() {
@@ -133,7 +134,7 @@ int Cgi::executeChild() {
 	dup2(_sockets[1], STDOUT_FILENO);
 	close(_sockets[1]); // Close child's end of the socket pair
 
-	std::string dir = Config::getInstance()->getCgiDir(_header.getPath(), _header.getHost());
+	std::string dir = Config::getInstance()->getCgiDir(_header);
 	const char *cgiDir = dir.c_str();
 	if (chdir(cgiDir) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to change directory", "CGI");
@@ -236,14 +237,14 @@ int Cgi::readFromChild() {
 int Cgi::checkIfValidMethod() {
 	LOG_DEBUG_WITH_TAG("Checking method", "CGI");
 	if (_header.getMethod() == "GET") {
-		if (!Config::getInstance()->isDirectiveAllowed(_header.getPath(), _header.getHeader("host"), Config::AllowedMethods, "GET")) {
+		if (!Config::getInstance()->isMethodAllowed(_header, "GET")) {
 			LOG_DEBUG_WITH_TAG("GET Method not allowed", "CGI");
 			return -1;
 		}
 		LOG_DEBUG_WITH_TAG("GET method called", "CGI");
 		_state = CREATE_CGI_PROCESS;
 	} else if (_header.getMethod() == "POST") {
-		if (!Config::getInstance()->isDirectiveAllowed(_header.getPath(), _header.getHeader("host"), Config::AllowedMethods, "POST")) {
+		if (!Config::getInstance()->isMethodAllowed(_header, "POST")) {
 			LOG_DEBUG_WITH_TAG("POST Method not allowed", "CGI");
 			return -1;
 		}

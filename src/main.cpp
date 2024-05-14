@@ -35,9 +35,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	config->printProgressBar(1, 1);
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
-	std::cout << config->getCgiScriptPath("/cgi-bin/script.py.py/asfsf/awf", "localhost") << std::endl;
-	std::cout << config->getCgiDir("/cgi-bin/script.py.py/asfsf/awf", "localhost") << std::endl;
-	std::cout << config->getDirectiveValue("/cgi-bin/", "localhost", Config::CGI) << std::endl;
 	Logging::Logger::getInstance().startLogging();
 	LOG_INFO("Server started");
 	// LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);

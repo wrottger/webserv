@@ -19,7 +19,6 @@ std::string createTestResponse() {
 Client::Client() {}
 
 Client::Client(int fd, std::string ip):
-		_header(NULL),
 		_responseHttp(NULL),
 		_responseCgi(NULL),
 		_lastModified(0),
@@ -28,7 +27,7 @@ Client::Client(int fd, std::string ip):
 		_state(READING_HEADER),
 		_ip(ip),
 		_bodyBuffer("") {
-	_header = new HttpHeader;
+	// _header = new HttpHeader;
 	updateTime();
 	_responseHttp = NULL;
 }
@@ -41,7 +40,7 @@ Client::~Client() {
 	if (_responseCgi != NULL) {
 		delete _responseCgi;
 	}
-	delete _header;
+	// delete _header;
 }
 
 int Client::getFd() {
@@ -49,7 +48,7 @@ int Client::getFd() {
 }
 
 HttpHeader &Client::getHeaderObject() {
-	return *_header;
+	return _header;
 }
 
 // MAIN LOOP for processing client requests
@@ -58,13 +57,13 @@ void Client::process(EventsData *eventData) {
 		case READING_HEADER:
 			if (eventData->eventMask & EPOLLIN) {
 				readFromClient();
-				if (isHeaderComplete() && _header->isError() == false) {
-					if (Config::getInstance()->isCGIAllowed(_header->getPath(), _header->getHost())) {
+				if (isHeaderComplete() && _header.isError() == false) {
+					if (Config::getInstance()->isCGIAllowed(_header)) {
 						_state = CGI_RESPONSE;
 					} else {
 						_state = NORMAL_RESPONSE;
 						LOG_DEBUG("set State: NORMAL_RESPONSE");
-						_responseHttp = new HttpResponse(*_header, _fd);
+						_responseHttp = new HttpResponse(_header, _fd);
 					}
 				}
 			}
@@ -72,6 +71,7 @@ void Client::process(EventsData *eventData) {
 		case CGI_RESPONSE:
 			if (_responseCgi == NULL) {
 				_responseCgi = new Cgi(this);
+				LOG_DEBUG("Creating new Cgi object");
 			}
 			_responseCgi->process(eventData);
 			if (_responseCgi->isFinished()) {
@@ -106,7 +106,7 @@ void Client::updateTime() {
 
 // Returns true if the header is complete
 bool Client::isHeaderComplete() const {
-	return _header->isComplete();
+	return _header.isComplete();
 }
 
 // Returns true if the client can be deleted
@@ -150,7 +150,7 @@ void Client::readFromClient() {
 		LOG_DEBUG("Client closed connection");
 	} else {
 		buffer[bytes_received] = '\0';
-		size_t parsedSize = _header->parseBuffer(buffer);
+		size_t parsedSize = _header.parseBuffer(buffer);
 		if (parsedSize < static_cast<size_t>(bytes_received)) {
 			// save rest to bodybuffer
 			_bodyBuffer = std::string(&buffer[parsedSize]);

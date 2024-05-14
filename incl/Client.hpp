@@ -47,7 +47,7 @@ private:
 	void readFromClient();
 
 private:
-	HttpHeader *_header;
+	HttpHeader _header;
 	HttpResponse *_responseHttp;
 	Cgi *_responseCgi;
 	std::time_t _lastModified;
