@@ -19,50 +19,23 @@ std::string createCgiTestResponse() {
 
 std::string Cgi::createErrorResponse(int errorCode) {
 	std::string responseBody = "<!DOCTYPE html><html><head><title>Error</title></head>"
-							   "<body><h1>Error " + toString(errorCode) + "</h1></body></html>";
+							   "<body><h1>Error " + Utilities::toString(errorCode) + "</h1></body></html>";
 
 	std::ostringstream oss;
 	oss << responseBody.size();
 
-	std::string responseHttp = "HTTP/1.1 " + toString(errorCode) + " Error\r\n"
+	std::string responseHttp = "HTTP/1.1 " + Utilities::toString(errorCode) + " Error\r\n"
 							   "Content-Type: text/html; charset=UTF-8\r\n"
 							   "Content-Length: " +
 			oss.str() + "\r\n\r\n" + responseBody;
 	return responseHttp;
 }
 
-char *dupString(const std::string &str) {
-	char *cstr = new char[str.length() + 1];
-	std::strcpy(cstr, str.c_str());
-	return cstr;
-}
-
-std::string Cgi::toString(size_t number) {
-	std::stringstream result;
-	result << number;
-	return result.str();
-}
-
-std::string Cgi::toString(int number) {
-	std::stringstream result;
-	result << number;
-	return result.str();
-}
-
-// If the string is not a number, it will return 0
-int stringToNumber(const std::string& s) {
-	std::stringstream ss(s);
-	int num;
-	ss >> num;
-	return num;
-}
-
-
 char **Cgi::createEnviromentVariables() {
 	std::vector<std::string> envp;
 
 	envp.push_back("AUTH_TYPE=");
-	envp.push_back("CONTENT_LENGTH=" + toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
+	envp.push_back("CONTENT_LENGTH=" + Utilities::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
 	if (_header.isInHeader("content-type")) {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
@@ -77,7 +50,7 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("REQUEST_METHOD=" + _header.getMethod());
 	envp.push_back("SCRIPT_NAME=" + Config::getInstance()->getCgiScriptPath(_header.getPath(), _header.getHost()));
 	envp.push_back("SERVER_NAME=" + _header.getHost());
-	envp.push_back("SERVER_PORT=" + toString(_header.getPort()));
+	envp.push_back("SERVER_PORT=" + Utilities::toString(_header.getPort()));
 	envp.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	envp.push_back("SERVER_SOFTWARE=WebServ/1.0");
 
@@ -136,7 +109,7 @@ Cgi::Cgi(Client *client) :
 		_eventData(NULL) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
-	_contentLength = stringToNumber(_header.getHeader("content-length"));
+	_contentLength = Utilities::stringToNumber(_header.getHeader("content-length"));
 }
 
 Cgi::~Cgi() {
