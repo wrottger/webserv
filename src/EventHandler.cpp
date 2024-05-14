@@ -200,6 +200,7 @@ void EventHandler::removeInactiveClients() {
 	processCleanUpList();
 }
 
+// Convert sockaddr to ip address
 std::string EventHandler::ft_inet_ntop(int af, const void *src) {
 	if (af == AF_INET) {
 		const unsigned char *bytes = (const unsigned char *)src;
