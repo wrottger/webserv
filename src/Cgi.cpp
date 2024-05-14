@@ -171,36 +171,81 @@ int Cgi::executeChild(const HttpHeader *headerObject) {
 	return 0;
 }
 
-int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+enum ChunkState
 {
-    if (bodyBuffer.empty()) {
+	READ_SIZE,
+    READ_SIZE_END,
+	READ_CHUNK,
+	READ_TRAILER_CR,
+    READ_TRAILER_LF
+};
+
+int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
+{
+    static ChunkState state = READ_SIZE;
+    static std::stringstream ss;
+    static bool lastChunk = false;
+    static unsigned int chunkSize = 0;
+
+    if (lastChunk)
         return 1;
-    }
-    std::stringstream bodyStream(bodyBuffer);
-    for (std::string line; std::getline(bodyStream, line);)
+    for (size_t i = 0; i < bodyBuffer.size(); ++i)
     {
-		if (!line.empty() && line[line.size() - 1] == '\r')
-		    line.erase(line.size() - 1); // Remove the trailing \r
-		size_t chunkSize;
-		std::stringstream sizeStream(line);
-		if (!(sizeStream >> std::hex >> chunkSize)) // Parse the chunk size
-		    return 1;
-		if (chunkSize == 0)
-		{
-		    // Check for final CRLF
-		    char crlf[2];
-		    if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
-		        return 1;
-		    break;
-		}
-		size_t oldSize = decodedBody.size();
-		decodedBody.resize(oldSize + chunkSize); // Resize the decoded body buffer to fit the new chunk
-		if (!bodyStream.read(&decodedBody[oldSize], chunkSize)) // Write the chunk data to the decoded body buffer
-		    return 1;
-		// Check for CRLF after chunk
-		char crlf[2];
-		if (!bodyStream.read(crlf, 2) || crlf[0] != '\r' || crlf[1] != '\n')
-		    return 1;
-	    }
+        switch (state)
+        {
+            case READ_SIZE:
+            {
+                if (bodyBuffer[i] == '\r')
+                    state = READ_SIZE_END;
+                else
+                    ss << bodyBuffer[i];
+                break;
+            }
+            case READ_SIZE_END:
+            {
+                if (bodyBuffer[i] == '\n')
+                {
+                    if (!(ss >> std::hex >> chunkSize) || !ss.eof())
+                        throw std::runtime_error("Invalid chunk size");
+                    std::cout << "|" << ss.str() << "|" << std::endl;
+                    ss.clear();
+                    if (chunkSize == 0)
+                        lastChunk = true;
+                    state = READ_CHUNK;
+                }
+                else
+                    state = READ_SIZE;
+                break;
+            }
+            case READ_CHUNK:
+            {
+                decodedBody.push_back(bodyBuffer[i]);
+                chunkSize--;
+                if (chunkSize == 0)
+                    state = READ_TRAILER_CR;
+                break;
+            }
+            case READ_TRAILER_CR:
+            {
+                if (bodyBuffer[i] == '\r')
+                    state = READ_TRAILER_LF;
+                else
+                    throw std::runtime_error("Invalid trailer [CR]");
+                break;
+            }
+            case READ_TRAILER_LF:
+            {
+                if (bodyBuffer[i] == '\n')
+                {
+                    if (lastChunk)
+                        return 1;
+                    state = READ_SIZE;
+                }
+                else
+                    throw std::runtime_error("Invalid trailer [LF]");
+                break;
+            }
+        }
+    }
     return 0;
 }

@@ -19,124 +19,31 @@
 
 UTEST_STATE();
 
-enum ChunkState
-{
-	READ_SIZE,
-	READ_CHUNK,
-	READ_TRAILER_CR,
-    READ_TRAILER_LF,
-    READ_SIZE_END,
-    LAST_CHUNK
-};
-
-int decodeChunkedBody(const std::string& bodyBuffer, std::string& decodedBody)
-{
-    static ChunkState state = READ_SIZE;
-    static std::stringstream ss;
-    static unsigned int chunkSize = 0;
-
-    for (size_t i = 0; i < bodyBuffer.size(); ++i)
-    {
-        switch (state)
-        {
-            case READ_SIZE:
-            {
-                if (bodyBuffer[i] == '\r')
-                    state = READ_SIZE_END;
-                else
-                    ss << bodyBuffer[i];
-                break;
-            }
-            case READ_SIZE_END:
-            {
-                if (bodyBuffer[i] == '\n')
-                {
-                    if (!(ss >> std::hex >> chunkSize) || !ss.eof())
-                        throw std::runtime_error("Invalid chunk size");
-                    std::cout << "|" << ss.str() << "|" << std::endl;
-                    ss.clear();
-                    if (chunkSize == 0)
-                        state = LAST_CHUNK;
-                    state = READ_CHUNK;
-                }
-                else
-                    state = READ_SIZE;
-                break;
-            }
-            case READ_CHUNK:
-            {
-                decodedBody.push_back(bodyBuffer[i]);
-                chunkSize--;
-                if (chunkSize == 0)
-                    state = READ_TRAILER_CR;
-                break;
-            }
-            case READ_TRAILER_CR:
-            {
-                if (bodyBuffer[i] == '\r')
-                    state = READ_TRAILER_LF;
-                else
-                    throw std::runtime_error("Invalid trailer [CR]");
-                break;
-            }
-            case READ_TRAILER_LF:
-            {
-                if (bodyBuffer[i] == '\n')
-                    state = READ_SIZE;
-                else
-                    throw std::runtime_error("Invalid trailer [LF]");
-                break;
-            }
-            case LAST_CHUNK:
-            {
-                if (bodyBuffer[i] == '\r')
-                    state = READ_TRAILER_LF;
-                else
-                    throw std::runtime_error("Invalid trailer [CR]");
-                break;
-            }
-        }
-    }
-    return 0;
-}
-
 int main(int argc, char *argv[], char *envp[]) {
 	if (argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " <config file>" << std::endl;
 		return 1;
 	}
 	(void)envp;
-    std::string bodyBuffer = "4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n8\r\nWiki\r\npedia\r\n";
-    std::string decodedBody;
-    int ret = 0;
-    for (size_t i = 0; i < bodyBuffer.size() && !ret; i += 2)
-    {
-        std::string chunk = bodyBuffer.substr(i, 2);
-        ret = decodeChunkedBody(chunk, decodedBody);
-        std::cout << "[" << i << "] Chunk: " << chunk << std::endl;
-        std::cout << "[" << i << "] Decoded body: " << decodedBody << std::endl;
-    }
-    std::cout << "Finished: " << decodedBody << std::endl;
-    // std::cout << "Finished: " << decodedBody << std::endl;
-	// Config *config = Config::getInstance();
-	// try {
-	// 	config->parseConfigFile(argv[1]);
-	// } catch (std::exception &e) {
-	// 	std::cerr << e.what() << std::endl;
-	// 	return 1;
-	// }
-	// if (!config->isLoaded())
-	// 	return 1;
-	// config->printProgressBar(1, 1);
-	// std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
+	Config *config = Config::getInstance();
+	try {
+		config->parseConfigFile(argv[1]);
+	} catch (std::exception &e) {
+		std::cerr << e.what() << std::endl;
+		return 1;
+	}
+	if (!config->isLoaded())
+		return 1;
+	config->printProgressBar(1, 1);
+	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 
-	// LOG_INFO("Server started");
-	// // LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
-	// // LOG_DISABLE_CONSOLE_LOGGING();
-	// // LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
-	// SocketHandling sockets(config->getServerBlocks());
-	// EventHandler event(sockets);
-	// event.start();
+	LOG_INFO("Server started");
+	// LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
+	// LOG_DISABLE_CONSOLE_LOGGING();
+	// LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
+	SocketHandling sockets(config->getServerBlocks());
+	EventHandler event(sockets);
+	event.start();
 }
 
 // int main()
