@@ -190,8 +190,10 @@ int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
             {
                 if (bodyBuffer[i] == '\r')
                     state = READ_SIZE_END;
-                else
+                else if (isxdigit(bodyBuffer[i]))
                     ss << bodyBuffer[i];
+				else
+					return -1;
                 break;
             }
             case READ_SIZE_END:
@@ -200,14 +202,14 @@ int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
                 {
                     if (!(ss >> std::hex >> chunkSize) || !ss.eof())
                         return -1; // string to hex conversion failed
-                    std::cout << "|" << ss.str() << "|" << std::endl;
+					ss.str("");
                     ss.clear();
                     if (chunkSize == 0)
                         lastChunk = true;
                     state = READ_CHUNK;
                 }
                 else
-                    state = READ_SIZE;
+                    return -1;
                 break;
             }
             case READ_CHUNK:
