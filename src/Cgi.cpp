@@ -110,7 +110,8 @@ Cgi::Cgi(Client *client) :
 		_errorCode(0),
 		_state(CHECK_METHOD),
 		_childPid(0),
-		_eventData(NULL) {
+		_eventData(NULL),
+		_config(Config::getInstance()) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
@@ -277,6 +278,11 @@ void Cgi::process(EventsData *eventData) {
 				_state = SENDING_RESPONSE;
 				break;
 			}
+			if (checkIfValidFile() < 0) {
+				_errorCode = 404;
+				_state = SENDING_RESPONSE;
+				break;
+			}
 			// Fallthrough!!!
 		case READING_BODY:
 			if (readBody(eventData) < 0) {
@@ -399,6 +405,9 @@ int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody) {
 
 // Creates the CGI process, socket connection and registers the event
 int Cgi::createCgiProcess() {
+
+	//test if folder then try to open
+
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to create socket pair", "CGI");
 		return -1;
@@ -428,5 +437,24 @@ int Cgi::createCgiProcess() {
 		executeChild();
 	}
 
+	return 0;
+}
+
+// Checks if the file is accessable
+int Cgi::checkIfValidFile() {
+	LOG_DEBUG_WITH_TAG("Checking file", "CGI");
+	std::ifstream getFile;
+	std::string filePath = _config->getFilePath(_header.getPath(), _header.getHost()) + _config->getDirectiveValue(_header.getPath(), _header.getHost(), Config::Index);
+	getFile.open(filePath.c_str());
+	LOG_DEBUG_WITH_TAG(filePath.c_str(), "CGI");
+	if (getFile.fail()) {
+		LOG_ERROR_WITH_TAG("Couldnt open file", "CGI");
+		return -1;
+	}
+	if (Utils::isFolder(filePath)) {
+		LOG_ERROR_WITH_TAG("Is folder", "CGI");
+		return -1;
+	}
+	getFile.close();
 	return 0;
 }

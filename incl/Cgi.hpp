@@ -59,7 +59,7 @@ private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
-
+	Config *_config;
 	char **createEnviromentVariables();
 	char **createArguments();
 	void executeCgi();
@@ -71,6 +71,7 @@ private:
 	int readFromChild();
 	std::string createErrorResponse(int errorCode);
 	int checkIfValidMethod();
+	int checkIfValidFile();
 
 public:
 	Cgi(Client *client);
