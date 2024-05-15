@@ -204,10 +204,11 @@ int Cgi::readBody(EventsData *eventData) {
 				} else if (readSize == -1 || readSize == 0) {
 					_state = FINISHED;
 				}
-			} else {
-				_state = CREATE_CGI_PROCESS;
-				LOG_DEBUG_WITH_TAG("Waiting for body", "CGI");
-			}
+			} 
+			// else {
+			// 	// _state = CREATE_CGI_PROCESS;
+			// 	LOG_DEBUG_WITH_TAG("Waiting for body", "CGI");
+			// }
 		}
 	}
 	LOG_DEBUG_WITH_TAG("Read body chunk done", "CGI");
@@ -215,9 +216,10 @@ int Cgi::readBody(EventsData *eventData) {
 }
 
 // Sends the data to the child process
+// return 1 if finished or no buffer return 0 if data was send, and -1 on error
 int Cgi::sendToChild() {
 	if (_serverToCgiBuffer.empty()) {
-		return 0;
+		return 1;
 	}
 	ssize_t sent = write(_sockets[0], _serverToCgiBuffer.c_str(), _serverToCgiBuffer.size());
 	if (sent < 0) {
@@ -299,25 +301,36 @@ void Cgi::process(EventsData *eventData) {
 				_state = SENDING_RESPONSE;
 			}
 			LOG_DEBUG_WITH_TAG("Created CGI process", "CGI");
-			_state = WAITING_FOR_CHILD;
+			_state = SENDING_TO_CHILD;
 			break;
-		case WAITING_FOR_CHILD:
+		case SENDING_TO_CHILD:
 			LOG_DEBUG_WITH_TAG("Waiting for child", "CGI");
 			// int status;
-			// if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
-			LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
-			sendToChild();
-			// }
-			sleep(1);
-			LOG_DEBUG_WITH_TAG("Sleept for 1 second", "CGI");
-			// if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
-			LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
-			if (readFromChild() <= 0) {
-				LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
-				_errorCode = 500;
+			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
+				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
+				if (sendToChild() == 1) {
+					_state = WAITING_FOR_CHILD;
+				}
 			}
-			// }
-			_state = SENDING_RESPONSE;
+		case WAITING_FOR_CHILD:
+			// sleep(1);
+			// LOG_DEBUG_WITH_TAG("Sleept for 1 second", "CGI");
+			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
+				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
+				int readBytesFromChild = readFromChild();
+				if (readBytesFromChild < 0) {
+					LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
+					_errorCode = 500;
+					_state = SENDING_RESPONSE;
+				}
+				else if (readBytesFromChild == 0) {
+					LOG_DEBUG_WITH_TAG("Finished to read from child", "CGI");
+					_state = SENDING_RESPONSE;
+				}
+			}
+			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
+			}
+			// _state = SENDING_RESPONSE;
 
 			// if (waitpid(_childPid, &status, WNOHANG) == -1) {
 			// 	LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
@@ -436,7 +449,6 @@ int Cgi::createCgiProcess() {
 	} else {
 		executeChild();
 	}
-
 	return 0;
 }
 
