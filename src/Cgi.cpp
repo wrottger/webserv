@@ -167,6 +167,7 @@ int Cgi::readBody(EventsData *eventData) {
 	LOG_DEBUG_WITH_TAG("Reading body", "CGI");
 	// Get unchunked bodydata
 	if (_header.isTransferEncodingChunked()) {
+		LOG_DEBUG_WITH_TAG("Reading chunked body", "CGI");
 		if (!decodeChunkedBody(_requestBody, _serverToCgiBuffer)) {
 			return -1;
 		}
@@ -240,8 +241,11 @@ int Cgi::readFromChild() {
 	if (readSize > 0) {
 		buffer[readSize] = 0;
 		_cgiToServerBuffer += buffer;
-		LOG_DEBUG_WITH_TAG(_cgiToServerBuffer, "CGI");
+		std::string debug("CGI TO SERVER BUFFER");
+		debug += _cgiToServerBuffer;
+		LOG_DEBUG_WITH_TAG( debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
+		LOG_DEBUG_WITH_TAG( "READING DONE", "CGI");
 		return 0;
 	}
 	return readSize;
@@ -273,6 +277,7 @@ int Cgi::checkIfValidMethod() {
 
 // Processes the CGI request
 void Cgi::process(EventsData *eventData) {
+	int status = 0;
 	switch (_state) {
 		case CHECK_METHOD:
 			if (checkIfValidMethod() < 0) {
@@ -304,15 +309,16 @@ void Cgi::process(EventsData *eventData) {
 			_state = SENDING_TO_CHILD;
 			break;
 		case SENDING_TO_CHILD:
-			LOG_DEBUG_WITH_TAG("Waiting for child", "CGI");
-			// int status;
+			LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
 				if (sendToChild() == 1) {
-					_state = WAITING_FOR_CHILD;
+					_state = READING_FROM_CHILD;
 				}
 			}
-		case WAITING_FOR_CHILD:
+			break;
+		case READING_FROM_CHILD:
+			LOG_DEBUG_WITH_TAG("READING_FROM_CHILD", "CGI");
 			// sleep(1);
 			// LOG_DEBUG_WITH_TAG("Sleept for 1 second", "CGI");
 			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
@@ -325,48 +331,59 @@ void Cgi::process(EventsData *eventData) {
 				}
 				else if (readBytesFromChild == 0) {
 					LOG_DEBUG_WITH_TAG("Finished to read from child", "CGI");
-					_state = SENDING_RESPONSE;
+					_state = WAITING_FOR_CHILD;
+				} else if (std::time(0) - _timeCreated > _timeout) {
+					LOG_DEBUG_WITH_TAG("Timeout", "CGI");
+					kill(_childPid, SIGKILL); // Force quit the child process
+					_state = WAITING_FOR_CHILD;
+					// _errorCode = 500;
 				}
 			}
-			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
+			break;
+		case WAITING_FOR_CHILD:
+			LOG_DEBUG_WITH_TAG("WAITING_FOR_CHILD", "CGI");
+			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
+				if (waitpid(_childPid, &status, WNOHANG) == -1) {
+					LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
+					LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
+					_state = SENDING_RESPONSE;
+					_errorCode = 500;
+				} else if (WIFEXITED(status)) {
+					int exit_status = WEXITSTATUS(status);
+					std::string exit_status_str = "Child exited with status " + Utils::toString(exit_status);
+					LOG_DEBUG_WITH_TAG(exit_status_str, "CGI");
+					if (exit_status == 0) {
+						LOG_DEBUG_WITH_TAG("Child exited successfully", "CGI");
+						_state = SENDING_RESPONSE;
+					} else {
+						LOG_DEBUG_WITH_TAG("Child exited with error", "CGI");
+						_state = SENDING_RESPONSE;
+						_errorCode = 500;
+					}
+				} else if (WIFSIGNALED(status)) {
+					LOG_DEBUG_WITH_TAG("Child signaled", "CGI");
+					std::cout << "exitstatus: " << status << std::endl;
+					_state = SENDING_RESPONSE;
+					_errorCode = 500;
+				} else if (std::time(0) - _timeCreated > _timeout) {
+					LOG_DEBUG_WITH_TAG("Timeout", "CGI");
+					kill(_childPid, SIGKILL); // Force quit the child process
+					// _state = SENDING_RESPONSE;
+					// _errorCode = 500;
+				}
 			}
 			// _state = SENDING_RESPONSE;
 
-			// if (waitpid(_childPid, &status, WNOHANG) == -1) {
-			// 	LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
-			// 	LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
-			// _state = SENDING_RESPONSE;
-			// 	_errorCode = 500;
-			// } else if (WIFEXITED(status)) {
-			// 	int exit_status = WEXITSTATUS(status);
-			// 	std::string exit_status_str = "Child exited with status " + toString(exit_status);
-			// 	LOG_DEBUG_WITH_TAG(exit_status_str, "CGI");
-			// 	if (exit_status == 0) {
-			// 		LOG_DEBUG_WITH_TAG("Child exited successfully", "CGI");
-			// 		_state = SENDING_RESPONSE;
-			// 	} else {
-			// 		LOG_DEBUG_WITH_TAG("Child exited with error", "CGI");
-			//		_state = SENDING_RESPONSE;
-			// 		_errorCode = 500;
-			// 	}
-			// }
-			// } else if (WIFSIGNALED(status)) {
-			// 	LOG_DEBUG_WITH_TAG("Child signaled", "CGI");
-			// 	_state = SENDING_RESPONSE;
-			// 	_errorCode = 500;
-			// } else if (std::time(0) - _timeCreated > _timeout) {
-			// 	LOG_DEBUG_WITH_TAG("Timeout", "CGI");
-			// 	_state = SENDING_RESPONSE;
-			// 	_errorCode = 500;
-			// }
 			break;
 		case SENDING_RESPONSE:
+			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
 				}
+				std::cout << "buffer to cgi: " << _cgiToServerBuffer << std::endl;
 				if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
 				}

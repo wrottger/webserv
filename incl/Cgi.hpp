@@ -27,6 +27,7 @@ private:
 		CHECK_METHOD,
 		READING_BODY,
 		CREATE_CGI_PROCESS, // TODO Set flag in client that it should not check for timeout anymore
+		READING_FROM_CHILD,
 		WAITING_FOR_CHILD,
 		SENDING_TO_CHILD,
 		SENDING_RESPONSE,
