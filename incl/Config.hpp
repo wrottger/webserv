@@ -10,6 +10,7 @@
 # include <cstdlib>
 # include <algorithm>
 # include <limits>
+# include <set>
 
 class Config {
 
@@ -49,6 +50,7 @@ class Config {
         // getters
         static Config* getInstance();
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
+        static bool compareNodes(const Node& a, const Node& b);
         const std::vector<Node>& getNodes(void) const;
         std::vector<ServerBlock>& getServerBlocks(void);
         bool isLoaded(void) const;
@@ -86,7 +88,7 @@ class Config {
 
         std::vector<Node> _nodes;
         std::vector<ServerBlock> _serverBlocks;
-        size_t _lines;
+        size_t _fileSize;
         bool _isLoaded;
 };
 

@@ -16,6 +16,11 @@ const std::vector<Config::Node>& Config::getNodes(void) const
     return _nodes;
 }
 
+bool Config::compareNodes(const Node& a, const Node& b)
+{
+    return a._line < b._line || (a._line == b._line && a._offset < b._offset);
+}
+
 Config* Config::getInstance()
 {
         if (_instance == NULL) {
