@@ -132,9 +132,11 @@ Cgi *Client::getCgi() {
 	return _responseCgi;
 }
 
-// Returns true if the client has exceeded the timeout
+// Returns true if the client has exceeded the timeout in READING_HEADER state
 bool Client::isTimeouted() const {
-	return (std::time(0) - _lastModified) > CLIENT_TIMEOUT;
+	if (((std::time(0) - _lastModified) > CLIENT_TIMEOUT) && _state == READING_HEADER)
+		return true;
+	return false;
 }
 
 Client &Client::operator=(Client const &other) {

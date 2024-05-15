@@ -12,7 +12,7 @@ class EventHandler;
 class Cgi;
 
 #define BUFFER_SIZE 8192
-#define CLIENT_TIMEOUT 3
+#define CLIENT_TIMEOUT 10
 
 class Client {
 public:
