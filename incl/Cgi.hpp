@@ -13,6 +13,7 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
+#include <string>
 
 #define SEND_SIZE 8192
 #define CGI_TIMEOUT 5
@@ -35,6 +36,15 @@ private:
 	std::string _clientIp;
 
 private:
+	enum State {
+		READ_SIZE,
+		READ_SIZE_END,
+		READ_CHUNK,
+		READ_TRAILER_CR,
+		READ_TRAILER_LF
+	};
+
+private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
@@ -44,6 +54,7 @@ private:
 	std::string toString(size_t number);
 	void executeCgi();
 	int executeChild(const HttpHeader *headerObject);
+	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 
 public:
 	Cgi(const std::string &bodyBuffer, HttpHeader *headerObject, std::string clientIp);
