@@ -278,6 +278,8 @@ int Cgi::checkIfValidMethod() {
 // Processes the CGI request
 void Cgi::process(EventsData *eventData) {
 	int status = 0;
+	int waitPidReturn = 0;
+	// sleep(1);
 	switch (_state) {
 		case CHECK_METHOD:
 			if (checkIfValidMethod() < 0) {
@@ -318,9 +320,7 @@ void Cgi::process(EventsData *eventData) {
 			}
 			break;
 		case READING_FROM_CHILD:
-			LOG_DEBUG_WITH_TAG("READING_FROM_CHILD", "CGI");
-			// sleep(1);
-			// LOG_DEBUG_WITH_TAG("Sleept for 1 second", "CGI");
+			// LOG_DEBUG_WITH_TAG("READING_FROM_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
 				int readBytesFromChild = readFromChild();
@@ -332,23 +332,27 @@ void Cgi::process(EventsData *eventData) {
 				else if (readBytesFromChild == 0) {
 					LOG_DEBUG_WITH_TAG("Finished to read from child", "CGI");
 					_state = WAITING_FOR_CHILD;
-				} else if (std::time(0) - _timeCreated > _timeout) {
-					LOG_DEBUG_WITH_TAG("Timeout", "CGI");
-					kill(_childPid, SIGKILL); // Force quit the child process
-					_state = WAITING_FOR_CHILD;
-					// _errorCode = 500;
 				}
+			}
+			// LOG_DEBUG_WITH_TAG("checking for timeout", "CGI");
+			if (isTimedOut()) {
+				LOG_DEBUG_WITH_TAG("Timeout reading from child", "CGI");
+				kill(_childPid, SIGKILL); // Force quit the child process
+				_state = WAITING_FOR_CHILD;
+				// _errorCode = 500;
 			}
 			break;
 		case WAITING_FOR_CHILD:
 			LOG_DEBUG_WITH_TAG("WAITING_FOR_CHILD", "CGI");
-			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
-				if (waitpid(_childPid, &status, WNOHANG) == -1) {
-					LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
-					LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
-					_state = SENDING_RESPONSE;
-					_errorCode = 500;
-				} else if (WIFEXITED(status)) {
+			waitPidReturn = waitpid(_childPid, &status, WNOHANG);
+			if (waitPidReturn == -1) {
+				LOG_ERROR_WITH_TAG("Failed to wait for child", "CGI");
+				LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
+				_state = SENDING_RESPONSE;
+				_errorCode = 500;
+			}
+			else if (waitPidReturn > 0) {
+				if (WIFEXITED(status)) {
 					int exit_status = WEXITSTATUS(status);
 					std::string exit_status_str = "Child exited with status " + Utils::toString(exit_status);
 					LOG_DEBUG_WITH_TAG(exit_status_str, "CGI");
@@ -360,20 +364,20 @@ void Cgi::process(EventsData *eventData) {
 						_state = SENDING_RESPONSE;
 						_errorCode = 500;
 					}
-				} else if (WIFSIGNALED(status)) {
+				} 
+				else if (WIFSIGNALED(status)) {
 					LOG_DEBUG_WITH_TAG("Child signaled", "CGI");
-					std::cout << "exitstatus: " << status << std::endl;
 					_state = SENDING_RESPONSE;
 					_errorCode = 500;
-				} else if (std::time(0) - _timeCreated > _timeout) {
-					LOG_DEBUG_WITH_TAG("Timeout", "CGI");
+				}
+			}
+			// _state = SENDING_RESPONSE;
+			if (isTimedOut()) {
+					LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
 					kill(_childPid, SIGKILL); // Force quit the child process
 					// _state = SENDING_RESPONSE;
 					// _errorCode = 500;
 				}
-			}
-			// _state = SENDING_RESPONSE;
-
 			break;
 		case SENDING_RESPONSE:
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
@@ -451,6 +455,7 @@ int Cgi::createCgiProcess() {
 		return -1;
 	}
 
+	LOG_DEBUG_WITH_TAG("TIME SET", "CGI");
 	_timeCreated = std::time(0);
 
 	_childPid = fork();
@@ -486,4 +491,11 @@ int Cgi::checkIfValidFile() {
 	}
 	getFile.close();
 	return 0;
+}
+
+bool Cgi::isTimedOut() {
+	if (std::time(0) - _timeCreated > _timeout) {
+		return true;
+	}
+	return false;
 }

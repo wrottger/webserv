@@ -10,15 +10,17 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <wait.h>
 #include <ctime>
 #include <iostream>
 #include <string>
 #include <vector>
 #include "Utils.hpp"
+#include <signal.h>
 
 #define SEND_SIZE 8192
-#define CGI_TIMEOUT 5
+#define CGI_TIMEOUT 1
 #define MAX_CGI_BUFFER_SIZE 1024 * 1024
 
 class Cgi {
@@ -74,6 +76,7 @@ private:
 	std::string createErrorResponse(int errorCode);
 	int checkIfValidMethod();
 	int checkIfValidFile();
+	bool isTimedOut();
 
 public:
 	Cgi(Client *client);
