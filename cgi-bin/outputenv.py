@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-time.sleep(3)
 # Get the CONTENT_LENGTH from the environment variables
 content_length = int(os.getenv('CONTENT_LENGTH', 0))
 buffer = sys.stdin.read(content_length)

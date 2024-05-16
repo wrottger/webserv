@@ -41,24 +41,17 @@ private:
 	std::string &_requestBody;
 	std::string _clientIp;
 	int _fd;
-
-	static const size_t _maxBufferSize = MAX_CGI_BUFFER_SIZE;
 	size_t _contentLength;
-
 	std::string _cgiToServerBuffer;
 	size_t _currentCgiToServerBufferSize;
-
 	time_t _timeCreated;
 	int _sockets[2];
-
 	int _errorCode;
 	State _state;
 	std::string _serverToCgiBuffer;
 	pid_t _childPid;
-
 	EventsData *_eventData;
 
-private:
 	enum decodeState {
 		READ_SIZE,
 		READ_SIZE_END,
@@ -67,7 +60,6 @@ private:
 		READ_TRAILER_LF
 	};
 
-private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);

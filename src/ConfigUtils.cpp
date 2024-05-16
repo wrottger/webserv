@@ -181,8 +181,8 @@ std::string Config::getCgiScriptPath(const HttpHeader &header)
     Config* config = getInstance();
     if (config == NULL) //prevent segfault
         throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
-    std::string path = "";
-    int file = 0;
+    std::string path;
+    bool isFile = 0;
     std::istringstream iss(header.getPath());
     // get the extension of the file
     for (std::string token; std::getline(iss, token, '/');)
@@ -190,12 +190,12 @@ std::string Config::getCgiScriptPath(const HttpHeader &header)
         path += token;
         if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
         {
-            file = 1;
+            isFile = 1;
             break;
         }
 		path += "/";
     }
-    if (!file)
+    if (!isFile)
         return "";
 	else if (!path.size())
 		path = "/";
