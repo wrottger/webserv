@@ -36,7 +36,6 @@ private:
 		FINISHED
 	};
 
-private:
 	Client();
 	Client(Client const &other);
 	Client &operator=(Client const &other);
@@ -45,8 +44,6 @@ private:
 	bool isHeaderComplete() const;
 	std::time_t getLastModified() const;
 	void readFromClient();
-
-private:
 	HttpHeader _header;
 	HttpResponse *_responseHttp;
 	Cgi *_responseCgi;
