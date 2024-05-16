@@ -33,7 +33,7 @@ private:
 		WAITING_FOR_CHILD,
 		SENDING_TO_CHILD,
 		SENDING_RESPONSE,
-		FINISHED
+		FINISHED,
 	};
 
 	Client *_client;
@@ -57,6 +57,15 @@ private:
 	pid_t _childPid;
 
 	EventsData *_eventData;
+
+private:
+	enum decodeState {
+		READ_SIZE,
+		READ_SIZE_END,
+		READ_CHUNK,
+		READ_TRAILER_CR,
+		READ_TRAILER_LF
+	};
 
 private:
 	Cgi();
