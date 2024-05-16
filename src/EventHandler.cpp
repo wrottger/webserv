@@ -126,43 +126,20 @@ EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) 
 }
 
 // Unregister event from epoll
-void EventHandler::unregisterEvent(int fd) {
-	(void) fd;
-	LOG_DEBUG_WITH_TAG("Called unused function unregisterEvent with FD", "EventHandler");
-	// if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL) == -1) {
-	// 	std::cerr << "Fd: " << fd << std::endl; // TODO: DELETE
-	// 	LOG_ERROR("UnregisterEvent: epoll DEL failed.");
-	// }
-	// for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
-	// 	if ((*it)->fd == fd) {
-	// 		LOG_DEBUG_WITH_TAG("Unregistered something with fd", "EventHandler");
-	// 		delete *it;
-	// 		_eventDataList.erase(it);
-	// 		break;
-	// 	}
-	// }
-}
-
-// Unregister event from epoll
 void EventHandler::unregisterEvent(EventsData *eventData) {
 	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL) == -1) {
-		perror("epoll_ctl");
+		// perror("epoll_ctl");
 		std::cerr << "Fd: " << eventData->fd << std::endl; // TODO: DELETE
 		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
-		perror("epoll_ctl");
 	}
-	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end();) {
-		if (*it == eventData) {
-			std::string type = (eventData->eventType == CLIENT) ? "Client" : "CGI";
-			std::string unregisteredType = "Unregistered " + type + " with pointer.";
-			LOG_DEBUG_WITH_TAG(unregisteredType, "EventHandler");
-			close(eventData->fd);
-			delete *it;
-			it = _eventDataList.erase(it);
-			break;
-		} else {
-			++it;
-		}
+	std::list<EventsData *>::iterator it = std::find(_eventDataList.begin(),  _eventDataList.end(), eventData);
+	if (it != _eventDataList.end()) {
+		std::string type = (eventData->eventType == CLIENT) ? "Client" : "CGI";
+		std::string unregisteredType = "Unregistered " + type + " with pointer.";
+		LOG_DEBUG_WITH_TAG(unregisteredType, "EventHandler");
+		close(eventData->fd);
+		delete *it;
+		it = _eventDataList.erase(it);
 	}
 }
 
