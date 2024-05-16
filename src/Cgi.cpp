@@ -235,6 +235,7 @@ int Cgi::sendToChild() {
 }
 
 // Reads the data from the child process
+// return bytes read
 int Cgi::readFromChild() {
 	char buffer[BUFFER_SIZE + 1];
 	ssize_t readSize = recv(_sockets[0], buffer, BUFFER_SIZE, MSG_DONTWAIT);
@@ -252,7 +253,9 @@ int Cgi::readFromChild() {
 }
 
 // Checks if the method is allowed
+// set right state for GET or POST/PUT Method return -1 if not
 int Cgi::checkIfValidMethod() {
+	// it is not only checking if method is valid, its also seeting state
 	LOG_DEBUG_WITH_TAG("Checking method", "CGI");
 	if (_header.getMethod() == "GET") {
 		if (!Config::getInstance()->isMethodAllowed(_header, "GET")) {
@@ -292,6 +295,7 @@ void Cgi::process(EventsData *eventData) {
 				_state = SENDING_RESPONSE;
 				break;
 			}
+			_state = SENDING_RESPONSE;
 			// Fallthrough!!!
 		case READING_BODY:
 			if (readBody(eventData) < 0) {
@@ -494,7 +498,7 @@ int Cgi::checkIfValidFile() {
 }
 
 bool Cgi::isTimedOut() {
-	if (std::time(0) - _timeCreated > _timeout) {
+	if (std::time(0) - _timeCreated >= CGI_TIMEOUT) {
 		return true;
 	}
 	return false;

@@ -20,7 +20,7 @@
 #include <signal.h>
 
 #define SEND_SIZE 8192
-#define CGI_TIMEOUT 1
+#define CGI_TIMEOUT 3
 #define MAX_CGI_BUFFER_SIZE 1024 * 1024
 
 class Cgi {
@@ -51,7 +51,6 @@ private:
 	time_t _timeCreated;
 	int _sockets[2];
 
-	static const time_t _timeout = CGI_TIMEOUT;
 	int _errorCode;
 	State _state;
 	std::string _serverToCgiBuffer;
