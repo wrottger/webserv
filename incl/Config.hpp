@@ -11,6 +11,7 @@
 # include <algorithm>
 # include <limits>
 # include <set>
+#include "HttpHeader.hpp"
 
 class Config {
 
@@ -55,15 +56,16 @@ class Config {
         std::vector<ServerBlock>& getServerBlocks(void);
         bool isLoaded(void) const;
         bool isValidPath(const std::string& path);
-        bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
-        bool isHostSet(const std::string& host, const std::string& port);
-        bool isCGIAllowed(const std::string& route, const std::string& host);
-        std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
-        std::string getErrorPage(int code, const std::string& route, const std::string& host);
-        std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);
-        std::string getRootDirectory(const std::string route, const std::string host);
-        std::string getFilePath(const std::string filePath, const std::string host);
-        std::string getDir(const std::string filePath, const std::string host);
+        bool isDirectiveAllowed(const HttpHeader& header, const Config::TokenType directive, const std::string& value);
+        bool isHostSet(const HttpHeader& header);
+        bool isCGIAllowed(const HttpHeader& header);
+        std::pair<size_t, size_t> getClosestPathMatch(std::string& route, const HttpHeader& header);
+        std::pair<size_t, size_t> getClosestPathMatch(const HttpHeader& header);
+        std::string getErrorPage(int code, const HttpHeader& header);
+        std::string getDirectiveValue(const HttpHeader& header, const Config::TokenType directive);
+        std::string getRootDirectory(const HttpHeader& header);
+        std::string getFilePath(const HttpHeader& header);
+        std::string getDir(const HttpHeader& header);
 
         // config parsing methods
         void parseConfigFile(std::string filename);
