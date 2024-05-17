@@ -24,16 +24,16 @@ int main(int argc, char *argv[]) {
 		std::cerr << "Usage: " << argv[0] << " <config file>" << std::endl;
 		return 1;
 	}
-	Config *config = Config::getInstance();
+	Config &config = Config::getInstance();
 	try {
-		config->parseConfigFile(argv[1]);
+		config.parseConfigFile(argv[1]);
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	if (!config->isLoaded())
+	if (!config.isLoaded())
 		return 1;
-	config->printProgressBar(1, 1);
+	config.printProgressBar(1, 1);
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 	Logging::Logger::getInstance().startLogging();
 	LOG_INFO("Server started");

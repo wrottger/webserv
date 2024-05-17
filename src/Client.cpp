@@ -52,7 +52,7 @@ void Client::process(EventsData *eventData) {
 			if (eventData->eventMask & EPOLLIN) {
 				readFromClient();
 				if (isHeaderComplete() && _header.isError() == false) {
-					if (Config::getInstance()->isCGIAllowed(_header)) {
+					if (Config::getInstance().isCGIAllowed(_header)) {
 						_state = CGI_RESPONSE;
 					} else {
 						_state = NORMAL_RESPONSE;

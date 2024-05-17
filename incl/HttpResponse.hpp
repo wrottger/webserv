@@ -20,8 +20,8 @@ class HttpResponse
 		std::string generateErrorResponse(const std::string &message);
 
         HttpHeader & header;
-        Config *config;
         int fds;
+        Config &config;
         HttpError error;
         bool isChunked;
         bool isFinished;

@@ -22,7 +22,7 @@ void EventHandler::start() {
 		return;
 	}
 	getInstance().isRunning = true;
-	SocketHandling sockets(Config::getInstance()->getServerBlocks());
+	SocketHandling sockets(Config::getInstance().getServerBlocks());
 	_epollFd = sockets.getEpollFd();
 	_listeningSockets = sockets.getOpenFds();
 	struct epoll_event events[MAX_EVENTS];

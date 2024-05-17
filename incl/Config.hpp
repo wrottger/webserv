@@ -49,7 +49,7 @@ class Config {
         std::map<std::string, TokenType> _tokens;
         
         // getters
-        static Config* getInstance();
+        static Config &getInstance();
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
         const std::vector<Node>& getNodes(void) const;
         std::vector<ServerBlock>& getServerBlocks(void);

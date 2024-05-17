@@ -63,7 +63,7 @@ private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
-	Config *_config;
+	Config &_config;
 	char **createEnviromentVariables();
 	char **createArguments();
 	void executeCgi();
