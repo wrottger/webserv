@@ -1,7 +1,5 @@
 #include "Logger.hpp"
 
-Logging::Logger Logging::Logger::_instance;
-
 Logging::Logger::Logger() {
 	_logFile.open(LOG_SAVE_FILE.c_str(), std::ios::out | std::ios::app);
 	if (_logFile.fail()) {
@@ -19,7 +17,8 @@ Logging::Logger::~Logger() {
 
 // Singleton instance
 Logging::Logger &Logging::Logger::getInstance() {
-	return _instance;
+	static Logger instance;
+	return instance;
 }
 
 void Logging::Logger::startLogging() {
