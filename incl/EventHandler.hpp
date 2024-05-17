@@ -25,7 +25,6 @@ public:
 	EventsData *registerEvent(int fd, EventType type, Client *client);
 
 private:
-	static EventHandler _instance;
 	int _epollFd;
 	bool isRunning;
 	EventsData *_currentEvent;

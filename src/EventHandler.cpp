@@ -1,9 +1,8 @@
 #include "EventHandler.hpp"
 
-EventHandler EventHandler::_instance;
-
 EventHandler &EventHandler::getInstance() {
-	return _instance;
+	static EventHandler instance;
+	return instance;
 }
 
 EventHandler::EventHandler() :
