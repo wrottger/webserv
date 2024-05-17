@@ -157,7 +157,6 @@ namespace Logging {
 		void startLogging(); // Start logging project specific information
 
 	private:
-		static Logger _instance;
 		std::ofstream _logFile;
 		LogLevel _logLevel;
 		LogTarget _logTarget;
