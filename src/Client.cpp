@@ -33,12 +33,8 @@ Client::Client(int fd, std::string ip):
 
 Client::~Client() {
 	LOG_DEBUG_WITH_TAG("Client destructor called", "Client");
-	if (_responseHttp != NULL) {
-		delete _responseHttp;
-	}
-	if (_responseCgi != NULL) {
-		delete _responseCgi;
-	}
+	delete _responseHttp;
+	delete _responseCgi;
 }
 
 int Client::getFd() {
