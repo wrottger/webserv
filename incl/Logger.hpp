@@ -9,8 +9,7 @@
 #include <ctime>
 #include <sys/time.h>
 
-/* The Logger class is implement as a singleton class that clears itself after the program ends. */
-/* So you don't need to worry about cleaning up the logger object. */
+// The Logger instance is created on the first call and destroyed automatically when the program exits.
 
 namespace Logging {
 	// Log file name
@@ -157,15 +156,17 @@ namespace Logging {
 		void startLogging(); // Start logging project specific information
 
 	private:
+
+		// Variables
+
 		std::ofstream _logFile;
 		LogLevel _logLevel;
 		LogTarget _logTarget;
 		bool _timeStampInLog;
 		bool _logLevelInLog;
 
-	private:
-		Logger();
-		~Logger();
+		// Member Functions
+
 		std::string getCurrentTime();
 		void logMessage(const char* level, const char* text);
 		void logMessage(const char* level, const char* text, const char* tag);
@@ -175,8 +176,12 @@ namespace Logging {
 		std::string insertMetaInformations(const char *logLevel);
 		std::string insertMetaInformations(const char *logLevel, const char *tag);
 
-		Logger(const Logger& other);				// Copy constructor
-		Logger& operator=(const Logger& other);		// Assignment operator
+		// Special member functions
+
+		Logger();
+		~Logger();
+		Logger(const Logger& other);
+		Logger& operator=(const Logger& other);
 	};
 }
 
