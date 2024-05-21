@@ -38,7 +38,10 @@ char **Cgi::createEnviromentVariables() {
 	std::vector<std::string> envp;
 
 	envp.push_back("AUTH_TYPE=");
-	envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
+	if (_header.isTransferEncodingChunked())
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_serverToCgiBuffer.size())); // FIXME: When it was unchunked it should be the size after decoding
+	else
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
 	if (_header.isInHeader("content-type")) {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
@@ -111,6 +114,7 @@ Cgi::Cgi(Client *client) :
 		_state(CHECK_METHOD),
 		_childPid(0),
 		_eventData(NULL),
+		_bytesSendToCgi(0),
 		_config(Config::getInstance()) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
@@ -174,6 +178,20 @@ int Cgi::readBody(EventsData *eventData) {
 		} else if (decoderStatus == 0) {
 			_state = CREATE_CGI_PROCESS;
 			return 0;
+		} else if (decoderStatus == 1 && eventData->eventMask & EPOLLIN) {
+				// Read the rest body from the socket
+				_requestBody.clear();
+				char buffer[BUFFER_SIZE + 1];
+				ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
+			if (readSize > 0) {
+				buffer[readSize] = 0;
+				for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
+					_requestBody.push_back(buffer[i]);
+				}
+			} else if (readSize == -1 || readSize == 0) {
+				LOG_DEBUG_WITH_TAG("Reading body read 0 or -1", "CGI");
+				_state = FINISHED;
+			}
 		}
 	} else {
 		// Get leftover bodydata from headerparsing
@@ -193,12 +211,12 @@ int Cgi::readBody(EventsData *eventData) {
 			}
 		}
 		// Read the rest of the body
+		LOG_DEBUG_WITH_TAG("Reading rest of body", "CGI");
 		if (eventData->eventType == CLIENT) {
 			if (eventData->eventMask & EPOLLIN) {
 				// Read the body from the socket
 				char buffer[BUFFER_SIZE + 1];
 				ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
-				std::cout << "Read size: " << readSize << std::endl;
 				if (readSize > 0) {
 					buffer[readSize] = 0;
 					for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
@@ -227,10 +245,18 @@ int Cgi::readBody(EventsData *eventData) {
 // Sends the data to the child process
 // return 1 if finished or no buffer return 0 if data was send, and -1 on error
 int Cgi::sendToChild() {
-	if (_serverToCgiBuffer.empty()) {
+	ssize_t sent;
+	// if (_serverToCgiBuffer.empty()) {
+	// 	return 1;
+	if ((_bytesSendToCgi) == _serverToCgiBuffer.size()) {
 		return 1;
 	}
-	ssize_t sent = write(_sockets[0], _serverToCgiBuffer.data(), _serverToCgiBuffer.size());
+	if ((_bytesSendToCgi + BUFFER_SIZE) > _serverToCgiBuffer.size())
+		sent = write(_sockets[0], &_serverToCgiBuffer[_bytesSendToCgi], _serverToCgiBuffer.size() - _bytesSendToCgi);
+	else
+		sent = write(_sockets[0], &_serverToCgiBuffer[_bytesSendToCgi], BUFFER_SIZE);
+	// ssize_t sent = write(_sockets[0], _serverToCgiBuffer.data(), _serverToCgiBuffer.size());
+	_bytesSendToCgi += sent;
 	if (sent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to write to child", "CGI");
 		kill(_childPid, SIGKILL);
@@ -238,9 +264,9 @@ int Cgi::sendToChild() {
 		_errorCode = 500;
 		return -1;
 	}
-	for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
-		_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
-	}
+	// for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
+	// 	_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
+	// }
 	return 0;
 }
 
@@ -308,7 +334,7 @@ void Cgi::process(EventsData *eventData) {
 		case READING_BODY:
 			if (readBody(eventData) < 0) {
 				_errorCode = 400;
-				LOG_DEBUG_WITH_TAG("Failed to read chunked body", "CGI");
+				LOG_DEBUG_WITH_TAG("Failed to read body", "CGI");
 				_state = SENDING_RESPONSE;
 				break;
 			}
@@ -324,7 +350,7 @@ void Cgi::process(EventsData *eventData) {
 			_state = SENDING_TO_CHILD;
 			break;
 		case SENDING_TO_CHILD:
-			LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
+			// LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
 				if (sendToChild() == 1) {
@@ -396,11 +422,11 @@ void Cgi::process(EventsData *eventData) {
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
+				std::cout <<  _cgiToServerBuffer.c_str() << std::endl;
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
 				}
-				std::cout << "buffer to cgi: " << _cgiToServerBuffer << std::endl;
 				if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
 				}

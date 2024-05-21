@@ -20,6 +20,7 @@ int HttpChunkedDecoder::decodeChunkedBody(std::vector<char> &bodyBuffer, std::ve
         {
             case READ_SIZE:
             {
+				LOG_DEBUG_WITH_TAG("Read size", "UNCHUNKING");
                 if (bodyBuffer[i] == '\r')
                     state = READ_SIZE_END;
                 else if (isxdigit(bodyBuffer[i]))
@@ -30,6 +31,7 @@ int HttpChunkedDecoder::decodeChunkedBody(std::vector<char> &bodyBuffer, std::ve
             }
             case READ_SIZE_END:
             {
+				LOG_DEBUG_WITH_TAG("Read size end", "UNCHUNKING");
                 if (bodyBuffer[i] == '\n')
                 {
                     if (!(ss >> std::hex >> chunkSize) || !ss.eof())
@@ -46,6 +48,7 @@ int HttpChunkedDecoder::decodeChunkedBody(std::vector<char> &bodyBuffer, std::ve
             }
             case READ_CHUNK:
             {
+				// LOG_DEBUG_WITH_TAG("Read chunk", "UNCHUNKING");
                 decodedBody.push_back(bodyBuffer[i]);
                 chunkSize--;
                 if (chunkSize == 0)
@@ -54,22 +57,28 @@ int HttpChunkedDecoder::decodeChunkedBody(std::vector<char> &bodyBuffer, std::ve
             }
             case READ_TRAILER_CR:
             {
+				LOG_DEBUG_WITH_TAG("Read trailer cr", "UNCHUNKING");
                 if (bodyBuffer[i] == '\r')
                     state = READ_TRAILER_LF;
-                else
+                else {
+					LOG_DEBUG_WITH_TAG("Invalid trailer Read trailer cr", "UNCHUNKING");
                     return -1; // Invalid trailer
+				}
                 break;
             }
             case READ_TRAILER_LF:
             {
+				LOG_DEBUG_WITH_TAG("Read trailer lf", "UNCHUNKING");
                 if (bodyBuffer[i] == '\n')
                 {
                     if (lastChunk)
                         return 0; // Finished decoding
                     state = READ_SIZE;
                 }
-                else
+                else {
+					LOG_DEBUG_WITH_TAG("Invalid trailer", "UNCHUNKING");
                     return -1; // Invalid trailer
+				}
                 break;
             }
         }
