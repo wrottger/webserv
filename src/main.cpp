@@ -19,31 +19,28 @@
 
 UTEST_STATE();
 
-int main(int argc, char *argv[], char *envp[]) {
+int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " <config file>" << std::endl;
 		return 1;
 	}
-	(void)envp;
-	Config *config = Config::getInstance();
+	Config &config = Config::getInstance();
 	try {
-		config->parseConfigFile(argv[1]);
+		config.parseConfigFile(argv[1]);
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
-	if (!config->isLoaded())
+	if (!config.isLoaded())
 		return 1;
-	config->printProgressBar(1, 1);
+	config.printProgressBar(1, 1);
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
-
+	Logging::Logger::getInstance().startLogging();
 	LOG_INFO("Server started");
 	// LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
 	// LOG_DISABLE_CONSOLE_LOGGING();
 	// LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
-	SocketHandling sockets(config->getServerBlocks());
-	EventHandler event(sockets);
-	event.start();
+	EventHandler::getInstance().start();
 }
 
 // int main()

@@ -15,10 +15,10 @@ class HttpChunkedDecoder {
             READ_TRAILER_LF
         };
     
-    static HttpChunkedDecoder::State state;
-    static std::stringstream ss;
-    static bool lastChunk;
-    static unsigned int chunkSize;
+        State state;
+        std::stringstream ss;
+        bool lastChunk;
+        unsigned int chunkSize;
 
     public:
         HttpChunkedDecoder();

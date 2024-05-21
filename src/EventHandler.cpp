@@ -1,12 +1,13 @@
 #include "EventHandler.hpp"
-#include "Client.hpp"
 
-EventHandler::EventHandler() {}
-
-EventHandler::EventHandler(SocketHandling &sockets) {
-	_epollFd = sockets.getEpollFd();
-	_listeningSockets = sockets.getOpenFds();
+EventHandler &EventHandler::getInstance() {
+	static EventHandler instance;
+	return instance;
 }
+
+EventHandler::EventHandler() :
+		_epollFd(0),
+		isRunning(false) {}
 
 EventHandler::~EventHandler() {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
@@ -15,11 +16,19 @@ EventHandler::~EventHandler() {
 	_eventDataList.clear();
 }
 
+// Starts the event main loop, can only be called once
 void EventHandler::start() {
+	if (getInstance().isRunning) {
+		return;
+	}
+	getInstance().isRunning = true;
+	SocketHandling sockets(Config::getInstance().getServerBlocks());
+	_epollFd = sockets.getEpollFd();
+	_listeningSockets = sockets.getOpenFds();
 	struct epoll_event events[MAX_EVENTS];
 	int epollTriggerCount;
-
 	signal(SIGPIPE, SIG_IGN);
+
 	while (true) {
 		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, -1);
 		if (epollTriggerCount == -1) {
@@ -27,13 +36,15 @@ void EventHandler::start() {
 			continue;
 		}
 		for (int n = 0; n < epollTriggerCount; ++n) {
-			EventsData *eventData = static_cast<EventsData *>(events[n].data.ptr);
-			if (eventData->eventType == LISTENING) {
-				acceptNewClient(eventData);
+			_currentEvent = static_cast<EventsData *>(events[n].data.ptr);
+			_currentEvent->eventMask = events[n].events;
+			EventType type = _currentEvent->eventType;
+			Client *client = static_cast<Client *>(_currentEvent->objectPointer);
+			if (type == LISTENING) {
+				acceptNewClient(_currentEvent);
 				continue;
-			} else if (eventData->eventType == CLIENT || eventData->eventType == CGI) {
-				Client *client = static_cast<Client *>(eventData->objectPointer);
-				client->process(events[n].events);
+			} else if (type == CLIENT || type == CGI) {
+				client->process(_currentEvent);
 			}
 		}
 		removeInactiveClients();
@@ -86,9 +97,11 @@ void EventHandler::acceptNewClient(EventsData *eventData) {
 	}
 }
 
+// Create new event data object
 EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client) {
 	EventsData *eventData = new EventsData;
 	eventData->fd = fd;
+	eventData->eventMask = 0;
 	eventData->eventType = type;
 	if (type == CLIENT || type == CGI) {
 		eventData->objectPointer = client;
@@ -98,56 +111,38 @@ EventsData *EventHandler::createNewEvent(int fd, EventType type, Client *client)
 	return eventData;
 }
 
-
-int EventHandler::getEpollFd() const {
-	return _epollFd;
-}
-
-int EventHandler::registerEvent(int fd, EventType type, Client *client) {
+// Register new event to epoll
+EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) {
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLOUT;
 	ev.data.ptr = createNewEvent(fd, type, client);
 	_eventDataList.push_back(static_cast<EventsData *>(ev.data.ptr));
 	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &ev) == -1) {
 		LOG_ERROR("RegisterEvent: epoll ADD failed.");
-		return -1;
+		return NULL;
 	}
-	return 0;
+	return static_cast<EventsData *>(ev.data.ptr);
 }
 
-void EventHandler::unregisterEvent(int fd) {
-	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL) == -1) {
-		std::cerr << "Fd: " << fd << std::endl; // TODO: DELETE
-		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
-	}
-	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
-		if ((*it)->fd == fd) {
-			LOG_DEBUG_WITH_TAG("Unregistered something with fd", "EventHandler");
-			delete *it;
-			_eventDataList.erase(it);
-			break;
-		}
-	}
-}
-
+// Unregister event from epoll
 void EventHandler::unregisterEvent(EventsData *eventData) {
 	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL) == -1) {
-		perror("epoll_ctl");
+		// perror("epoll_ctl");
 		std::cerr << "Fd: " << eventData->fd << std::endl; // TODO: DELETE
 		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
-		perror("epoll_ctl");
 	}
-	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
-		if (*it == eventData) {
-			LOG_DEBUG_WITH_TAG("Unregistered something with pointer", "EventHandler");
-			close(eventData->fd);
-			delete *it;
-			_eventDataList.erase(it);
-			break;
-		}
+	std::list<EventsData *>::iterator it = std::find(_eventDataList.begin(),  _eventDataList.end(), eventData);
+	if (it != _eventDataList.end()) {
+		std::string type = (eventData->eventType == CLIENT) ? "Client" : "CGI";
+		std::string unregisteredType = "Unregistered " + type + " with pointer.";
+		LOG_DEBUG_WITH_TAG(unregisteredType, "EventHandler");
+		close(eventData->fd);
+		delete *it;
+		it = _eventDataList.erase(it);
 	}
 }
 
+// Add event to cleanup list
 void EventHandler::addToCleanUpList(int fd) {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		if ((*it)->fd == fd) {
@@ -157,31 +152,34 @@ void EventHandler::addToCleanUpList(int fd) {
 	}
 }
 
+// Add event to cleanup list
 void EventHandler::addToCleanUpList(EventsData *eventData) {
 	_cleanUpList.push_back(eventData);
 }
 
+// Remove inactive clients from epoll and delete them
 void EventHandler::removeInactiveClients() {
 	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
 		EventsData *eventData = *it;
 		if (eventData->eventType == CLIENT) {
 			Client *client = static_cast<Client *>(eventData->objectPointer);
-			if (client->canBeDeleted()) {
-				LOG_DEBUG("Client can be deleted");
-				_cleanUpList.push_back(eventData);
-				continue;
-			} else if (client->isTimeouted()) {
-				LOG_DEBUG("Client timeout");
-				_cleanUpList.push_back(*it);
+			if (client->isDeletable() || client->isTimeouted()) {
+				addToCleanUpList(eventData);
+				if (client->hasCgi()) {
+					if (client->getCgi()->getEventData() != NULL) {
+						addToCleanUpList(client->getCgi()->getEventData());
+					}
+				}
 			}
 		}
 	}
 	processCleanUpList();
 }
 
-std::string EventHandler::ft_inet_ntop(int af, const void* src) {
+// Convert sockaddr to ip address
+std::string EventHandler::ft_inet_ntop(int af, const void *src) {
 	if (af == AF_INET) {
-		const unsigned char* bytes = (const unsigned char*)src;
+		const unsigned char *bytes = (const unsigned char *)src;
 		std::ostringstream oss;
 		oss << static_cast<int>(bytes[0]) << ".";
 		oss << static_cast<int>(bytes[1]) << ".";

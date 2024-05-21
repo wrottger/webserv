@@ -1,14 +1,15 @@
 #include "HttpChunkedDecoder.hpp"
-// description: Decodes the chunked body and stores it in decodedBody until chunk size is 0;
-// returns 0 if the last chunk is reached, 1 if more data is needed, -1 if an error occurs
 
-HttpChunkedDecoder::HttpChunkedDecoder()
+HttpChunkedDecoder::HttpChunkedDecoder() 
 {
     state = READ_SIZE;
     lastChunk = false;
     chunkSize = 0;
+    ss.str("");
 }
 
+// description: Decodes the chunked body and stores it in decodedBody until chunk size is 0;
+// returns 0 if the last chunk is reached, 1 if more data is needed, -1 if an error occurs
 int HttpChunkedDecoder::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
 {
     if (lastChunk)

@@ -1,3 +1,4 @@
+print("HTTP/1.0 200 OK")
 print("Content-Type: text/html")    # HTML is following
 print()                             # blank line, end of headers
 print("<TITLE>CGI script output</TITLE>")
