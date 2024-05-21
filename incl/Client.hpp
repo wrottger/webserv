@@ -23,7 +23,7 @@ public:
 	bool isTimeouted() const;
 	int getFd();
 	HttpHeader &getHeaderObject();
-	std::string &getBodyBuffer();
+	std::vector<char> &getBodyBuffer();
 	const std::string &getIp() const;
 	bool hasCgi() const;
 	Cgi *getCgi();
@@ -52,7 +52,7 @@ private:
 	bool _canBeDeleted;
 	State _state;
 	std::string _ip;
-	std::string _bodyBuffer;
+	std::vector<char> _bodyBuffer;
 };
 
 #endif

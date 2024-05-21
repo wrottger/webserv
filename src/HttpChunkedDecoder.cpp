@@ -10,7 +10,7 @@ HttpChunkedDecoder::HttpChunkedDecoder()
 
 // description: Decodes the chunked body and stores it in decodedBody until chunk size is 0;
 // returns 0 if the last chunk is reached, 1 if more data is needed, -1 if an error occurs
-int HttpChunkedDecoder::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
+int HttpChunkedDecoder::decodeChunkedBody(std::vector<char> &bodyBuffer, std::vector<char> &decodedBody)
 {
     if (lastChunk)
         return 0; // More data will not be processed
@@ -75,4 +75,9 @@ int HttpChunkedDecoder::decodeChunkedBody(std::string &bodyBuffer, std::string &
         }
     }
     return 1; // More data needed
+}
+
+size_t HttpChunkedDecoder::getChunkSize() const
+{
+    return chunkSize;
 }

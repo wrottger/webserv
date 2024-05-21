@@ -3,6 +3,7 @@
 
 #include <string>
 #include <sstream>
+#include <vector>
 
 class HttpChunkedDecoder {
 
@@ -22,7 +23,8 @@ class HttpChunkedDecoder {
 
     public:
         HttpChunkedDecoder();
-        int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
+        int decodeChunkedBody(std::vector<char> &bodyBuffer, std::vector<char> &decodedBody);
+        size_t getChunkSize() const;
 };
 
 #endif

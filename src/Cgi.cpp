@@ -178,7 +178,9 @@ int Cgi::readBody(EventsData *eventData) {
 	} else {
 		// Get leftover bodydata from headerparsing
 		if (_requestBody.size()) {
-			_serverToCgiBuffer += _requestBody;
+			for (size_t i = 0; i < _requestBody.size(); i++) {
+				_serverToCgiBuffer.push_back(_requestBody[i]);
+			}
 			_requestBody.clear();
 			if (_serverToCgiBuffer.size() == _contentLength) {
 				LOG_DEBUG_WITH_TAG("Content-Length reached", "CGI");
@@ -199,7 +201,9 @@ int Cgi::readBody(EventsData *eventData) {
 				std::cout << "Read size: " << readSize << std::endl;
 				if (readSize > 0) {
 					buffer[readSize] = 0;
-					_serverToCgiBuffer += buffer;
+					for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
+						_serverToCgiBuffer.push_back(buffer[i]);
+					}
 					// Check if the body is bigger then the content-length
 					if (_contentLength && _serverToCgiBuffer.size() > _contentLength) {
 						return -1;
@@ -226,7 +230,7 @@ int Cgi::sendToChild() {
 	if (_serverToCgiBuffer.empty()) {
 		return 1;
 	}
-	ssize_t sent = write(_sockets[0], _serverToCgiBuffer.c_str(), _serverToCgiBuffer.size());
+	ssize_t sent = write(_sockets[0], _serverToCgiBuffer.data(), _serverToCgiBuffer.size());
 	if (sent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to write to child", "CGI");
 		kill(_childPid, SIGKILL);
@@ -234,7 +238,9 @@ int Cgi::sendToChild() {
 		_errorCode = 500;
 		return -1;
 	}
-	_serverToCgiBuffer.erase(0, sent);
+	for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
+		_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
+	}
 	return 0;
 }
 
