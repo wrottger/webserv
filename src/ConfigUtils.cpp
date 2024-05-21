@@ -1,5 +1,6 @@
 #include "Config.hpp"
 #include "colors.hpp"
+#include "Logger.hpp"
 
 Config::Config(void) : _isLoaded(false)
 {
@@ -16,12 +17,10 @@ const std::vector<Config::Node>& Config::getNodes(void) const
     return _nodes;
 }
 
-Config* Config::getInstance()
+Config &Config::getInstance()
 {
-        if (_instance == NULL) {
-            _instance = new Config();
-        }
-        return _instance;
+	static Config instance;
+	return instance;
 }
 
 std::vector<Config::ServerBlock>& Config::getServerBlocks(void)
@@ -59,19 +58,17 @@ struct position
 // returns the index of the server block and location block that best matches the given route and host
 std::pair<size_t, size_t> Config::getClosestPathMatch(std::string route, std::string host)
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use getClosestPathMatch without a valid Config instance.");
+    Config &config = getInstance();
     std::vector<std::pair<std::string, position> > paths;
-    for (size_t server = 0; server != config->_serverBlocks.size(); server++) //iterate through server blocks
+    for (size_t server = 0; server != config._serverBlocks.size(); server++) //iterate through server blocks
     {
-        for (size_t directive = 0; directive != config->_serverBlocks[server]._directives.size(); directive++) //iterate through location blocks
+        for (size_t directive = 0; directive != config._serverBlocks[server]._directives.size(); directive++) //iterate through location blocks
         {
-            if (config->_serverBlocks[server]._directives[directive].first == ServerName && config->_serverBlocks[server]._directives[directive].second == host)
+            if (config._serverBlocks[server]._directives[directive].first == ServerName && config._serverBlocks[server]._directives[directive].second == host)
             {
-                for (size_t location = 0; location != config->_serverBlocks[server]._locations.size(); location++)
+                for (size_t location = 0; location != config._serverBlocks[server]._locations.size(); location++)
                 {
-                    std::string locationPath = config->_serverBlocks[server]._locations[location]._path;
+                    std::string locationPath = config._serverBlocks[server]._locations[location]._path;
 
                     // Add trailing slashes to route and locationPath if they don't have one
                     if (!route.empty() && route[route.size() - 1] != '/')
@@ -105,16 +102,14 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string route, std::st
 // returns true if the directive is allowed for the given route, host, and value
 bool Config::isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value)
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use isDirectiveAllowed without a valid Config instance.");
-    std::pair<size_t, size_t> l = config->getClosestPathMatch(route, host);
+    Config &config = getInstance();
+    std::pair<size_t, size_t> l = config.getClosestPathMatch(route, host);
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
         return false;
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
     {
-        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == directive
-            && config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.find(value) != std::string::npos) // check if the directive is allowed
+        if (config._serverBlocks[l.first]._locations[l.second]._directives[i].first == directive
+            && config._serverBlocks[l.first]._locations[l.second]._directives[i].second.find(value) != std::string::npos) // check if the directive is allowed
             return true;
     }
     return false;
@@ -123,85 +118,145 @@ bool Config::isDirectiveAllowed(const std::string& route, const std::string& hos
 // returns the value of the directive for the given route, host, and directive (priority is given to location block directives)
 std::string Config::getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive)
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use getDirectiveValue without a valid Config instance.");
-    std::pair<size_t, size_t> l = config->getClosestPathMatch(route, host);
+    Config &config = getInstance();
+    std::pair<size_t, size_t> l = config.getClosestPathMatch(route, host);
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
         return "";
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
     {
-        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == directive)
-            return config->_serverBlocks[l.first]._locations[l.second]._directives[i].second;
+        if (config._serverBlocks[l.first]._locations[l.second]._directives[i].first == directive)
+            return config._serverBlocks[l.first]._locations[l.second]._directives[i].second;
     }
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
     {
-        if (config->_serverBlocks[l.first]._directives[i].first == directive)
-            return config->_serverBlocks[l.first]._directives[i].second;
+        if (config._serverBlocks[l.first]._directives[i].first == directive)
+            return config._serverBlocks[l.first]._directives[i].second;
     }
     return "";
 }
 
 std::string Config::getErrorPage(int code, const std::string& route, const std::string& host)
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use getErrorPage without a valid Config instance.");
-    std::pair<size_t, size_t> l = config->getClosestPathMatch(route, host);
+    Config &config = getInstance();
+    std::pair<size_t, size_t> l = config.getClosestPathMatch(route, host);
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
         return "";
     std::stringstream ss;
     ss << code;
     std::string codeStr = ss.str();
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
     {
-        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == ErrorPage)
+        if (config._serverBlocks[l.first]._locations[l.second]._directives[i].first == ErrorPage)
         {
-            size_t pos = config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.find(' ');
-            if (codeStr == config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(0, pos))
-                return config->_serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(pos + 1);
+            size_t pos = config._serverBlocks[l.first]._locations[l.second]._directives[i].second.find(' ');
+            if (codeStr == config._serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(0, pos))
+                return config._serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(pos + 1);
         }
     }
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
     {
-        if (config->_serverBlocks[l.first]._directives[i].first == ErrorPage)
+        if (config._serverBlocks[l.first]._directives[i].first == ErrorPage)
         {
-            size_t pos = config->_serverBlocks[l.first]._directives[i].second.find(' ');
-            if (codeStr == config->_serverBlocks[l.first]._directives[i].second.substr(0, pos))
-                return config->_serverBlocks[l.first]._directives[i].second.substr(pos + 1);
+            size_t pos = config._serverBlocks[l.first]._directives[i].second.find(' ');
+            if (codeStr == config._serverBlocks[l.first]._directives[i].second.substr(0, pos))
+                return config._serverBlocks[l.first]._directives[i].second.substr(pos + 1);
         }
     }
     return "";
 
 }
 
-bool Config::isCGIAllowed(const std::string& route, const std::string& host)
+std::string Config::getCgiScriptPath(const HttpHeader &header)
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use isCGIAllowed without a valid Config instance.");
     std::string path;
-    std::string extension;
-    std::istringstream iss(route);
+    bool isFile = 0;
+    std::istringstream iss(header.getPath());
     // get the extension of the file
     for (std::string token; std::getline(iss, token, '/');)
     {
         path += token;
         if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
         {
-            extension = token.substr(token.find_last_of('.') + 1);
+            isFile = 1;
             break;
         }
+		path += "/";
     }
-    std::pair<size_t, size_t> l = config->getClosestPathMatch(path, host);
+    if (!isFile)
+        return "";
+	else if (!path.size())
+		path = "/";
+    std::string absolutePath = getFilePath(path, header.getHost());
+    return absolutePath;
+}
+
+std::string Config::getCgiDir(const HttpHeader &header)
+{
+    std::string path = "";
+    int file = 0;
+    std::istringstream iss(header.getPath());
+    // get the extension of the file
+    for (std::string token; std::getline(iss, token, '/');)
+    {
+        path += token;
+        if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
+        {
+            file = 1;
+            break;
+        }
+		path += "/";
+    }
+    if (!file)
+        return "";
+	else if (!path.size())
+		path = "/";
+    std::string absolutePath = getDir(header.getPath(), header.getHost());
+    return absolutePath;
+}
+
+std::string Config::getCgiInterpreterPath(const HttpHeader &header) {
+	std::string temp = getDirectiveValue(header.getPath(), header.getHost(), Config::CGI);
+	
+	std::istringstream iss(temp);
+	std::string token;
+	
+	// Skip the first value
+	std::getline(iss, token, ' ');
+
+	// Get the second value
+	std::getline(iss, token, ' ');
+
+	return token;
+}
+
+bool Config::isCGIAllowed(const HttpHeader &header)
+{
+    Config &config = getInstance();
+    std::string path = "";
+    std::string extension;
+    std::istringstream iss(header.getPath());
+    // get the extension of the file
+    for (std::string token; std::getline(iss, token, '/');)
+    {
+        path += token;
+        if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
+        {
+            extension = token.substr(token.find_last_of('.'));
+            break;
+        }
+		path += "/";
+    }
+	if(!path.size())
+		path = "/";
+    std::pair<size_t, size_t> l = config.getClosestPathMatch(path, header.getHost());
     if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max() || extension.empty())
         return false;
     // check if the extension is allowed in the location CGI directive
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
     {
-        if (config->_serverBlocks[l.first]._locations[l.second]._directives[i].first == CGI)
+        if (config._serverBlocks[l.first]._locations[l.second]._directives[i].first == CGI)
         {
-            std::stringstream ss(config->_serverBlocks[l.first]._locations[l.second]._directives[i].second);
+            std::stringstream ss(config._serverBlocks[l.first]._locations[l.second]._directives[i].second);
             for (std::string token; std::getline(ss, token, ' ');)
             {
                 if (token == extension)
@@ -210,11 +265,11 @@ bool Config::isCGIAllowed(const std::string& route, const std::string& host)
         }
     }
     // check if the extension is allowed in the server CGI directive
-    for (size_t i = 0; i != config->_serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    for (size_t i = 0; i != config._serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
     {
-        if (config->_serverBlocks[l.first]._directives[i].first == CGI)
+        if (config._serverBlocks[l.first]._directives[i].first == CGI)
         {
-            std::stringstream ss(config->_serverBlocks[l.first]._directives[i].second);
+            std::stringstream ss(config._serverBlocks[l.first]._directives[i].second);
             for (std::string token; std::getline(ss, token, ' ');)
             {
                 if (token == extension)
@@ -252,22 +307,20 @@ bool Config::isValidPath(const std::string& path)
 }
 
 //returns true the first time a host is set with the given port and false otherwise
-bool Config::isHostSet(const std::string& host, const std::string& port)
+bool Config::isHostSet(const std::string& host, const std::string& port) const
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use isHostSet without a valid Config instance.");
+    Config &config = getInstance();
     if (port.empty())
         return false;
-    for (size_t i = 0; i != config->_serverBlocks.size(); i++)
+    for (size_t i = 0; i != config._serverBlocks.size(); i++)
     {
-        for (size_t j = 0; j != config->_serverBlocks[i]._directives.size(); j++)
+        for (size_t j = 0; j != config._serverBlocks[i]._directives.size(); j++)
         {
-            if (config->_serverBlocks[i]._directives[j].first == ServerName && config->_serverBlocks[i]._directives[j].second == host)
+            if (config._serverBlocks[i]._directives[j].first == ServerName && config._serverBlocks[i]._directives[j].second == host)
             {
-                for (size_t k = 0; k != config->_serverBlocks[i]._directives.size(); k++)
+                for (size_t k = 0; k != config._serverBlocks[i]._directives.size(); k++)
                 {
-                    if (config->_serverBlocks[i]._directives[k].first == Port && config->_serverBlocks[i]._directives[k].second == port)
+                    if (config._serverBlocks[i]._directives[k].first == Port && config._serverBlocks[i]._directives[k].second == port)
                         return true;
                 }
             }
@@ -276,13 +329,14 @@ bool Config::isHostSet(const std::string& host, const std::string& port)
     return false;
 }
 
+bool Config::isMethodAllowed(const HttpHeader &header, const std::string &method) const {
+	return Config::getInstance().isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, method);
+}
+
 std::string Config::getFilePath(const std::string filePath, const std::string host)
 {
-    Config* config = getInstance();
-    if (config == NULL) //prevent segfault
-        throw std::runtime_error("Cannot use getFilePath without a valid Config instance.");
-    
-    std::string root = config->getDirectiveValue(filePath, host, Root);
+    Config &config = getInstance();
+    std::string root = config.getDirectiveValue(filePath, host, Root);
     if (root.empty())
         throw std::runtime_error("No root directory found for filePath: " + filePath + ", host: " + host);
 
@@ -305,6 +359,10 @@ std::string Config::getDir(const std::string filePath, const std::string host)
 {
     std::string path = getFilePath(filePath, host);
     return path.substr(0, path.find_last_of("/"));
+}
+
+size_t Config::getMaxBodySize(const std::string &route, const std::string &host) {
+	return Utils::stringToNumber(getDirectiveValue(route, host, ClientMaxBodySize));
 }
 
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)

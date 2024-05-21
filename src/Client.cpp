@@ -9,81 +9,76 @@ std::string createTestResponse() {
 	std::ostringstream oss;
 	oss << responseBody.size();
 
-	std::string httpResponse = "HTTP/1.1 200 OK\r\n"
+	std::string _responseHttp = "HTTP/1.1 200 OK\r\n"
 							   "Content-Type: text/html; charset=UTF-8\r\n"
 							   "Content-Length: " +
 			oss.str() + "\r\n\r\n" + responseBody;
-	return httpResponse;
+	return _responseHttp;
 }
 
 Client::Client() {}
 
 Client::Client(int fd, std::string ip):
+		_responseHttp(NULL),
+		_responseCgi(NULL),
 		_lastModified(0),
 		_fd(fd),
 		_canBeDeleted(false),
 		_state(READING_HEADER),
-		_ip(ip) {
-	LOG_DEBUG(ip);
-	_headerObject = new HttpHeader;
+		_ip(ip),
+		_bodyBuffer("") {
 	updateTime();
-	httpResponse = NULL;
+	_responseHttp = NULL;
 }
 
 Client::~Client() {
-	if (httpResponse != NULL) {
-		delete httpResponse;
-	}
-	delete _headerObject;
+	LOG_DEBUG_WITH_TAG("Client destructor called", "Client");
+	delete _responseHttp;
+	delete _responseCgi;
 }
 
-int Client::getFd() const {
+int Client::getFd() {
 	return _fd;
 }
 
+HttpHeader &Client::getHeaderObject() {
+	return _header;
+}
+
 // MAIN LOOP for processing client requests
-void Client::process(uint32_t events) {
+void Client::process(EventsData *eventData) {
 	switch (_state) {
 		case READING_HEADER:
-			if (events & EPOLLIN) {
+			if (eventData->eventMask & EPOLLIN) {
 				readFromClient();
-				if (isHeaderComplete()) {
-					_state = SENDING_RESPONSE;
-					httpResponse = new HttpResponse(*_headerObject, _fd);
-					// TODO: Copy the rest of the buffer to the response object
-					// TODO: Create a response object
-					
+				if (isHeaderComplete() && _header.isError() == false) {
+					if (Config::getInstance().isCGIAllowed(_header)) {
+						_state = CGI_RESPONSE;
+					} else {
+						_state = NORMAL_RESPONSE;
+						LOG_DEBUG("set State: NORMAL_RESPONSE");
+						_responseHttp = new HttpResponse(_header, _fd);
+					}
 				}
 			}
 			break;
-		case READING_BODY:
-			// responeObject->parseBuffer(buffer);
-			// if (responseObject->isBodyisComplete()) {
-				// if (responseObject->isCgi()) {
-					// _cgi_object = new Cgi(responseObject->getBody(), _headerObject);
-					// _state = WAITING_FOR_CGI;
-				// } else {
-					// _state = SENDING_RESPONSE;
-				// }
-			// }
+		case CGI_RESPONSE:
+			if (_responseCgi == NULL) {
+				_responseCgi = new Cgi(this);
+				LOG_DEBUG("Creating new Cgi object");
+			}
+			_responseCgi->process(eventData);
+			if (_responseCgi->isFinished()) {
+				_state = FINISHED;
+			}
 			break;
-		case WAITING_FOR_CGI:
-			// processCgi();
-			// if (cgi->isFinished()) {
-				// _state = SENDING_RESPONSE;
-			// }
-			break;
-		case SENDING_RESPONSE:
-			// sendResponse();
-			// if (response->isSent()) {
-				// _state = FINISHED;
-			// }
-			if (events & EPOLLOUT) {
-				if (httpResponse->finished()) {
+		case NORMAL_RESPONSE:
+			if (eventData->eventMask & EPOLLOUT) {
+				if (_responseHttp->finished()) {
 					LOG_DEBUG("HttpResponse::finished");
 					_state = FINISHED;
 				} else {
-					httpResponse->write();
+					_responseHttp->write();
 				}
 			}
 			break;
@@ -105,26 +100,39 @@ void Client::updateTime() {
 
 // Returns true if the header is complete
 bool Client::isHeaderComplete() const {
-	return _headerObject->isComplete();
-}
-
-// TODO: Rename to parseHeaderBuffer or something similar
-void Client::parseBuffer(const char *buffer) {
-	_headerObject->parseBuffer(buffer);
+	return _header.isComplete();
 }
 
 // Returns true if the client can be deleted
-bool Client::canBeDeleted() const {
+bool Client::isDeletable() const {
 	return _canBeDeleted;
 }
 
-HttpHeader *Client::getHeaderObject() const {
-	return _headerObject;
+// Returns the body buffer
+std::string &Client::getBodyBuffer() {
+	return _bodyBuffer;
 }
 
-// Returns true if the client has exceeded the timeout
+// Returns the IP of the client
+const std::string& Client::getIp() const{
+	return _ip;
+}
+
+// Returns true if the client has a CGI response
+bool Client::hasCgi() const {
+	return _responseCgi != NULL;
+}
+
+// Returns the CGI response
+Cgi *Client::getCgi() {
+	return _responseCgi;
+}
+
+// Returns true if the client has exceeded the timeout in READING_HEADER state
 bool Client::isTimeouted() const {
-	return (std::time(0) - _lastModified) > CLIENT_TIMEOUT;
+	if (((std::time(0) - _lastModified) > CLIENT_TIMEOUT) && _state == READING_HEADER)
+		return true;
+	return false;
 }
 
 Client &Client::operator=(Client const &other) {
@@ -137,16 +145,17 @@ void Client::readFromClient() {
 	char buffer[BUFFER_SIZE + 1] = { 0 };
 	ssize_t bytes_received = read(_fd, buffer, BUFFER_SIZE);
 	// The client has closed the connection
-	if (bytes_received == 0) { // TODO: Merge with -1 for readability
+	if (bytes_received <= 0) {
 		_canBeDeleted = true;
-		LOG_DEBUG("Client connection closes 0");
-	} else if (bytes_received == -1) {
-		_canBeDeleted = true;
-		LOG_DEBUG("Client connection closes -1");
+		LOG_DEBUG("Client closed connection");
 	} else {
 		buffer[bytes_received] = '\0';
-		parseBuffer(buffer);
+		size_t parsedSize = _header.parseBuffer(buffer);
+		if (parsedSize < static_cast<size_t>(bytes_received)) {
+			// save rest to bodybuffer
+			_bodyBuffer = std::string(&buffer[parsedSize]);
+		}
 		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
-		LOG_BUFFER(bufferDebug);
+		LOG_BUFFER(bufferDebug);		//TODO: DELETE DEBUG
 	}
 }

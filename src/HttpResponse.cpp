@@ -7,7 +7,7 @@
 #include "Config.hpp"
 
 std::string HttpResponse::generateErrorResponse(const std::string &message) {
-	std::string error_path = config->getErrorPage(error.code(), header.getPath(), header.getHeader("host"));
+	std::string error_path = config.getErrorPage(error.code(), header.getPath(), header.getHeader("host"));
 	response = "HTTP/1.1 ";
 	std::stringstream errCode;
 	errCode << error.code();
@@ -33,11 +33,26 @@ std::string HttpResponse::generateErrorResponse(const std::string &message) {
 	}
 	else
 	{
-		std::ifstream file(config->getFilePath(error_path, header.getHeader("host")).c_str());
+		std::ifstream file(config.getFilePath(error_path, header.getHeader("host")).c_str());
 		if (!file.is_open())
 		{
-			error = HttpError(500, "Couldn't open error file");
-			response = generateErrorResponse(error.message());
+			std::string error_html = "<HTML><body><p><strong>";
+			error_html += "500";
+			error_html += " </strong>";
+			error_html += "Couldn't open error file";
+			error_html += "</p></body>";
+
+			response += errCode.str();
+			response += " ";
+			response += "Couldn't open error file\r\n";
+			response += "Connection: close\r\n";
+			response += "Content-Type: text/html\r\n";
+			response += "Content-Length: ";
+			std::stringstream errSize;
+			errSize << error_html.size();
+			response += errSize.str();
+			response += "\r\n\r\n";
+			response += error_html;
 			return response;
 		}
 		response += errCode.str() + " ";
@@ -56,9 +71,8 @@ inline bool ends_with(std::string const & value, std::string const & ending)
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fds) {
+HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fds), config(Config::getInstance()) {
 	LOG_DEBUG("HttpResponse::HttpResponse");
-	config = Config::getInstance();
 	response = "HTTP/1.1 ";
 	isFinished = false;
 	error = header.getError();
@@ -71,7 +85,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 	if (header.getMethod() == "GET")
 	{
 		LOG_DEBUG("GET");
-		if (ends_with(header.getPath(), "/") && config->getDirectiveValue(header.getPath(), header.getHost(), Config::Index).size() > 0)
+		if (ends_with(header.getPath(), "/") && config.getDirectiveValue(header.getPath(), header.getHost(), Config::Index).size() > 0)
 		{
 			LOG_DEBUG("GET INDEX");
 			std::string filePath = header.getPath() + "/index.html";
@@ -87,10 +101,10 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 			response += "Connection: close\r\n";
 			response += "transfer-encoding: chunked\r\n\r\n";
 		}
-		else if (config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "GET"))
+		else if (config.isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "GET"))
 		{
 			LOG_DEBUG("GET FILE");
-			std::string filePath = config->getFilePath(header.getPath(), header.getHeader("host"));
+			std::string filePath = config.getFilePath(header.getPath(), header.getHeader("host"));
 			LOG_DEBUG(filePath);
 			getFile.open(filePath.c_str());
 			if (getFile.fail())
@@ -114,7 +128,7 @@ HttpResponse::HttpResponse(HttpHeader &header, int fds) : header(header), fds(fd
 	}
 	else if (header.getMethod() == "DELETE")
 	{
-		if (!config->isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "DELETE"))
+		if (!config.isDirectiveAllowed(header.getPath(), header.getHeader("host"), Config::AllowedMethods, "DELETE"))
 			error = HttpError(405, "Method Not Allowed");
 		else if (remove(header.getPath().c_str()) != 0)
 			error = HttpError(500, "Couldn't delete file");
@@ -153,7 +167,7 @@ void HttpResponse::write() {
 		{
 			LOG_DEBUG("HttpResponse sending response buffer");
 			// sending headers
-			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
 			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
 		} else if (getFile.is_open()) {
@@ -178,10 +192,11 @@ void HttpResponse::write() {
 			isFinished = true;
 		}
 	} else {
-		if (response.size() > 0) {
-			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+		if (response.size()) {
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
 			LOG_DEBUG_WITH_TAG(response, "response EMPTY?");
-			response = response.substr(sentBytes);
+			if (sentBytes > 0)
+				response = response.substr(sentBytes);
 		}
 		else {
 			isFinished = true;
