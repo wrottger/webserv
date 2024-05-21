@@ -168,8 +168,12 @@ int Cgi::readBody(EventsData *eventData) {
 	// Get unchunked bodydata
 	if (_header.isTransferEncodingChunked()) {
 		LOG_DEBUG_WITH_TAG("Reading chunked body", "CGI");
-		if (!_chunkedDecoder.decodeChunkedBody(_requestBody, _serverToCgiBuffer)) {
+		int decoderStatus = _chunkedDecoder.decodeChunkedBody(_requestBody, _serverToCgiBuffer);
+		if (decoderStatus == -1) {
 			return -1;
+		} else if (decoderStatus == 0) {
+			_state = CREATE_CGI_PROCESS;
+			return 0;
 		}
 	} else {
 		// Get leftover bodydata from headerparsing
@@ -298,6 +302,7 @@ void Cgi::process(EventsData *eventData) {
 		case READING_BODY:
 			if (readBody(eventData) < 0) {
 				_errorCode = 400;
+				LOG_DEBUG_WITH_TAG("Failed to read chunked body", "CGI");
 				_state = SENDING_RESPONSE;
 				break;
 			}
