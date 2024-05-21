@@ -1,7 +1,5 @@
 #include "Logger.hpp"
 
-Logging::Logger *Logging::Logger::_instance = NULL;
-
 Logging::Logger::Logger() {
 	_logFile.open(LOG_SAVE_FILE.c_str(), std::ios::out | std::ios::app);
 	if (_logFile.fail()) {
@@ -11,7 +9,6 @@ Logging::Logger::Logger() {
 	_logTarget = LOG_TO_CONSOLE;	// Default log type
 	_timeStampInLog = true;			// Default timestamp in log
 	_logLevelInLog = true;			// Default log level in log
-	startLogging();
 }
 
 Logging::Logger::~Logger() {
@@ -20,8 +17,8 @@ Logging::Logger::~Logger() {
 
 // Singleton instance
 Logging::Logger &Logging::Logger::getInstance() {
-	static Logger _instance;
-	return _instance;
+	static Logger instance;
+	return instance;
 }
 
 void Logging::Logger::startLogging() {

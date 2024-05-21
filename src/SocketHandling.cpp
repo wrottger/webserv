@@ -4,11 +4,10 @@
 
 SocketHandling::SocketHandling(std::vector<Config::ServerBlock> &config) : _config(config)
 {
-	size_t serverCount = config.size();
-    std::vector<int> ports;
-	ports = Config::getPorts(config);
+	std::vector<int> ports = Config::getPorts(config);
+	size_t portCount = ports.size();
 	try {
-		for (size_t i = 0; i < serverCount; i++) {
+		for (size_t i = 0; i < portCount; i++) {
 			setUpSocket(ports[i]);
 		}
 		setUpEpoll();
