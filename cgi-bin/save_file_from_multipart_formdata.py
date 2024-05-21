@@ -7,25 +7,42 @@ cgitb.enable()
 
 form = cgi.FieldStorage()
 
-# Get filename here.
-fileitem = form['filename']
+# Directory to save files
+save_path = '/home/dnebatz/Documents/realwebserv/webserv/www/'
 
-# Test if the file was uploaded
-if fileitem.filename:
-    # strip leading path from file name to avoid directory traversal attacks
-    fn = os.path.basename(fileitem.filename)
-    open('/path/to/save/files/' + fn, 'wb').write(fileitem.file.read())
+# Go through all fields in the form
+for key in form.keys():
+	fileitem = form[key]
 
-    message = 'The file "' + fn + '" was uploaded successfully'
-   
-else:
-    message = 'No file was uploaded'
-   
+	# Check if the field is a list of files
+	if isinstance(fileitem, list):
+		for item in fileitem:
+			if item.filename:
+				# Strip leading path from file name to avoid directory traversal attacks
+				fn = os.path.basename(item.filename)
+				with open(save_path + fn, 'wb') as f:
+					chunk = item.file.read(8192)
+					while chunk:
+						f.write(chunk)
+						chunk = item.file.read(8192)
+
+				print(f'The file "{fn}" was uploaded successfully<br>')
+	else:
+		# Check if the field is a file
+		if fileitem.filename:
+			# Strip leading path from file name to avoid directory traversal attacks
+			fn = os.path.basename(fileitem.filename)
+			with open(save_path + fn, 'wb') as f:
+				chunk = fileitem.file.read(8192)
+				while chunk:
+					f.write(chunk)
+					chunk = fileitem.file.read(8192)
+
+			print(f'The file "{fn}" was uploaded successfully<br>')
+
 print("""\
 Content-Type: text/html\n
-<html>
-<body>
-   <p>%s</p>
-</body>
-</html>
-""" % (message,))
+<html><body>
+<p>All files uploaded successfully</p>
+</body></html>
+""")
