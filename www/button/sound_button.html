@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>Play Sound</h2>
+
+<input type="file" id="soundFile" accept="audio/*">
+<button onclick="playSound()">
+  <img src="https://cdn6.aptoide.com/imgs/d/e/c/dec9bc1d63944581077bfa41b5188aa3_icon.png" alt="Play">
+</button>
+<script>
+var audio = new Audio();
+
+function playSound() {
+  var soundFile = document.getElementById('soundFile').files[0];
+  audio.src = URL.createObjectURL(soundFile);
+  audio.play();
+}
+
+function pauseSound() {
+  audio.pause();
+}
+</script>
+
+</body>
+</html>

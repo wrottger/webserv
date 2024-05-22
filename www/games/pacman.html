@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- other head elements -->
+
+    <!-- include the Modernizr library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js"></script>
+
+    <!-- include the jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <!-- add CSS -->
+    <style>
+        body {
+            background-color: black;
+        }
+
+        #pacman {
+            height: 470px;
+            width: 382px;
+            border-radius: 5px;
+            margin: 20px auto;
+        }
+
+        #shim {
+            font-family: 'Permanent Marker', cursive;
+            position: absolute;
+            visibility: hidden
+        }
+
+        h1 {
+            font-family: 'Permanent Marker', cursive;
+            text-align: center;
+            color: yellow;
+        }
+
+        body {
+            width: 342px;
+            margin: 0px auto;
+            font-family: sans-serif;
+        }
+
+        a {
+            text-decoration: none;
+            color: #0000FF;
+        }
+    </style>
+</head>
+<body>
+    <!-- other body elements -->
+
+    <div id="pacman"></div>
+
+    <!-- include the pacman.js script -->
+    <script src="/cgi-bin/pacman.js"></script>
+</body>
+</html>
