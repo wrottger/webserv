@@ -200,14 +200,14 @@ void HttpHeader::States::port(char c, HttpMessage& message, StateHandler& nextSt
 }
 
 void HttpHeader::States::path(char c, HttpMessage& message, StateHandler& nextState) {
-    if (isPchar(c) || c == '/' || c == '.' || c == ',') {
-        message.path += c;
-    } else if (c == ' ') {
+    if (c == ' ') {
         nextState.func = httpVersion;
     } else if (c == '?') {
         nextState.func = query;
     } else if (c == '#') {
         nextState.func = fragment;
+    } else if (isPchar(c) || c == '/' || c == '.' || c == ',') {
+       message.path += c;
     } else {
         throw HttpError(400, "Invalid character in path: " + std::string(1, c));
     }
