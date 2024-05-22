@@ -1,4 +1,5 @@
 NAME = webserv
+CXX = c++
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -g -std=gnu++98 -Iincl #-fsanitize=address

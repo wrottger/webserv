@@ -7,53 +7,60 @@
 #include <iostream>
 #include <typeinfo>
 
-HttpHeader::HttpHeader() :
-		parseError(0, "") {
-	complete = false;
-	state = new StateHandler();
-	state->func = States::method;
-	message = HttpMessage();
-	request_size = 0;
-	message.port = 80;
+HttpHeader::HttpHeader() : parseError(0, ""){
+    complete = false;
+    state.func = States::method;
+    message = HttpMessage();
+    request_size = 0;
+    message.port = 80;
 }
 
-HttpHeader::~HttpHeader() { delete state; }
 
 size_t HttpHeader::parseBuffer(const char *requestLine) {
-	if (requestLine == NULL || isComplete() || parseError.code() != 0)
-		return 0;
-	char c;
-	size_t i = 0;
-	try {
-		for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++) {
-			request_size++;
-			if (request_size > 8192) // TODO check against config
-			{
-				LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
-				throw HttpError(413, "Request Entity Too Large");
-			}
-			c = requestLine[i];
-			state->func(c, message, *state);
-		}
-	} catch (HttpError &e) {
-		parseError = e;
-		return i;
-	}
-	if (state->func == States::headerFinished) {
-		LOG_DEBUG_WITH_TAG("header parsing finished", "HttpHeader::parseBuffer");
-		message.path = percentDecode(message.path);
-		complete = true;
-		if (message.headers.count("host") == 0) {
-			LOG_INFO_WITH_TAG("host header not found", "HttpHeader::parseBuffer");
-			parseError = HttpError(400, "Host header is required");
-		}
-		if (message.headers.find("host")->second.find(":") != std::string::npos) {
-			message.host = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
-			message.port = std::strtol(message.headers.find("host")->second.substr(message.headers.find("host")->second.find(":") + 1).c_str(), NULL, 10);
-			message.headers["host"] = message.host;
-		}
-	}
-	return i;
+    if (requestLine == NULL || isComplete() || parseError.code() != 0)
+        return 0;
+    char c;
+    size_t i = 0;
+    try
+    {
+        for (; requestLine[i] != '\0' && state.func != States::headerFinished; i++)
+        {
+            request_size++;
+            if (request_size > 8192) // TODO check against config
+            {
+                LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
+                throw HttpError(413, "Request Entity Too Large");
+            }
+            c = requestLine[i];
+            state.func(c, message, state);
+        }
+    }
+    catch (HttpError &e)
+    {
+        parseError = e;
+        return i;
+    }
+    if (state.func == States::headerFinished)
+    {
+        LOG_DEBUG_WITH_TAG("header parsing finished", "HttpHeader::parseBuffer");
+        message.path = percentDecode(message.path);
+        complete = true;
+        if (message.headers.count("host") == 0)
+        {
+            LOG_INFO_WITH_TAG("host header not found", "HttpHeader::parseBuffer");
+            parseError = HttpError(400, "Host header is required");
+        }
+        if (message.headers.find("host")->second.find(":") != std::string::npos)
+        {
+            message.host = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
+            message.port = std::strtol(message.headers.find("host")->second.substr(message.headers.find("host")->second.find(":") + 1).c_str(), NULL, 10);
+            message.headers["host"] = message.host;
+        }
+        LOG_DEBUG(message.path);
+        LOG_DEBUG(message.query);
+        LOG_DEBUG(message.host);
+    }
+    return i;
 }
 
 const std::map<std::string, std::string> &HttpHeader::getHeaders() const {
@@ -125,7 +132,8 @@ std::string HttpHeader::percentDecode(std::string &str) {
 	return decoded;
 }
 
-bool HttpHeader::isComplete() const { return state->func == States::headerFinished || isError(); }
+bool HttpHeader::isComplete() const { return state.func == States::headerFinished || isError(); }
+
 
 bool HttpHeader::States::isToken(char c) {
 	const std::string delimiters = std::string("\"(),/:;<=>?@[\\]{}");
@@ -209,18 +217,19 @@ void HttpHeader::States::port(char c, HttpMessage &message, StateHandler &nextSt
 	}
 }
 
-void HttpHeader::States::path(char c, HttpMessage &message, StateHandler &nextState) {
-	if (isPchar(c) || c == '/' || c == '.' || c == ',') {
-		message.path += c;
-	} else if (c == ' ') {
-		nextState.func = httpVersion;
-	} else if (c == '?') {
-		nextState.func = query;
-	} else if (c == '#') {
-		nextState.func = fragment;
-	} else {
-		throw HttpError(400, "Invalid character in path: " + std::string(1, c));
-	}
+
+void HttpHeader::States::path(char c, HttpMessage& message, StateHandler& nextState) {
+    if (c == ' ') {
+        nextState.func = httpVersion;
+    } else if (c == '?') {
+        nextState.func = query;
+    } else if (c == '#') {
+        nextState.func = fragment;
+    } else if (isPchar(c) || c == '/' || c == '.' || c == ',') {
+       message.path += c;
+    } else {
+        throw HttpError(400, "Invalid character in path: " + std::string(1, c));
+    }
 }
 
 void HttpHeader::States::httpVersion(char c, HttpMessage &message, StateHandler &nextState) {
