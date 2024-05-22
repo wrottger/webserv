@@ -32,11 +32,11 @@ static bool isFile(const std::string &path)
 
 HttpError HttpResponse::setupGetResponse()
 {
-	if (isFile(config.getFilePath(path, host)))
+	if (isFile(config.getFilePath(header)))
 	{
-		LOG_DEBUG(config.getFilePath(path, host).c_str());
+		LOG_DEBUG(config.getFilePath(header).c_str());
 		LOG_DEBUG("returning file");
-		std::string filePath = config.getFilePath(path, host);
+		std::string filePath = config.getFilePath(header);
 		LOG_DEBUG(filePath);
 		getFile.open(filePath.c_str());
 		if (getFile.fail())
@@ -46,18 +46,18 @@ HttpError HttpResponse::setupGetResponse()
 		response += "Connection: close\r\n";
 		response += "transfer-encoding: chunked\r\n\r\n";
 	}
-	else if (isFolder(config.getFilePath(path, host)))
+	else if (isFolder(config.getFilePath(header)))
 	{
-		LOG_DEBUG(config.getFilePath(path, host).c_str());
+		LOG_DEBUG(config.getFilePath(header).c_str());
 		LOG_DEBUG("Is folder");
-		if (config.getDirectiveValue(path, header.getHost(), Config::Index).size() != 0)
+		if (config.getDirectiveValue(header, Config::Index).size() != 0)
 		{
 			LOG_DEBUG("returning index file");
-			std::string filePath = config.getFilePath(path, host) + config.getDirectiveValue(path, header.getHost(), Config::Index);
+			std::string filePath = config.getFilePath(header) + config.getDirectiveValue(header, Config::Index);
 			getFile.open(filePath.c_str());
 			if (getFile.fail())
 			{
-				if (config.getDirectiveValue(path, header.getHost(), Config::Listing) == "on")
+				if (config.getDirectiveValue(header, Config::Listing) == "on")
 				{
 					LOG_DEBUG("returning listing");
 					generateDirListing();
@@ -70,7 +70,7 @@ HttpError HttpResponse::setupGetResponse()
 			response += "Connection: close\r\n";
 			response += "transfer-encoding: chunked\r\n\r\n";
 		}
-		else if (config.getDirectiveValue(path, header.getHost(), Config::Listing) == "on")
+		else if (config.getDirectiveValue(header, Config::Listing) == "on")
 		{
 			LOG_DEBUG("returning listing");
 			generateDirListing();
@@ -89,9 +89,6 @@ HttpResponse::HttpResponse() : config(Config::getInstance()) {
 	isFinished = false;
 }
 
-HttpResponse::~HttpResponse() {
-}
-
 HttpResponse::HttpResponse(HttpHeader header, int fds) :
 		header(header), config(Config::getInstance()), fds(fds) {
 	LOG_DEBUG("New HttpResponse created");
@@ -108,31 +105,31 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 	host = header.getHost();
 	path = header.getPath();
 
-	LOG_DEBUG(config.getDirectiveValue(path, host, Config::Redir).c_str());
-	if (config.getDirectiveValue(path, host, Config::Redir).size())
+	LOG_DEBUG(config.getDirectiveValue(header, Config::Redir).c_str());
+	if (config.getDirectiveValue(header, Config::Redir).size())
 	{
 		LOG_DEBUG("Redirecting request");
 		response += "308 Permanent Redirect\r\n";
-		response += "Location: " + config.getDirectiveValue(path, header.getHost(), Config::Redir);
+		response += "Location: " + config.getDirectiveValue(header, Config::Redir);
 		response += "\r\n\r\n";
 		return;
 	}
-	else if (header.getMethod() == "GET" && config.isDirectiveAllowed(path, host, Config::AllowedMethods, "GET"))
+	else if (header.getMethod() == "GET" && config.isDirectiveAllowed(header, Config::AllowedMethods, "GET"))
 	{
 		LOG_DEBUG("GET request");
 		error = setupGetResponse();
 	}
-	else if (header.getMethod() == "POST" && config.isDirectiveAllowed(path, host, Config::AllowedMethods, "POST"))
+	else if (header.getMethod() == "POST" && config.isDirectiveAllowed(header, Config::AllowedMethods, "POST"))
 	{
 		error = HttpError(405, "Method Not Allowed");
 		response += "405 Method Not Allowed\r\n";
-		response += "Allow: " + config.getDirectiveValue(path, host, Config::AllowedMethods) + "\r\n";
+		response += "Allow: " + config.getDirectiveValue(header, Config::AllowedMethods) + "\r\n";
 		response += "Connection: close\r\n\r\n";
 	}
 	else if (header.getMethod() == "DELETE")
 	{
 		LOG_DEBUG("DELETE request");
-		if (!config.isDirectiveAllowed(path, host, Config::AllowedMethods, "DELETE"))
+		if (!config.isDirectiveAllowed(header, Config::AllowedMethods, "DELETE"))
 			error = HttpError(405, "Method Not Allowed");
 		else if (remove(path.c_str()) != 0)
 			error = HttpError(500, "Couldn't delete file");
@@ -156,7 +153,7 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 }
 
 std::string HttpResponse::generateErrorResponse(const HttpError &error) {
-	std::string error_path = config.getErrorPage(error.code(), header.getPath(), header.getHeader("host"));
+	std::string error_path = config.getErrorPage(error.code(), header);
 	response = "HTTP/1.1 ";
 	std::string message = error.message();
 	std::stringstream errCode;
@@ -183,7 +180,7 @@ std::string HttpResponse::generateErrorResponse(const HttpError &error) {
 	}
 	else
 	{
-		std::ifstream file(config.getFilePath(error_path, header.getHeader("host")).c_str());
+		std::ifstream file(config.getFilePath(header, error_path).c_str());
 		if (!file.is_open())
 		{
 			std::string error_html = "<HTML><body><p><strong>";
@@ -241,7 +238,7 @@ int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 
 void HttpResponse::generateDirListing()
 {
-	std::string filePath = config.getFilePath(header.getPath(), header.getHeader("host"));
+	std::string filePath = config.getFilePath(header);
 	std::vector<fileInfo> files;
 	listDir(filePath, files);
 	response += "200 OK\r\n";

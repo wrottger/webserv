@@ -1,9 +1,6 @@
 #include "Config.hpp"
 #include "colors.hpp"
 
-
-Config* Config::_instance = NULL;
-
 void Config::parseConfigFile(std::string filename)
 {
     std::ifstream _fileStream(filename.c_str());
@@ -11,6 +8,14 @@ void Config::parseConfigFile(std::string filename)
     {
         throw std::runtime_error(RBOLD("Error: Unable to open file " + filename));
     }
+
+    //get file size for progress bar
+    std::streampos originalPosition = _fileStream.tellg();
+    _fileStream.seekg(0, std::ios::end);
+    _fileSize = _fileStream.tellg();
+    _fileStream.seekg(originalPosition);
+    
+    //initialize tokens
     _tokens["server"] = Server;
     _tokens["location"] = Location;
     _tokens["port"] = Port;
@@ -27,6 +32,7 @@ void Config::parseConfigFile(std::string filename)
     _tokens["}"] = CloseBrace;
     _tokens[";"] = Semicolon;
     _tokens["error_page"] = ErrorPage;
+    _tokens["upload_dir"] = UploadDir;
 
     this->scanTokens(_fileStream);
     _fileStream.close();
@@ -82,7 +88,7 @@ void Config::scanTokens(std::ifstream &file)
             else if (j == _tokens.end()) //all other tokens are considered data
                 _nodes.push_back(Node(Data, out[i].token, out[i].position, n));
         }
-        _lines = n;
+        printProgressBar(file.tellg(), _fileSize);
     }
     this->sortVector(_nodes); // sorts the vector of nodes by order of line number and offset in the config file
 }
@@ -90,28 +96,27 @@ void Config::scanTokens(std::ifstream &file)
 // This method is supposed to slice a string into a vector of pairs of strings and their offsets;
 std::vector<Config::TokenInfo> Config::slice(std::string in, std::vector<char> delim)
 {
+    std::set<char> delimiters(delim.begin(), delim.end());
     size_t comment = in.find("#");
     size_t start = 0;
-    TokenInfo token;
     std::vector<TokenInfo> out;
-    for (size_t i = 0; i < in.size(); i++)
+
+    for (size_t i = 0; i < in.size() && i < comment; i++)
     {
-        for (size_t j = 0; j < delim.size(); j++)
+        if (delimiters.count(in[i]) > 0)
         {
-            if (in[i] == delim[j] && i < comment)
-            {
-                if (i > start) {
-                    token.token = in.substr(start, i - start);
-                    token.position = start;
-                    out.push_back(token);
-                }
-                start = i + 1;
-                break;
+            if (i > start) {
+                TokenInfo token;
+                token.token = in.substr(start, i - start);
+                token.position = start;
+                out.push_back(token);
             }
+            start = i + 1;
         }
     }
-    if (start < in.size()) {
-        token.token = in.substr(start, in.size() - start);
+    if (start < in.size() && start < comment) {
+        TokenInfo token;
+        token.token = in.substr(start, comment - start);
         token.position = start;
         out.push_back(token);
     }
@@ -121,18 +126,7 @@ std::vector<Config::TokenInfo> Config::slice(std::string in, std::vector<char> d
 // Sorts the vector of nodes by order of line number and offset in the config file;
 void Config::sortVector(std::vector<Node>& vec)
 {
-    for (size_t i = 0; i < vec.size(); i++)
-    {
-        for (size_t j = i + 1; j < vec.size(); j++)
-        {
-            if (vec[j]._line < vec[i]._line || (vec[j]._line == vec[i]._line && vec[j]._offset < vec[i]._offset))
-            {
-                Node temp = vec[i];
-                vec[i] = vec[j];
-                vec[j] = temp;
-            }
-        }
-    }
+    std::sort(vec.begin(), vec.end(), compareNodes);
 }
 
 // This method is supposed to parse the scopes of the config file, check for syntax errors and delete braces and comments;
@@ -196,11 +190,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                 // parse the server block and add it to the vector of server blocks
                 ServerBlock serverBlock = parseServerBlock(start, it);
                 if (serverBlock._directives.size())
-                {
                     _serverBlocks.push_back(serverBlock);
-                    if (it->_line < _lines)
-                        printProgressBar(it->_line, _lines);
-                }
                 else
                     error("Syntax error: incomplete server block", start);
                 continue;
@@ -340,6 +330,21 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                     }
                     else
                         error("Syntax error: error page directive requires error code + error page path", it);
+                    break;
+                case UploadDir:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        // make pair of token and value and add it to vector of directives
+                        if (isValidPath((it + 1)->_value))
+                            block._directives.push_back(std::make_pair(UploadDir, (it + 1)->_value));
+                        else
+                            error("Syntax error: invalid path in upload_dir directive", it + 1);
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after upload_dir directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: upload_dir directive requires a value", it);
                     break;
                 default:
                     error("Syntax error: unexpected token in server block", it);
@@ -532,6 +537,21 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                     }
                     else
                         error("Syntax error: cgi directive requires file extension + interpreter path", it);
+                    break;
+                case UploadDir:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        // make pair of token and value and add it to vector of directives
+                        if (isValidPath((it + 1)->_value))
+                            block._directives.push_back(std::make_pair(UploadDir, (it + 1)->_value));
+                        else
+                            error("Syntax error: invalid path in upload_dir directive", it + 1);
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after upload_dir directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: upload_dir directive requires a value", it);
                     break;
                 case Semicolon:
                 {

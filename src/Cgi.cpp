@@ -38,13 +38,16 @@ char **Cgi::createEnviromentVariables() {
 	std::vector<std::string> envp;
 
 	envp.push_back("AUTH_TYPE=");
-	envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
+	if (_header.isTransferEncodingChunked())
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_serverToCgiBuffer.size())); // FIXME: When it was unchunked it should be the size after decoding
+	else
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
 	if (_header.isInHeader("content-type")) {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
 	}
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header.getPath(), _header.getHost()));
+	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PATH_TRANSLATED=");
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
@@ -111,6 +114,7 @@ Cgi::Cgi(Client *client) :
 		_state(CHECK_METHOD),
 		_childPid(0),
 		_eventData(NULL),
+		_bytesSendToCgi(0),
 		_config(Config::getInstance()) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
@@ -168,13 +172,33 @@ int Cgi::readBody(EventsData *eventData) {
 	// Get unchunked bodydata
 	if (_header.isTransferEncodingChunked()) {
 		LOG_DEBUG_WITH_TAG("Reading chunked body", "CGI");
-		if (!decodeChunkedBody(_requestBody, _serverToCgiBuffer)) {
+		int decoderStatus = _chunkedDecoder.decodeChunkedBody(_requestBody, _serverToCgiBuffer);
+		if (decoderStatus == -1) {
 			return -1;
+		} else if (decoderStatus == 0) {
+			_state = CREATE_CGI_PROCESS;
+			return 0;
+		} else if (decoderStatus == 1 && eventData->eventMask & EPOLLIN) {
+				// Read the rest body from the socket
+				_requestBody.clear();
+				char buffer[BUFFER_SIZE + 1];
+				ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
+			if (readSize > 0) {
+				buffer[readSize] = 0;
+				for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
+					_requestBody.push_back(buffer[i]);
+				}
+			} else if (readSize == -1 || readSize == 0) {
+				LOG_DEBUG_WITH_TAG("Reading body read 0 or -1", "CGI");
+				_state = FINISHED;
+			}
 		}
 	} else {
 		// Get leftover bodydata from headerparsing
 		if (_requestBody.size()) {
-			_serverToCgiBuffer += _requestBody;
+			for (size_t i = 0; i < _requestBody.size(); i++) {
+				_serverToCgiBuffer.push_back(_requestBody[i]);
+			}
 			_requestBody.clear();
 			if (_serverToCgiBuffer.size() == _contentLength) {
 				LOG_DEBUG_WITH_TAG("Content-Length reached", "CGI");
@@ -187,15 +211,17 @@ int Cgi::readBody(EventsData *eventData) {
 			}
 		}
 		// Read the rest of the body
+		LOG_DEBUG_WITH_TAG("Reading rest of body", "CGI");
 		if (eventData->eventType == CLIENT) {
 			if (eventData->eventMask & EPOLLIN) {
 				// Read the body from the socket
 				char buffer[BUFFER_SIZE + 1];
 				ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
-				std::cout << "Read size: " << readSize << std::endl;
 				if (readSize > 0) {
 					buffer[readSize] = 0;
-					_serverToCgiBuffer += buffer;
+					for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
+						_serverToCgiBuffer.push_back(buffer[i]);
+					}
 					// Check if the body is bigger then the content-length
 					if (_contentLength && _serverToCgiBuffer.size() > _contentLength) {
 						return -1;
@@ -219,10 +245,18 @@ int Cgi::readBody(EventsData *eventData) {
 // Sends the data to the child process
 // return 1 if finished or no buffer return 0 if data was send, and -1 on error
 int Cgi::sendToChild() {
-	if (_serverToCgiBuffer.empty()) {
+	ssize_t sent;
+	// if (_serverToCgiBuffer.empty()) {
+	// 	return 1;
+	if ((_bytesSendToCgi) == _serverToCgiBuffer.size()) {
 		return 1;
 	}
-	ssize_t sent = write(_sockets[0], _serverToCgiBuffer.c_str(), _serverToCgiBuffer.size());
+	if ((_bytesSendToCgi + BUFFER_SIZE) > _serverToCgiBuffer.size())
+		sent = write(_sockets[0], &_serverToCgiBuffer[_bytesSendToCgi], _serverToCgiBuffer.size() - _bytesSendToCgi);
+	else
+		sent = write(_sockets[0], &_serverToCgiBuffer[_bytesSendToCgi], BUFFER_SIZE);
+	// ssize_t sent = write(_sockets[0], _serverToCgiBuffer.data(), _serverToCgiBuffer.size());
+	_bytesSendToCgi += sent;
 	if (sent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to write to child", "CGI");
 		kill(_childPid, SIGKILL);
@@ -230,7 +264,9 @@ int Cgi::sendToChild() {
 		_errorCode = 500;
 		return -1;
 	}
-	_serverToCgiBuffer.erase(0, sent);
+	// for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
+	// 	_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
+	// }
 	return 0;
 }
 
@@ -298,6 +334,7 @@ void Cgi::process(EventsData *eventData) {
 		case READING_BODY:
 			if (readBody(eventData) < 0) {
 				_errorCode = 400;
+				LOG_DEBUG_WITH_TAG("Failed to read body", "CGI");
 				_state = SENDING_RESPONSE;
 				break;
 			}
@@ -313,7 +350,7 @@ void Cgi::process(EventsData *eventData) {
 			_state = SENDING_TO_CHILD;
 			break;
 		case SENDING_TO_CHILD:
-			LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
+			// LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
 				if (sendToChild() == 1) {
@@ -385,11 +422,11 @@ void Cgi::process(EventsData *eventData) {
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
+				std::cout <<  _cgiToServerBuffer.c_str() << std::endl;
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
 				}
-				std::cout << "buffer to cgi: " << _cgiToServerBuffer << std::endl;
 				if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
 				}
@@ -448,7 +485,7 @@ int Cgi::createCgiProcess() {
 int Cgi::checkIfValidFile() {
 	LOG_DEBUG_WITH_TAG("Checking file", "CGI");
 	std::ifstream getFile;
-	std::string filePath = _config.getFilePath(_header.getPath(), _header.getHost()) + _config.getDirectiveValue(_header.getPath(), _header.getHost(), Config::Index);
+	std::string filePath = _config.getFilePath(_header) + _config.getDirectiveValue(_header, Config::Index);
 	getFile.open(filePath.c_str());
 	LOG_DEBUG_WITH_TAG(filePath.c_str(), "CGI");
 	if (getFile.fail()) {
@@ -468,78 +505,4 @@ bool Cgi::isTimedOut() {
 		return true;
 	}
 	return false;
-}
-
-// description: Decodes the chunked body and stores it in decodedBody until chunk size is 0;
-// returns 0 if the last chunk is reached, 1 if more data is needed, -1 if an error occurs
-int Cgi::decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody)
-{
-    static Cgi::decodeState state = READ_SIZE;
-    static std::stringstream ss;
-    static bool lastChunk = false;
-    static unsigned int chunkSize = 0;
-
-    if (lastChunk)
-        return 0; // More data will not be processed
-    for (size_t i = 0; i < bodyBuffer.size(); ++i)
-    {
-        switch (state)
-        {
-            case READ_SIZE:
-            {
-                if (bodyBuffer[i] == '\r')
-                    state = READ_SIZE_END;
-                else if (isxdigit(bodyBuffer[i]))
-                    ss << bodyBuffer[i];
-				else
-					return -1;
-                break;
-            }
-            case READ_SIZE_END:
-            {
-                if (bodyBuffer[i] == '\n')
-                {
-                    if (!(ss >> std::hex >> chunkSize) || !ss.eof())
-                        return -1; // string to hex conversion failed
-					ss.str("");
-                    ss.clear();
-                    if (chunkSize == 0)
-                        lastChunk = true;
-                    state = READ_CHUNK;
-                }
-                else
-                    return -1;
-                break;
-            }
-            case READ_CHUNK:
-            {
-                decodedBody.push_back(bodyBuffer[i]);
-                chunkSize--;
-                if (chunkSize == 0)
-                    state = READ_TRAILER_CR;
-                break;
-            }
-            case READ_TRAILER_CR:
-            {
-                if (bodyBuffer[i] == '\r')
-                    state = READ_TRAILER_LF;
-                else
-                    return -1; // Invalid trailer
-                break;
-            }
-            case READ_TRAILER_LF:
-            {
-                if (bodyBuffer[i] == '\n')
-                {
-                    if (lastChunk)
-                        return 0; // Finished decoding
-                    state = READ_SIZE;
-                }
-                else
-                    return -1; // Invalid trailer
-                break;
-            }
-        }
-    }
-    return 1; // More data needed
 }

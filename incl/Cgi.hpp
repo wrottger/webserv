@@ -18,6 +18,7 @@
 #include <vector>
 #include "Utils.hpp"
 #include <signal.h>
+#include "HttpChunkedDecoder.hpp"
 
 #define SEND_SIZE 8192
 #define CGI_TIMEOUT 3
@@ -37,8 +38,9 @@ private:
 	};
 
 	Client *_client;
+	HttpChunkedDecoder _chunkedDecoder;
 	const HttpHeader &_header;
-	std::string &_requestBody;
+	std::vector<char> &_requestBody;
 	std::string _clientIp;
 	int _fd;
 	size_t _contentLength;
@@ -48,9 +50,12 @@ private:
 	int _sockets[2];
 	int _errorCode;
 	State _state;
-	std::string _serverToCgiBuffer;
+	std::vector<char> _serverToCgiBuffer;
 	pid_t _childPid;
 	EventsData *_eventData;
+	size_t _bytesSendToCgi;
+
+
 
 	enum decodeState {
 		READ_SIZE,
@@ -69,7 +74,6 @@ private:
 	void executeCgi();
 	int executeChild();
 	int readBody(EventsData *eventData);
-	int decodeChunkedBody(std::string &bodyBuffer, std::string &decodedBody);
 	int createCgiProcess();
 	int sendToChild();
 	int readFromChild();
