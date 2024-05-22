@@ -359,6 +359,9 @@ std::string Config::getCgiInterpreterPath(const HttpHeader &header) {
 
 bool Config::isCGIAllowed(const HttpHeader &header)
 {
+	if (header.getMethod() == "DELETE"){
+		return false;
+	}
     Config &config = getInstance();
     std::string path = "";
     std::string extension;
