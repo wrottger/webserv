@@ -311,18 +311,50 @@ std::string Config::getCgiDir(const HttpHeader &header)
 }
 
 std::string Config::getCgiInterpreterPath(const HttpHeader &header) {
-	std::string temp = getDirectiveValue(header, Config::CGI);
-	
-	std::istringstream iss(temp);
-	std::string token;
-	
-	// Skip the first value
-	std::getline(iss, token, ' ');
+	Config &config = getInstance();
+    std::string path = "";
+    std::string extension;
+    std::istringstream iss(header.getPath());
+    // get the extension of the file
+    for (std::string token; std::getline(iss, token, '/');)
+    {
+        path += token;
+        if (token.find('.') != std::string::npos && token.find('.') != token.size() - 1)
+        {
+            extension = token.substr(token.find_last_of('.'));
+            break;
+        }
+		path += "/";
+    }
+	if(!path.size())
+		path = "/";
+    std::pair<size_t, size_t> l = config.getClosestPathMatch(path, header);
+    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max() || extension.empty())
+        return "";
+    // check if the extension is allowed in the location CGI directive
+    for (size_t i = 0; i != config._serverBlocks[l.first]._locations[l.second]._directives.size(); i++) // iterate through location block directives
+    {
+        if (config._serverBlocks[l.first]._locations[l.second]._directives[i].first == CGI)
+        {
+            std::string value = config._serverBlocks[l.first]._locations[l.second]._directives[i].second;
+            size_t pos = value.find(' ');
+            if (extension == value.substr(0, pos))
+                return value.substr(pos + 1);
+        }
+    }
+    // check if the extension is allowed in the server CGI directive
+    for (size_t i = 0; i != config._serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
+    {
+        if (config._serverBlocks[l.first]._directives[i].first == CGI)
+        {
+            std::string value = config._serverBlocks[l.first]._directives[i].second;
+            size_t pos = value.find(' ');
+            if (extension == value.substr(0, pos))
+                return value.substr(pos + 1);
 
-	// Get the second value
-	std::getline(iss, token, ' ');
-
-	return token;
+        }
+    }
+    return "";
 }
 
 bool Config::isCGIAllowed(const HttpHeader &header)
@@ -431,7 +463,7 @@ std::string Config::getFilePath(const HttpHeader& header)
     Config &config = getInstance();
     std::string root = config.getDirectiveValue(header, Root);
     if (root.empty())
-        throw std::runtime_error("No root directory found for filePath: " + header.getPath() + ", host: " + header.getHost());
+        return "";
 
     // Ensure root does not end with a slash
     if (!root.empty() && root[root.size() - 1] == '/')
@@ -453,7 +485,7 @@ std::string Config::getFilePath(const HttpHeader &header, std::string path)
     Config &config = getInstance();
     std::string root = config.getDirectiveValue(header, Root);
     if (root.empty())
-        throw std::runtime_error("No root directory found for filePath: " + path + ", host: " + header.getHost());
+        return "";
 
     // Ensure root does not end with a slash
     if (!root.empty() && root[root.size() - 1] == '/')
