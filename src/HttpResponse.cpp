@@ -228,7 +228,7 @@ int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 			LOG_ERROR("Couldn't get file stats");
 		}
 		fileInf.name = dirp->d_name;
-		fileInf.size = Utils::toString((size_t) fileStat.st_size);
+		fileInf.size = Utils::toString(static_cast<size_t> (fileStat.st_size));
 		fileInf.date = std::string(ctime(&fileStat.st_mtime));
 		files.push_back(fileInf);
 	}
