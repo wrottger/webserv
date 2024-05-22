@@ -382,21 +382,6 @@ void HttpHeader::States::SP(char c, HttpMessage &message, StateHandler &nextStat
 	}
 }
 
-void HttpHeader::States::fieldValue(char c, HttpMessage& message, StateHandler& nextState) {
-    // TODO check duplicate headers transfer coding & content length
-    if (c == '\r') {
-        message.headers[message.fieldName] = message.fieldValue;
-        message.fieldName = "";
-        message.fieldValue = "";
-        nextState.func = CR;
-    } else if (c == '\n') {
-        message.headers[message.fieldName] = message.fieldValue;
-        message.fieldName = "";
-        message.fieldValue = "";
-        nextState.func = fieldValue;
-    } else {
-        message.fieldValue += c;
-    }
 void HttpHeader::States::fieldValue(char c, HttpMessage &message, StateHandler &nextState) {
 	if (c == '\r') {
 		message.headers[message.fieldName] = message.fieldValue;
