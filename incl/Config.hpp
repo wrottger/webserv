@@ -42,6 +42,7 @@ public:
 		Data,
 		Semicolon,
 		ErrorPage,
+		UploadDir
 	};
 
 	std::map<std::string, TokenType> _tokens;

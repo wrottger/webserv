@@ -463,7 +463,7 @@ std::string Config::getFilePath(const HttpHeader& header)
     Config &config = getInstance();
     std::string root = config.getDirectiveValue(header, Root);
     if (root.empty())
-        throw std::runtime_error("No root directory found for filePath: " + header.getPath() + ", host: " + header.getHost());
+        return "";
 
     // Ensure root does not end with a slash
     if (!root.empty() && root[root.size() - 1] == '/')
@@ -485,7 +485,7 @@ std::string Config::getFilePath(const HttpHeader &header, std::string path)
     Config &config = getInstance();
     std::string root = config.getDirectiveValue(header, Root);
     if (root.empty())
-        throw std::runtime_error("No root directory found for filePath: " + path + ", host: " + header.getHost());
+        return "";
 
     // Ensure root does not end with a slash
     if (!root.empty() && root[root.size() - 1] == '/')

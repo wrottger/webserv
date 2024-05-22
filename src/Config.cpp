@@ -32,6 +32,7 @@ void Config::parseConfigFile(std::string filename)
     _tokens["}"] = CloseBrace;
     _tokens[";"] = Semicolon;
     _tokens["error_page"] = ErrorPage;
+    _tokens["upload_dir"] = UploadDir;
 
     this->scanTokens(_fileStream);
     _fileStream.close();
@@ -330,6 +331,21 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                     else
                         error("Syntax error: error page directive requires error code + error page path", it);
                     break;
+                case UploadDir:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        // make pair of token and value and add it to vector of directives
+                        if (isValidPath((it + 1)->_value))
+                            block._directives.push_back(std::make_pair(UploadDir, (it + 1)->_value));
+                        else
+                            error("Syntax error: invalid path in upload_dir directive", it + 1);
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after upload_dir directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: upload_dir directive requires a value", it);
+                    break;
                 default:
                     error("Syntax error: unexpected token in server block", it);
             }
@@ -521,6 +537,21 @@ Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& st
                     }
                     else
                         error("Syntax error: cgi directive requires file extension + interpreter path", it);
+                    break;
+                case UploadDir:
+                    if (it + 1 != end && (it + 1)->_token == Data)
+                    {
+                        // make pair of token and value and add it to vector of directives
+                        if (isValidPath((it + 1)->_value))
+                            block._directives.push_back(std::make_pair(UploadDir, (it + 1)->_value));
+                        else
+                            error("Syntax error: invalid path in upload_dir directive", it + 1);
+                        it += 2;
+                        if (it == end || it->_token != Semicolon)
+                            error("Syntax error: missing semicolon after upload_dir directive", it - 2);
+                    }
+                    else
+                        error("Syntax error: upload_dir directive requires a value", it);
                     break;
                 case Semicolon:
                 {
