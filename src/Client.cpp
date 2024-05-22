@@ -25,8 +25,7 @@ Client::Client(int fd, std::string ip):
 		_fd(fd),
 		_canBeDeleted(false),
 		_state(READING_HEADER),
-		_ip(ip),
-		_bodyBuffer("") {
+		_ip(ip) {
 	updateTime();
 	_responseHttp = NULL;
 }
@@ -109,7 +108,7 @@ bool Client::isDeletable() const {
 }
 
 // Returns the body buffer
-std::string &Client::getBodyBuffer() {
+std::vector<char> &Client::getBodyBuffer() {
 	return _bodyBuffer;
 }
 
@@ -153,7 +152,8 @@ void Client::readFromClient() {
 		size_t parsedSize = _header.parseBuffer(buffer);
 		if (parsedSize < static_cast<size_t>(bytes_received)) {
 			// save rest to bodybuffer
-			_bodyBuffer = std::string(&buffer[parsedSize]);
+			for (; parsedSize < static_cast<size_t>(bytes_received); parsedSize++)
+				_bodyBuffer.push_back(buffer[parsedSize]);
 		}
 		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
 		LOG_BUFFER(bufferDebug);		//TODO: DELETE DEBUG
