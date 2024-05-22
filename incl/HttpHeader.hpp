@@ -8,7 +8,6 @@
 class HttpHeader {
 public:
     HttpHeader();
-    ~HttpHeader();
     size_t parseBuffer(const char *requestLine);
     const std::map<std::string, std::string> &getHeaders() const;
     const std::string &getMethod() const;
@@ -45,16 +44,14 @@ private:
 
     HttpError parseError;
 
-    HttpHeader(const HttpHeader &other);
     std::string percentDecode(std::string &str);
-    HttpHeader &operator=(const HttpHeader &other);
 
     struct StateHandler;
     typedef void (*StateHandlerFunc)(char c, HttpMessage& message, StateHandler& nextState);
     struct StateHandler {
         StateHandlerFunc func;
     };
-    StateHandler *state;
+    StateHandler state;
 
     struct States
     {

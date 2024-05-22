@@ -9,14 +9,12 @@
 
 HttpHeader::HttpHeader() : parseError(0, ""){
     complete = false;
-    state = new StateHandler();
-    state->func = States::method;
+    state.func = States::method;
     message = HttpMessage();
     request_size = 0;
     message.port = 80;
 }
 
-HttpHeader::~HttpHeader() { delete state; }
 
 size_t HttpHeader::parseBuffer(const char *requestLine) {
     if (requestLine == NULL || isComplete() || parseError.code() != 0)
@@ -25,7 +23,7 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
     size_t i = 0;
     try
     {
-        for (; requestLine[i] != '\0' && state->func != States::headerFinished; i++)
+        for (; requestLine[i] != '\0' && state.func != States::headerFinished; i++)
         {
             request_size++;
             if (request_size > 8192) // TODO check against config
@@ -34,7 +32,7 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
                 throw HttpError(413, "Request Entity Too Large");
             }
             c = requestLine[i];
-            state->func(c, message, *state);
+            state.func(c, message, state);
         }
     }
     catch (HttpError &e)
@@ -42,7 +40,7 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         parseError = e;
         return i;
     }
-    if (state->func == States::headerFinished)
+    if (state.func == States::headerFinished)
     {
         LOG_DEBUG_WITH_TAG("header parsing finished", "HttpHeader::parseBuffer");
         message.path = percentDecode(message.path);
@@ -114,7 +112,7 @@ std::string HttpHeader::percentDecode(std::string &str)
     return decoded;
 }
 
-bool HttpHeader::isComplete() const { return state->func == States::headerFinished || isError(); }
+bool HttpHeader::isComplete() const { return state.func == States::headerFinished || isError(); }
 
 
 bool HttpHeader::States::isToken(char c) {
