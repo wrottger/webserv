@@ -14,9 +14,12 @@ public:
     const std::string &getPath() const;
     const std::string &getFileExtension() const;
     const std::string &getQuery() const;
-    int getPort();
+    int getPort() const;
     const std::string &getHost() const;
     const std::string &getHeader(const std::string &name) const;
+	bool isInHeader(const std::string &name) const;
+    bool isTransferEncodingChunked() const;
+    std::string getContentLength() const;
     // std::map<std::string, std::string> getHeaders() const;
 
     HttpError getError() const;

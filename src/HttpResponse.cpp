@@ -192,7 +192,7 @@ std::string HttpResponse::generateErrorResponse(const HttpError &error) {
 	}
 	else
 	{
-		std::ifstream file(config->getFilePath(error_path, header.getHeader("host")).c_str());
+		std::ifstream file(config.getFilePath(error_path, header.getHeader("host")).c_str());
 		if (!file.is_open())
 		{
 			std::string error_html = "<HTML><body><p><strong>";
@@ -327,7 +327,7 @@ void HttpResponse::write() {
 		{
 			LOG_DEBUG("HttpResponse sending response buffer");
 			// sending headers
-			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
+			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
 			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
 		} else if (getFile.is_open()) {

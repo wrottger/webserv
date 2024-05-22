@@ -10,6 +10,8 @@
 # include <cstdlib>
 # include <algorithm>
 # include <limits>
+# include "Utils.hpp"
+# include "HttpHeader.hpp"
 
 class Config {
 
@@ -47,21 +49,31 @@ class Config {
         std::map<std::string, TokenType> _tokens;
         
         // getters
-        static Config* getInstance();
+        static Config &getInstance();
         static std::vector<int> getPorts(std::vector<ServerBlock>& _serverBlocks);
         const std::vector<Node>& getNodes(void) const;
         std::vector<ServerBlock>& getServerBlocks(void);
-        bool isLoaded(void) const;
-        bool isValidPath(const std::string& path);
-        bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
-        bool isHostSet(const std::string& host, const std::string& port);
-        bool isCGIAllowed(const std::string& route, const std::string& host);
         std::pair<size_t, size_t> getClosestPathMatch(std::string route, std::string host);
         std::string getErrorPage(int code, const std::string& route, const std::string& host);
         std::string getDirectiveValue(const std::string& route, const std::string& host, const Config::TokenType directive);
         std::string getRootDirectory(const std::string route, const std::string host);
         std::string getFilePath(const std::string filePath, const std::string host);
         std::string getDir(const std::string filePath, const std::string host);
+        size_t getMaxBodySize(const std::string& route, const std::string& host);
+
+        // Checkers
+        bool isLoaded(void) const;
+        bool isValidPath(const std::string& path);
+        bool isDirectiveAllowed(const std::string& route, const std::string& host, const Config::TokenType directive, const std::string& value);
+        bool isHostSet(const std::string& host, const std::string& port) const;
+        bool isMethodAllowed(const HttpHeader &header, const std::string& method) const;
+
+		// CGI
+		std::string getCgiInterpreterPath(const HttpHeader &header);
+        std::string getCgiDir(const HttpHeader &header);
+        std::string getCgiScriptPath(const HttpHeader &header);
+        bool isCGIAllowed(const HttpHeader &header);
+
 
         // config parsing methods
         void parseConfigFile(std::string filename);

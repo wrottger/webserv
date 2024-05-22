@@ -1,5 +1,6 @@
 #ifndef EVENTSDATA_HPP
 #define EVENTSDATA_HPP
+#include <sys/epoll.h>
 
 enum EventType {
 	LISTENING,
@@ -9,6 +10,7 @@ enum EventType {
 
 struct EventsData {
 	int fd;
+	uint32_t eventMask;
 	EventType eventType;
 	void *objectPointer;
 };
