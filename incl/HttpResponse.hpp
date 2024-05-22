@@ -1,30 +1,37 @@
 #ifndef HTTPRESPONSE_HPP
 #define HTTPRESPONSE_HPP
 
+#include <auto_ptr.h>
 #include "HttpHeader.hpp"
 #include "Config.hpp"
 
 class HttpResponse
 {
     public:
-		HttpResponse(HttpHeader &header, int fds);
-		~HttpResponse();
+        HttpResponse();
+        ~HttpResponse();
+		HttpResponse(HttpHeader header, int fds);
         size_t readBuffer(const char* buffer);
         void write();
         bool finished();
+        bool isBodyFinished();
 
     private:
+        HttpResponse operator=(HttpResponse other);
+        HttpResponse(const HttpResponse&);
 		void generateDirListing();
-        HttpResponse();
-        HttpResponse(const HttpResponse &src);
-        HttpResponse &operator=(const HttpResponse &src);
 		std::string generateErrorResponse(const HttpError &error);
+		HttpError setupGetResponse();
 
-        HttpHeader & header;
+        HttpHeader header;
         Config *config;
+        std::string host;
+        std::string path;
         int fds;
         bool isChunked;
         bool isFinished;
+        bool isError;
+        bool bodyFinished;
         std::string response;
 
         // CHUNKED response
