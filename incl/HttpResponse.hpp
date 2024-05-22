@@ -24,7 +24,7 @@ class HttpResponse
 		HttpError setupGetResponse();
 
         HttpHeader header;
-        Config *config;
+        Config &config;
         std::string host;
         std::string path;
         int fds;
