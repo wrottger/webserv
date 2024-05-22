@@ -128,11 +128,13 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 	}
 	else if (header.getMethod() == "DELETE")
 	{
+		std::string filePath = config.getFilePath(header);
 		LOG_DEBUG("DELETE request");
 		if (!config.isDirectiveAllowed(header, Config::AllowedMethods, "DELETE"))
 			error = HttpError(405, "Method Not Allowed");
-		else if (remove(path.c_str()) != 0)
+		else if (remove(filePath.c_str()) != 0) {
 			error = HttpError(500, "Couldn't delete file");
+		}
 		else {
 			response += "200 OK\r\n\r\n";
 			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
