@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include "Logger.hpp"
 #include "Config.hpp"
+#include "Utils.hpp"
 
 static bool isFolder(const std::string &path)
 {
@@ -123,19 +124,10 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 	}
 	else if (header.getMethod() == "POST" && config.isDirectiveAllowed(path, host, Config::AllowedMethods, "POST"))
 	{
-		if (isFolder(config.getFilePath(path, host)))
-		{
-			
-		}
-		LOG_DEBUG("POST request");
-		if(header.getHeaders().count("transfer-encoding"))
-		{
-			if (header.getHeaders().find("transfer-encoding")->second == "chunked")
-			{
-				error = HttpError(501, header.getHeaders().find("transfer-encoding")->second + " encoding not supported");
-			}
-		}
-		response += "200 OK";
+		error = HttpError(405, "Method Not Allowed");
+		response += "405 Method Not Allowed\r\n";
+		response += "Allow: " + config.getDirectiveValue(path, host, Config::AllowedMethods) + "\r\n";
+		response += "Connection: close\r\n\r\n";
 	}
 	else if (header.getMethod() == "DELETE")
 	{
@@ -239,9 +231,7 @@ int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 			LOG_ERROR("Couldn't get file stats");
 		}
 		fileInf.name = dirp->d_name;
-		std::stringstream ss;
-		ss << fileStat.st_size;
-		fileInf.size = ss.str();
+		fileInf.size = Utils::toString((size_t) fileStat.st_size);
 		fileInf.date = std::string(ctime(&fileStat.st_mtime));
 		files.push_back(fileInf);
 	}
@@ -299,9 +289,7 @@ void HttpResponse::generateDirListing()
 	listing += "</table></body></html>";
 	response += "Content-Type: text/html\r\n";
 	response += "Content-Length: ";
-	std::stringstream ss;
-	ss << listing.size();
-	response += ss.str();
+	response += Utils::toString(listing.size());
 	response += "\r\n\r\n";
 	response += listing;
 	LOG_DEBUG(response.c_str());
@@ -354,7 +342,8 @@ void HttpResponse::write() {
 	} else {
 		if (response.size() > 0) {
 			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), 0);
-			response = response.substr(sentBytes);
+			if (sentBytes >= 0)
+				response = response.substr(sentBytes);
 		}
 		else {
 			isFinished = true;

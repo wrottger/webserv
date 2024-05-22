@@ -1,7 +1,6 @@
 #ifndef HTTPRESPONSE_HPP
 #define HTTPRESPONSE_HPP
 
-#include <auto_ptr.h>
 #include "HttpHeader.hpp"
 #include "Config.hpp"
 
