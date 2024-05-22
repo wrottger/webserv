@@ -8,7 +8,6 @@ class HttpResponse
 {
     public:
         HttpResponse();
-        ~HttpResponse();
 		HttpResponse(HttpHeader header, int fds);
         size_t readBuffer(const char* buffer);
         void write();
