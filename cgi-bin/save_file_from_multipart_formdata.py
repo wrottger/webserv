@@ -2,13 +2,13 @@ import cgi
 import os
 
 form = cgi.FieldStorage()
-print("HTTP/1.0 200 OK")
+print("HTTP/1.1 200 OK")
 print("Content-type: text/html")
 print()
 print('<html>')
 print('<body>')
 file_uploaded = False
-save_path = "/home/dnebatz/Documents/realwebserv/webserv/www/"  # specify your save path here
+save_path = os.path.join("/home", os.getenv("USER"), "sgoinfre")
 
 # Iterate over all fields in the form
 for key in form.keys():
@@ -23,7 +23,13 @@ for key in form.keys():
                 print(f'<p>Uploaded file: {item.filename}</p>')
                 # Strip leading path from file name to avoid directory traversal attacks
                 fn = os.path.basename(item.filename)
-                open(os.path.join(save_path, fn), 'wb').write(item.file.read())
+                chunk_size = 4096  # Or any other chunk size you want
+                with open(os.path.join(save_path, fn), 'wb') as f:
+                    while True:
+                        chunk = item.file.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
                 print(f'<p>File "{fn}" was uploaded successfully</p>')
     else:
         if fileitem.filename:
@@ -31,8 +37,13 @@ for key in form.keys():
             print(f'<p>Uploaded file: {fileitem.filename}</p>')
             # Strip leading path from file name to avoid directory traversal attacks
             fn = os.path.basename(fileitem.filename)
-            open(os.path.join(save_path, fn), 'wb').write(fileitem.file.read())
-            print(f'<p>File "{fn}" was uploaded successfully</p>')
-
+            chunk_size = 4096  # Or any other chunk size you want
+            with open(os.path.join(save_path, fn), 'wb') as f:
+                while True:
+                    chunk = fileitem.file.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+print(f'<p>File "{fn}" was uploaded successfully</p>')
 print('</body>')
 print('</html>')
