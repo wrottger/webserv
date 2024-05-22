@@ -94,7 +94,7 @@ bool HttpHeader::isInHeader(const std::string &name) const {
 // Returns true if the request is a Transfer-Encoding: chunked request
 bool HttpHeader::isTransferEncodingChunked() const {
 	std::map<std::string, std::string>::const_iterator it = message.headers.find("transfer-encoding");
-	return it != message.headers.end() && it->second.find("Chunked") != std::string::npos;
+	return it != message.headers.end() && it->second.find("chunked") != std::string::npos;
 }
 
 // Returns true if an error occurred during parsing
