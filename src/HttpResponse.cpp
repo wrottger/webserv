@@ -32,12 +32,13 @@ static bool isFile(const std::string &path)
 
 HttpError HttpResponse::setupGetResponse()
 {
+	LOG_DEBUG_WITH_TAG(config.getFilePath(header).c_str(), "file path");
 	if (isFile(config.getFilePath(header)))
 	{
 		LOG_DEBUG(config.getFilePath(header).c_str());
 		LOG_DEBUG("returning file");
 		std::string filePath = config.getFilePath(header);
-		LOG_DEBUG(filePath);
+		LOG_DEBUG_WITH_TAG(filePath, "file path");
 		getFile.open(filePath.c_str());
 		if (getFile.fail())
 			return HttpError(500, "Couldn't open File");
@@ -55,6 +56,7 @@ HttpError HttpResponse::setupGetResponse()
 			LOG_DEBUG("returning index file");
 			std::string filePath = config.getFilePath(header) + config.getDirectiveValue(header, Config::Index);
 			getFile.open(filePath.c_str());
+			LOG_DEBUG_WITH_TAG(filePath, "file path");
 			if (getFile.fail())
 			{
 				if (config.getDirectiveValue(header, Config::Listing) == "on")
@@ -75,6 +77,9 @@ HttpError HttpResponse::setupGetResponse()
 			LOG_DEBUG("returning listing");
 			generateDirListing();
 			return HttpError();
+		}
+		else {
+			return HttpError(404, "Not Found");
 		}
 	}
 	else
@@ -148,7 +153,6 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 
 	if (error.code() != 0)
 	{
-		LOG_DEBUG("ERRROR_________________________________");
 		response = generateErrorResponse(error);
 		isError = true;
 	}
