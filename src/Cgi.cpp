@@ -506,3 +506,74 @@ bool Cgi::isTimedOut() {
 	}
 	return false;
 }
+
+std::string getUntilWhitespace(const std::string &str) {
+	size_t pos = str.find_first_of(' \t\n\r\f\v');
+	if (pos != std::string::npos) {
+		return str.substr(0, pos);
+	}
+	return str;
+}
+
+bool Cgi::isValidStatusCode(const std::string &statusCode) {
+	std::string const digits = getUntilWhitespace(statusCode);
+	if (digits.size() != 3) {
+		return false;
+	}
+	if (statusCode[0] != '1' && statusCode[0] != '2' && statusCode[0] != '3' && statusCode[0] != '4' && statusCode[0] != '5') {
+		return false;
+	}
+	if (!isdigit(statusCode[1]) || !isdigit(statusCode[2])) {
+		return false;
+	}
+	return true;
+}
+
+bool Cgi::isValidStatusLine(const std::string &line) {
+	if (line.compare(0, 5, "HTTP/") != 0) {
+		return false;
+	}
+	if (line.compare(5, 3, "0.9") != 0 && line.compare(6, 8, "1.0") != 0 && line.compare(6, 8, "1.1") != 0) {
+		return false;
+	}
+	if (line.compare(8, 1, " ") != 0) {
+		return false;
+	}
+	if (!isValidStatusCode(line.substr(9))) {
+		return false;
+	}
+	if (line.compare(12, 1, " ") != 0) {
+		return false;
+	}
+	size_t pos = line.find_first_of(" \t\r\v\f", 13);
+	if (pos != std::string::npos && line[pos] != '\n') {
+		return false;
+	}
+	return true;
+}
+
+bool Cgi::isValidHeaderField(const std::string &line) {
+	size_t colonPos = line.find(':');
+	if (colonPos == std::string::npos || colonPos == 0) {
+		// No colon found or the colon is the first character
+		return false;
+	}
+	for (size_t i = 0; i < colonPos; ++i) {
+		if (isspace(line[i])) {
+			// Whitespace found in the field name
+			return false;
+		}
+	}
+	// The header field is valid
+	return true;
+}
+
+bool Cgi::isValidMIMEType(const std::string &mimeType) {
+	
+}
+
+
+
+int Cgi::checkCgiReturnBuffer() {
+
+}
