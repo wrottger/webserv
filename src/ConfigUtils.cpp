@@ -504,6 +504,8 @@ std::string Config::getFilePath(const HttpHeader &header, std::string path)
 
 std::string Config::getDir(const HttpHeader &header) {
 	std::string path = getFilePath(header);
+    if (path.empty())
+        return "";
     return path.substr(0, path.find_last_of("/"));
 }
 
