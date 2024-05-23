@@ -54,6 +54,7 @@ private:
 	pid_t _childPid;
 	EventsData *_eventData;
 	size_t _bytesSendToCgi;
+	size_t _bodyBytesRead;
 
 
 

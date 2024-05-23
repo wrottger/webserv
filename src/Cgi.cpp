@@ -115,7 +115,9 @@ Cgi::Cgi(Client *client) :
 		_childPid(0),
 		_eventData(NULL),
 		_bytesSendToCgi(0),
-		_config(Config::getInstance()) {
+		_bodyBytesRead(_requestBody.size()),
+		_config(Config::getInstance())
+		{
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
@@ -194,7 +196,7 @@ int Cgi::readBody(EventsData *eventData) {
 			}
 		}
 	} else {
-		// Get leftover bodydata from headerparsing
+		// Push leftover bodydata from header to serverToCgiBuffer
 		if (_requestBody.size()) {
 			for (size_t i = 0; i < _requestBody.size(); i++) {
 				_serverToCgiBuffer.push_back(_requestBody[i]);
@@ -204,7 +206,7 @@ int Cgi::readBody(EventsData *eventData) {
 				LOG_DEBUG_WITH_TAG("Content-Length reached", "CGI");
 				_state = CREATE_CGI_PROCESS;
 				return 0;
-				// Check if the body is bigger then the content-length and send error
+				// Check if the body is bigger than the content-length and send error
 			} else if (_serverToCgiBuffer.size() > _contentLength) {
 				LOG_DEBUG_WITH_TAG("Content-Length exceeded", "CGI");
 				return -1;
@@ -277,6 +279,11 @@ int Cgi::readFromChild() {
 	ssize_t readSize = recv(_sockets[0], buffer, BUFFER_SIZE, MSG_DONTWAIT);
 	if (readSize > 0) {
 		buffer[readSize] = 0;
+		_bodyBytesRead += readSize;
+		if (_bodyBytesRead > MAX_CGI_BUFFER_SIZE) {
+			LOG_ERROR_WITH_TAG("MAX_CGI_BUFFER_SIZE exceeded", "CGI");
+			return -1;
+		}
 		_cgiToServerBuffer += buffer;
 		std::string debug("CGI TO SERVER BUFFER");
 		debug += _cgiToServerBuffer;
@@ -364,7 +371,7 @@ void Cgi::process(EventsData *eventData) {
 				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
 				int readBytesFromChild = readFromChild();
 				if (readBytesFromChild < 0) {
-					LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
+					LOG_DEBUG_WITH_TAG("Error reading from child", "CGI");
 					_errorCode = 500;
 					_state = SENDING_RESPONSE;
 				}
@@ -422,7 +429,7 @@ void Cgi::process(EventsData *eventData) {
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
-				std::cout <<  _cgiToServerBuffer.c_str() << std::endl;
+				// std::cout <<  _cgiToServerBuffer.c_str() << std::endl; TODO: delete debug
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
