@@ -5,20 +5,21 @@
 #include "Config.hpp"
 #include "EventHandler.hpp"
 #include "EventsData.hpp"
+#include "HttpChunkedDecoder.hpp"
 #include "Logger.hpp"
+#include "Utils.hpp"
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #include <wait.h>
+#include <cctype>
 #include <ctime>
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Utils.hpp"
-#include <signal.h>
-#include "HttpChunkedDecoder.hpp"
 
 #define SEND_SIZE 8192
 #define CGI_TIMEOUT 3
@@ -54,8 +55,7 @@ private:
 	pid_t _childPid;
 	EventsData *_eventData;
 	size_t _bytesSendToCgi;
-
-
+	std::map<std::string, std::string> _responseHeaders;
 
 	enum decodeState {
 		READ_SIZE,
@@ -81,6 +81,13 @@ private:
 	int checkIfValidMethod();
 	int checkIfValidFile();
 	bool isTimedOut();
+	// bool isValidStatusCode(const std::string &statusCode) const;
+	// bool isValidStatusLine(const std::string &line) const;
+	// bool isValidHeaderField(const std::string &line) const;
+	// bool isValidContentType(const std::string &line) const;
+	// bool isContentTypeField(const std::string &line) const;
+	int checkCgiReturnHeader();
+	int addHeaderField(const std::string &line);
 
 public:
 	Cgi(Client *client);

@@ -179,10 +179,10 @@ int Cgi::readBody(EventsData *eventData) {
 			_state = CREATE_CGI_PROCESS;
 			return 0;
 		} else if (decoderStatus == 1 && eventData->eventMask & EPOLLIN) {
-				// Read the rest body from the socket
-				_requestBody.clear();
-				char buffer[BUFFER_SIZE + 1];
-				ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
+			// Read the rest body from the socket
+			_requestBody.clear();
+			char buffer[BUFFER_SIZE + 1];
+			ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
 			if (readSize > 0) {
 				buffer[readSize] = 0;
 				for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
@@ -231,7 +231,7 @@ int Cgi::readBody(EventsData *eventData) {
 				} else if (readSize == -1 || readSize == 0) {
 					_state = FINISHED;
 				}
-			} 
+			}
 			// else {
 			// 	// _state = CREATE_CGI_PROCESS;
 			// 	LOG_DEBUG_WITH_TAG("Waiting for body", "CGI");
@@ -280,9 +280,9 @@ int Cgi::readFromChild() {
 		_cgiToServerBuffer += buffer;
 		std::string debug("CGI TO SERVER BUFFER");
 		debug += _cgiToServerBuffer;
-		LOG_DEBUG_WITH_TAG( debug, "CGI");
+		LOG_DEBUG_WITH_TAG(debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
-		LOG_DEBUG_WITH_TAG( "READING DONE", "CGI");
+		LOG_DEBUG_WITH_TAG("READING DONE", "CGI");
 		return 0;
 	}
 	return readSize;
@@ -367,8 +367,7 @@ void Cgi::process(EventsData *eventData) {
 					LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
 					_errorCode = 500;
 					_state = SENDING_RESPONSE;
-				}
-				else if (readBytesFromChild == 0) {
+				} else if (readBytesFromChild == 0) {
 					LOG_DEBUG_WITH_TAG("Finished to read from child", "CGI");
 					_state = WAITING_FOR_CHILD;
 				}
@@ -389,8 +388,7 @@ void Cgi::process(EventsData *eventData) {
 				LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
 				_state = SENDING_RESPONSE;
 				_errorCode = 500;
-			}
-			else if (waitPidReturn > 0) {
+			} else if (waitPidReturn > 0) {
 				if (WIFEXITED(status)) {
 					int exit_status = WEXITSTATUS(status);
 					std::string exit_status_str = "Child exited with status " + Utils::toString(exit_status);
@@ -403,8 +401,7 @@ void Cgi::process(EventsData *eventData) {
 						_state = SENDING_RESPONSE;
 						_errorCode = 500;
 					}
-				} 
-				else if (WIFSIGNALED(status)) {
+				} else if (WIFSIGNALED(status)) {
 					LOG_DEBUG_WITH_TAG("Child signaled", "CGI");
 					_state = SENDING_RESPONSE;
 					_errorCode = 500;
@@ -412,17 +409,17 @@ void Cgi::process(EventsData *eventData) {
 			}
 			// _state = SENDING_RESPONSE;
 			if (isTimedOut()) {
-					LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
-					kill(_childPid, SIGKILL); // Force quit the child process
-					// _state = SENDING_RESPONSE;
-					// _errorCode = 500;
-				}
+				LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
+				kill(_childPid, SIGKILL); // Force quit the child process
+				// _state = SENDING_RESPONSE;
+				// _errorCode = 500;
+			}
 			break;
 		case SENDING_RESPONSE:
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
-				std::cout <<  _cgiToServerBuffer.c_str() << std::endl;
+				std::cout << _cgiToServerBuffer.c_str() << std::endl;
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
@@ -446,7 +443,6 @@ EventsData *Cgi::getEventData() const {
 
 // Creates the CGI process, socket connection and registers the event
 int Cgi::createCgiProcess() {
-
 	//test if folder then try to open
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
@@ -507,73 +503,171 @@ bool Cgi::isTimedOut() {
 	return false;
 }
 
-std::string getUntilWhitespace(const std::string &str) {
-	size_t pos = str.find_first_of(' \t\n\r\f\v');
-	if (pos != std::string::npos) {
-		return str.substr(0, pos);
-	}
-	return str;
-}
+// std::string getUntilWhitespace(const std::string &str) const{
+// 	size_t pos = str.find_first_of(' \t\n\r\f\v');
+// 	if (pos != std::string::npos) {
+// 		return str.substr(0, pos);
+// 	}
+// 	return str;
+// }
 
-bool Cgi::isValidStatusCode(const std::string &statusCode) {
-	std::string const digits = getUntilWhitespace(statusCode);
-	if (digits.size() != 3) {
-		return false;
-	}
-	if (statusCode[0] != '1' && statusCode[0] != '2' && statusCode[0] != '3' && statusCode[0] != '4' && statusCode[0] != '5') {
-		return false;
-	}
-	if (!isdigit(statusCode[1]) || !isdigit(statusCode[2])) {
-		return false;
-	}
-	return true;
-}
+// bool Cgi::isValidStatusCode(const std::string &statusCode) const{
+// 	std::string const digits = getUntilWhitespace(statusCode);
+// 	if (digits.size() != 3) {
+// 		return false;
+// 	}
+// 	if (statusCode[0] != '1' && statusCode[0] != '2' && statusCode[0] != '3' && statusCode[0] != '4' && statusCode[0] != '5') {
+// 		return false;
+// 	}
+// 	if (!isdigit(statusCode[1]) || !isdigit(statusCode[2])) {
+// 		return false;
+// 	}
+// 	return true;
+// }
 
-bool Cgi::isValidStatusLine(const std::string &line) {
-	if (line.compare(0, 5, "HTTP/") != 0) {
-		return false;
-	}
-	if (line.compare(5, 3, "0.9") != 0 && line.compare(6, 8, "1.0") != 0 && line.compare(6, 8, "1.1") != 0) {
-		return false;
-	}
-	if (line.compare(8, 1, " ") != 0) {
-		return false;
-	}
-	if (!isValidStatusCode(line.substr(9))) {
-		return false;
-	}
-	if (line.compare(12, 1, " ") != 0) {
-		return false;
-	}
-	size_t pos = line.find_first_of(" \t\r\v\f", 13);
-	if (pos != std::string::npos && line[pos] != '\n') {
-		return false;
-	}
-	return true;
-}
+// // Checks if the status line is valid (HTTP/1.0 404 Not Found)
+// bool Cgi::isValidStatusLine(const std::string &line) const{
+// 	if (line.compare(0, 5, "HTTP/") != 0) {
+// 		return false;
+// 	}
+// 	if (line.compare(5, 3, "0.9") != 0 && line.compare(6, 8, "1.0") != 0 && line.compare(6, 8, "1.1") != 0) {
+// 		return false;
+// 	}
+// 	if (line.compare(8, 1, " ") != 0) {
+// 		return false;
+// 	}
+// 	if (!isValidStatusCode(line.substr(9))) {
+// 		return false;
+// 	}
+// 	return true;
+// }
 
-bool Cgi::isValidHeaderField(const std::string &line) {
+// bool Cgi::isValidHeaderField(const std::string &line) const{
+// 	size_t colonPos = line.find(':');
+// 	if (colonPos == std::string::npos || colonPos == 0) {
+// 		// No colon found or the colon is the first character
+// 		return false;
+// 	}
+// 	for (size_t i = 0; i < colonPos; ++i) {
+// 		if (isspace(line[i])) {
+// 			// Whitespace found in the field name
+// 			return false;
+// 		}
+// 	}
+// 	// The header field is valid
+// 	return true;
+// }
+
+// bool Cgi::isValidContentType(const std::string &line) const{
+// 	size_t colonPos = line.find(':');
+// 	if (colonPos == std::string::npos || colonPos == 0) {
+// 		// No colon found or the colon is the first character
+// 		return false;
+// 	}
+// 	if (line.substr(0, colonPos) != "Content-Type") {
+// 		return false;
+// 	}
+// 	if (line.substr(colonPos + 1, 1) != " ") {
+// 		return false;
+// 	}
+
+// 	std::string mimeType = line.substr(colonPos + 2);
+// 	size_t slashPos = mimeType.find('/');
+// 	if (slashPos == std::string::npos || slashPos == 0 || slashPos == mimeType.length() - 1) {
+// 		// No slash found, or the slash is the first or last character
+// 		return false;
+// 	}
+
+// 	// Check that the type and subtype consist only of alphanumeric characters and hyphens
+// 	for (size_t i = 0; i < mimeType.length(); ++i) {
+// 		if (i != slashPos && !std::isalnum(mimeType[i]) && mimeType[i] != '-') {
+// 			return false;
+// 		}
+// 	}
+// 	return true;
+// }
+
+// bool Cgi::isContentTypeField(const std::string &line) const{
+// 	if (line.substr(0, 13) == "Content-Type:") {
+// 		return true;
+// 	}
+// 	return false;
+// }
+
+int Cgi::addHeaderField(const std::string &line) {
 	size_t colonPos = line.find(':');
 	if (colonPos == std::string::npos || colonPos == 0) {
-		// No colon found or the colon is the first character
-		return false;
+		return -1;
 	}
-	for (size_t i = 0; i < colonPos; ++i) {
-		if (isspace(line[i])) {
-			// Whitespace found in the field name
-			return false;
+	std::string key = Utils::toLowerString(line.substr(0, colonPos));
+	std::string value = line.substr(colonPos + 1);
+	value = value.substr(value.find_first_not_of(' '), value.find_last_not_of(' ') + 1);
+	// Check if a key that is only allowed once already exists and if it does, return an error
+	if (key.compare(0, 13, "content-type") == 0 ||
+			key.compare(0, 14, "content-length") == 0 ||
+			key.compare(0, 8, "location") == 0) {
+		if (_responseHeaders.find(key) != _responseHeaders.end()) {
+			return -1;
+		}
+	} else {
+		// If the key already exists, append the value to the existing value
+		if (_responseHeaders.find(key) != _responseHeaders.end()) {
+			if (!value.empty()) {
+				_responseHeaders[key] += ", " + value;
+			}
+		} else {
+			_responseHeaders[key] = value;
 		}
 	}
-	// The header field is valid
-	return true;
+	return 0;
 }
 
-bool Cgi::isValidMIMEType(const std::string &mimeType) {
-	
-}
+int Cgi::checkCgiReturnHeader() {
+	if (_cgiToServerBuffer.empty()) {
+		return -1;
+		LOG_ERROR_WITH_TAG("Empty return value", "CGI");
+	}
+	size_t pos = _cgiToServerBuffer.find("\r\n\r\n");
+	if (pos == std::string::npos) {
+		LOG_ERROR_WITH_TAG("Invalid return value (Missing: \r\n\r\n)", "CGI");
+		return -1;
+	}
+	std::string header = _cgiToServerBuffer.substr(0, pos);
+	std::istringstream headerStream(header);
+	std::string line;
+	std::getline(headerStream, line);
+	size_t last_char = line.length() - 1;
+	if (line.at(last_char) == '\r') {
+		line.erase(last_char); // remove the last character if it's a '\r'
+	} else {
+		LOG_ERROR_WITH_TAG("Invalid line (No carriage return) in return value", "CGI");
+		return -1;
+	}
+	while (line.empty() == false) {
+		if (addHeaderField(line) == -1) {
+			return -1;
+		}
+		std::getline(headerStream, line);
+		size_t last_char = line.length() - 1;
+		if (line.at(last_char) == '\r') {
+			line.erase(last_char); // remove the last character if it's a '\r'
+		} else {
+			LOG_ERROR_WITH_TAG("Invalid line (No carriage return) in return value", "CGI");
+			return -1;
+		}
+	}
 
+	// Return an error if there is no status code or content-type in the return value
+	if (_responseHeaders.find("status") == _responseHeaders.end() &&
+			_responseHeaders.find("Content-Type") == _responseHeaders.end()) {
+		LOG_ERROR_WITH_TAG("No status code or content-type in return value", "CGI");
+		return -1;
+	}
 
-
-int Cgi::checkCgiReturnBuffer() {
-
+	// Return an error if there is a location header without a status code
+	if (_responseHeaders.find("location") != _responseHeaders.end() &&
+			_responseHeaders.find("status") == _responseHeaders.end()) {
+		return -1;
+	}
+	return 0;
 }
