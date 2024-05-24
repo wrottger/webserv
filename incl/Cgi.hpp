@@ -38,6 +38,13 @@ private:
 		FINISHED,
 	};
 
+	enum ResponseState {
+		DOCUMENT_RESPONSE,
+		LOCAL_REDIRECT,
+		CLIENT_REDIRECT,
+		CLIENT_REDIRECT_WITH_BODY
+	};
+
 	Client *_client;
 	HttpChunkedDecoder _chunkedDecoder;
 	const HttpHeader &_header;
@@ -56,6 +63,9 @@ private:
 	EventsData *_eventData;
 	size_t _bytesSendToCgi;
 	std::map<std::string, std::string> _responseHeaders;
+	bool _isResponseBodyPresent;
+	size_t _responseFlags;
+	ResponseState _responseState;
 
 	enum decodeState {
 		READ_SIZE,
@@ -82,13 +92,13 @@ private:
 	int checkIfValidFile();
 	bool isTimedOut();
 	bool isValidStatusCode(const std::string &statusCode) const;
-	// bool isValidStatusLine(const std::string &line) const;
-	// bool isValidHeaderField(const std::string &line) const;
-	// bool isValidContentType(const std::string &line) const;
-	// bool isContentTypeField(const std::string &line) const;
+	bool isValidContentType(const std::string &line) const;
 	int addHeaderField(const std::string &line);
 	bool isHeaderFieldPresent(const std::string &key) const;
-	int checkCgiReturnHeader();
+	int readCgiReturnHeader();
+	int setResponseState();
+	bool isUrlPath(const std::string &path) const;
+	bool isLocalPath(const std::string &path) const;
 
 public:
 	Cgi(Client *client);

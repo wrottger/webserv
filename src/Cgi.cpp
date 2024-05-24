@@ -417,6 +417,10 @@ void Cgi::process(EventsData *eventData) {
 			break;
 		case SENDING_RESPONSE:
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
+			if (readCgiReturnHeader() < 0) {
+				LOG_DEBUG_WITH_TAG("Failed to read CGI return header", "CGI");
+				_errorCode = 500;
+			}
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
 				std::cout << _cgiToServerBuffer.c_str() << std::endl;
@@ -524,74 +528,35 @@ bool Cgi::isValidStatusCode(const std::string &statusCode) const {
 	return true;
 }
 
-// // Checks if the status line is valid (HTTP/1.0 404 Not Found)
-// bool Cgi::isValidStatusLine(const std::string &line) const{
-// 	if (line.compare(0, 5, "HTTP/") != 0) {
-// 		return false;
-// 	}
-// 	if (line.compare(5, 3, "0.9") != 0 && line.compare(6, 8, "1.0") != 0 && line.compare(6, 8, "1.1") != 0) {
-// 		return false;
-// 	}
-// 	if (line.compare(8, 1, " ") != 0) {
-// 		return false;
-// 	}
-// 	if (!isValidStatusCode(line.substr(9))) {
-// 		return false;
-// 	}
-// 	return true;
-// }
+bool Cgi::isValidContentType(const std::string &line) const{
+	size_t colonPos = line.find(':');
+	if (colonPos == std::string::npos || colonPos == 0) {
+		// No colon found or the colon is the first character
+		return false;
+	}
+	if (line.substr(0, colonPos) != "Content-Type") {
+		return false;
+	}
+	if (line.substr(colonPos + 1, 1) != " ") {
+		return false;
+	}
 
-// bool Cgi::isValidHeaderField(const std::string &line) const{
-// 	size_t colonPos = line.find(':');
-// 	if (colonPos == std::string::npos || colonPos == 0) {
-// 		// No colon found or the colon is the first character
-// 		return false;
-// 	}
-// 	for (size_t i = 0; i < colonPos; ++i) {
-// 		if (isspace(line[i])) {
-// 			// Whitespace found in the field name
-// 			return false;
-// 		}
-// 	}
-// 	// The header field is valid
-// 	return true;
-// }
+	std::string mimeType = line.substr(colonPos + 2);
+	size_t slashPos = mimeType.find('/');
+	if (slashPos == std::string::npos || slashPos == 0 || slashPos == mimeType.length() - 1) {
+		// No slash found, or the slash is the first or last character
+		return false;
+	}
 
-// bool Cgi::isValidContentType(const std::string &line) const{
-// 	size_t colonPos = line.find(':');
-// 	if (colonPos == std::string::npos || colonPos == 0) {
-// 		// No colon found or the colon is the first character
-// 		return false;
-// 	}
-// 	if (line.substr(0, colonPos) != "Content-Type") {
-// 		return false;
-// 	}
-// 	if (line.substr(colonPos + 1, 1) != " ") {
-// 		return false;
-// 	}
+	// Check that the type and subtype consist only of alphanumeric characters and hyphens
+	for (size_t i = 0; i < mimeType.length(); ++i) {
+		if (i != slashPos && !std::isalnum(mimeType[i]) && mimeType[i] != '-') {
+			return false;
+		}
+	}
+	return true;
+}
 
-// 	std::string mimeType = line.substr(colonPos + 2);
-// 	size_t slashPos = mimeType.find('/');
-// 	if (slashPos == std::string::npos || slashPos == 0 || slashPos == mimeType.length() - 1) {
-// 		// No slash found, or the slash is the first or last character
-// 		return false;
-// 	}
-
-// 	// Check that the type and subtype consist only of alphanumeric characters and hyphens
-// 	for (size_t i = 0; i < mimeType.length(); ++i) {
-// 		if (i != slashPos && !std::isalnum(mimeType[i]) && mimeType[i] != '-') {
-// 			return false;
-// 		}
-// 	}
-// 	return true;
-// }
-
-// bool Cgi::isContentTypeField(const std::string &line) const{
-// 	if (line.substr(0, 13) == "Content-Type:") {
-// 		return true;
-// 	}
-// 	return false;
-// }
 
 int Cgi::addHeaderField(const std::string &line) {
 	size_t colonPos = line.find(':');
@@ -635,25 +600,33 @@ bool Cgi::isHeaderFieldPresent(const std::string &key) const {
 	return false;
 }
 
-int Cgi::checkCgiReturnHeader() {
+int trimCarriageReturn(std::string &str) {
+	size_t last_char = str.length() - 1;
+	if (str.at(last_char) == '\r') {
+		str.erase(last_char); // remove the last character if it's a '\r'
+	} else {
+		LOG_ERROR_WITH_TAG("Invalid line (No carriage return) in return value", "CGI");
+		return -1;
+	}
+	return 0;
+}
+
+// Reads the header of the return value into the _responseHeaders map, returns -1 on error
+int Cgi::readCgiReturnHeader() {
 	if (_cgiToServerBuffer.empty()) {
 		return -1;
-		LOG_ERROR_WITH_TAG("Empty return value", "CGI");
+		LOG_ERROR_WITH_TAG("Empty CGI return buffer", "CGI");
 	}
-	size_t pos = _cgiToServerBuffer.find("\r\n\r\n");
+	size_t pos = _cgiToServerBuffer.find("\n\n");
 	if (pos == std::string::npos) {
-		LOG_ERROR_WITH_TAG("Invalid return value (Missing: \r\n\r\n)", "CGI");
+		LOG_ERROR_WITH_TAG("Invalid return value (Missing: \n\n)", "CGI");
 		return -1;
 	}
 	std::string header = _cgiToServerBuffer.substr(0, pos);
 	std::istringstream headerStream(header);
 	std::string line;
 	std::getline(headerStream, line);
-	size_t last_char = line.length() - 1;
-	if (line.at(last_char) == '\r') {
-		line.erase(last_char); // remove the last character if it's a '\r'
-	} else {
-		LOG_ERROR_WITH_TAG("Invalid line (No carriage return) in return value", "CGI");
+	if (trimCarriageReturn(line) == -1) {
 		return -1;
 	}
 	while (line.empty() == false) {
@@ -661,24 +634,88 @@ int Cgi::checkCgiReturnHeader() {
 			return -1;
 		}
 		std::getline(headerStream, line);
-		size_t last_char = line.length() - 1;
-		if (line.at(last_char) == '\r') {
-			line.erase(last_char); // remove the last character if it's a '\r'
-		} else {
-			LOG_ERROR_WITH_TAG("Invalid line (No carriage return) in return value", "CGI");
+		if (trimCarriageReturn(line) == -1) {
 			return -1;
 		}
 	}
 
-	// Return an error if there is no status code or content-type in the return value
-	if (!isHeaderFieldPresent("status") && !isHeaderFieldPresent("content-type")) {
-		LOG_ERROR_WITH_TAG("No status code or content-type in return value", "CGI");
-		return -1;
+	// Check if a body is present
+	if (pos + 2 < _cgiToServerBuffer.size()) {
+		_isResponseBodyPresent = true;
 	}
 
-	// Return an error if there is a location header without a status code
-	if (!isHeaderFieldPresent("status") && isHeaderFieldPresent("location")) {
-		LOG_ERROR_WITH_TAG("Location header without status code in return value", "CGI");
+	if (setResponseState() < 0) {
+		return -1;
+	}
+	return -1;
+}
+
+bool isValidHttpPath(const std::string &path) {
+	// Check if path starts with "http://" or "/"
+	if (path.substr(0, 7) != "http://" && path[0] != '/') {
+		return false;
+	}
+
+	// Check for invalid characters
+	const std::string valid_chars = 
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz"
+		"0123456789"
+		"-._~:/?#[]@!$&'()*+,;=%";
+
+	if (path.find_first_not_of(valid_chars) != std::string::npos) {
+		return false;
+	}
+
+	return true;
+}
+
+bool Cgi::isUrlPath(const std::string &path) const {
+	if (path.find("http://") == 0) {
+		return true;
+	}
+	return false;
+}
+
+bool Cgi::isLocalPath(const std::string &path) const {
+	if (path.find("/") == 0) {
+		return true;
+	}
+	return false;
+}
+
+int Cgi::setResponseState() {
+	bool hasLocation = isHeaderFieldPresent("location");
+	bool hasContentType = isHeaderFieldPresent("content-type");
+	bool hasStatus = isHeaderFieldPresent("status");
+
+	if (hasLocation) {
+		if (!isValidHttpPath(_responseHeaders["location"])) {
+			return -1;
+		}
+		if (isUrlPath(_responseHeaders["location"])) {
+			if (_responseHeaders.size() == 1 && _isResponseBodyPresent == false) {
+				_responseState = CLIENT_REDIRECT;
+				return 0;
+			} else if (hasStatus && hasContentType) {
+				if (_responseHeaders["status"] == "302 Found") {
+					_responseState = CLIENT_REDIRECT_WITH_BODY;
+				}
+			} else {
+				return -1;
+			}
+		} else if (isLocalPath(_responseHeaders["location"])) {
+			if (_responseHeaders.size() == 1 && _isResponseBodyPresent == false) {
+				_responseState = LOCAL_REDIRECT;
+			} else {
+				return -1;
+			}
+		} else {
+			return -1;
+		}
+	} else if (isHeaderFieldPresent("content-type")) {
+		_responseState = DOCUMENT_RESPONSE;
+	} else {
 		return -1;
 	}
 	return 0;
