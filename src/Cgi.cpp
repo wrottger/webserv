@@ -503,6 +503,7 @@ int Cgi::checkIfValidFile() {
 	return 0;
 }
 
+// Checks if the CGI process timed out
 bool Cgi::isTimedOut() {
 	if (std::time(0) - _timeCreated >= CGI_TIMEOUT) {
 		return true;
@@ -518,6 +519,7 @@ bool Cgi::isTimedOut() {
 // 	return str;
 // }
 
+// Checks if the status code is valid
 bool Cgi::isValidStatusCode(const std::string &statusCode) const {
 	if (statusCode.size() < 3) {
 		return false;
@@ -531,6 +533,7 @@ bool Cgi::isValidStatusCode(const std::string &statusCode) const {
 	return true;
 }
 
+// Checks if the content-type value is valid
 bool Cgi::isValidContentType(const std::string &line) const{
 	size_t colonPos = line.find(':');
 	if (colonPos == std::string::npos || colonPos == 0) {
@@ -560,7 +563,7 @@ bool Cgi::isValidContentType(const std::string &line) const{
 	return true;
 }
 
-
+// Adds a header field to the _responseHeaders map and returns -1 on error
 int Cgi::addHeaderField(const std::string &line) {
 	size_t colonPos = line.find(':');
 	if (colonPos == std::string::npos || colonPos == 0) {
@@ -601,17 +604,6 @@ bool Cgi::isHeaderFieldPresent(const std::string &key) const {
 		return true;
 	}
 	return false;
-}
-
-int trimCarriageReturn(std::string &str) {
-	size_t last_char = str.length() - 1;
-	if (str.at(last_char) == '\r') {
-		str.erase(last_char); // remove the last character if it's a '\r'
-	} else {
-		LOG_ERROR_WITH_TAG("Invalid line (No carriage return) in return value", "CGI");
-		return -1;
-	}
-	return 0;
 }
 
 // Reads the header of the return value into the _responseHeaders map, returns -1 on error
@@ -656,6 +648,7 @@ int Cgi::readCgiReturnHeader() {
 	return -1;
 }
 
+// Checks if a path is a valid HTTP path
 bool isValidHttpPath(const std::string &path) {
 	// Check if path starts with "http://" or "/"
 	if (path.substr(0, 7) != "http://" && path[0] != '/') {
@@ -676,6 +669,7 @@ bool isValidHttpPath(const std::string &path) {
 	return true;
 }
 
+// Checks if a path is a http:// path
 bool Cgi::isUrlPath(const std::string &path) const {
 	if (path.find("http://") == 0) {
 		return true;
@@ -683,6 +677,7 @@ bool Cgi::isUrlPath(const std::string &path) const {
 	return false;
 }
 
+// Checks if a path is a local path
 bool Cgi::isLocalPath(const std::string &path) const {
 	if (path.find("/") == 0) {
 		return true;
@@ -691,6 +686,7 @@ bool Cgi::isLocalPath(const std::string &path) const {
 }
 
 // https://datatracker.ietf.org/doc/html/rfc3875.html#section-6.2
+// Set the response state based on the headers
 int Cgi::setResponseState() {
 	bool hasLocation = isHeaderFieldPresent("location");
 	bool hasContentType = isHeaderFieldPresent("content-type");
