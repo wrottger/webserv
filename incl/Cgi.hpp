@@ -39,6 +39,7 @@ private:
 	};
 
 	enum ResponseState {
+		NO_RESPONSE,
 		DOCUMENT_RESPONSE,
 		LOCAL_REDIRECT,
 		CLIENT_REDIRECT,
@@ -64,7 +65,6 @@ private:
 	size_t _bytesSendToCgi;
 	std::map<std::string, std::string> _responseHeaders;
 	bool _isResponseBodyPresent;
-	size_t _responseFlags;
 	ResponseState _responseState;
 	size_t _responseHeaderSize;
 

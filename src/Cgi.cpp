@@ -115,7 +115,10 @@ Cgi::Cgi(Client *client) :
 		_childPid(0),
 		_eventData(NULL),
 		_bytesSendToCgi(0),
-		_config(Config::getInstance()) {
+		_config(Config::getInstance()),
+		_isResponseBodyPresent(false),
+		_responseState(NO_RESPONSE),
+		_responseHeaderSize(0) {
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
