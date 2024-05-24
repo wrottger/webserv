@@ -81,13 +81,14 @@ private:
 	int checkIfValidMethod();
 	int checkIfValidFile();
 	bool isTimedOut();
-	// bool isValidStatusCode(const std::string &statusCode) const;
+	bool isValidStatusCode(const std::string &statusCode) const;
 	// bool isValidStatusLine(const std::string &line) const;
 	// bool isValidHeaderField(const std::string &line) const;
 	// bool isValidContentType(const std::string &line) const;
 	// bool isContentTypeField(const std::string &line) const;
-	int checkCgiReturnHeader();
 	int addHeaderField(const std::string &line);
+	bool isHeaderFieldPresent(const std::string &key) const;
+	int checkCgiReturnHeader();
 
 public:
 	Cgi(Client *client);

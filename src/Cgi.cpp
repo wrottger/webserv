@@ -511,19 +511,18 @@ bool Cgi::isTimedOut() {
 // 	return str;
 // }
 
-// bool Cgi::isValidStatusCode(const std::string &statusCode) const{
-// 	std::string const digits = getUntilWhitespace(statusCode);
-// 	if (digits.size() != 3) {
-// 		return false;
-// 	}
-// 	if (statusCode[0] != '1' && statusCode[0] != '2' && statusCode[0] != '3' && statusCode[0] != '4' && statusCode[0] != '5') {
-// 		return false;
-// 	}
-// 	if (!isdigit(statusCode[1]) || !isdigit(statusCode[2])) {
-// 		return false;
-// 	}
-// 	return true;
-// }
+bool Cgi::isValidStatusCode(const std::string &statusCode) const {
+	if (statusCode.size() < 3) {
+		return false;
+	}
+	if (statusCode[0] < '1' || statusCode[0] > '5' || !isdigit(statusCode[1]) || !isdigit(statusCode[2])) {
+		return false;
+	}
+	if (statusCode.size() > 3 && !isspace(statusCode[3])) {
+		return false;
+	}
+	return true;
+}
 
 // // Checks if the status line is valid (HTTP/1.0 404 Not Found)
 // bool Cgi::isValidStatusLine(const std::string &line) const{
@@ -602,8 +601,13 @@ int Cgi::addHeaderField(const std::string &line) {
 	std::string key = Utils::toLowerString(line.substr(0, colonPos));
 	std::string value = line.substr(colonPos + 1);
 	value = value.substr(value.find_first_not_of(' '), value.find_last_not_of(' ') + 1);
+	// Don't add the header field if the value is empty
+	if (value.empty()) {
+		return 0;
+	}
 	// Check if a key that is only allowed once already exists and if it does, return an error
-	if (key.compare(0, 13, "content-type") == 0 ||
+	if (key.compare(0, 6, "status") == 0 ||
+			key.compare(0, 13, "content-type") == 0 ||
 			key.compare(0, 14, "content-length") == 0 ||
 			key.compare(0, 8, "location") == 0) {
 		if (_responseHeaders.find(key) != _responseHeaders.end()) {
@@ -620,6 +624,15 @@ int Cgi::addHeaderField(const std::string &line) {
 		}
 	}
 	return 0;
+}
+
+// Checks if a header field is present case-insensitively
+bool Cgi::isHeaderFieldPresent(const std::string &key) const {
+	std::string lowerCaseKey = Utils::toLowerString(key);
+	if (_responseHeaders.find(lowerCaseKey) != _responseHeaders.end()) {
+		return true;
+	}
+	return false;
 }
 
 int Cgi::checkCgiReturnHeader() {
@@ -658,15 +671,14 @@ int Cgi::checkCgiReturnHeader() {
 	}
 
 	// Return an error if there is no status code or content-type in the return value
-	if (_responseHeaders.find("status") == _responseHeaders.end() &&
-			_responseHeaders.find("Content-Type") == _responseHeaders.end()) {
+	if (!isHeaderFieldPresent("status") && !isHeaderFieldPresent("content-type")) {
 		LOG_ERROR_WITH_TAG("No status code or content-type in return value", "CGI");
 		return -1;
 	}
 
 	// Return an error if there is a location header without a status code
-	if (_responseHeaders.find("location") != _responseHeaders.end() &&
-			_responseHeaders.find("status") == _responseHeaders.end()) {
+	if (!isHeaderFieldPresent("status") && isHeaderFieldPresent("location")) {
+		LOG_ERROR_WITH_TAG("Location header without status code in return value", "CGI");
 		return -1;
 	}
 	return 0;
