@@ -41,3 +41,13 @@ int Utils::stringToNumber(const std::string& s) {
 	ss >> num;
 	return num;
 }
+
+char Utils::toLower(char c) {
+	return std::tolower(static_cast<unsigned char>(c));
+}
+
+std::string Utils::toLowerString(const std::string& str) {
+	std::string result = str;
+	std::transform(result.begin(), result.end(), result.begin(), Utils::toLower);
+	return result;
+}
