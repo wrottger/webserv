@@ -81,6 +81,10 @@ void Client::process(EventsData *eventData) {
 				}
 			}
 			break;
+		case REDIRECT:
+			delete _responseHttp;
+			delete _responseCgi;
+			break;
 		case FINISHED:
 			_canBeDeleted = true;
 			break;
@@ -126,6 +130,11 @@ bool Client::hasCgi() const {
 Cgi *Client::getCgi() {
 	return _responseCgi;
 }
+
+// void Client::setRedirect(const std::string &location) {
+// 	// _header.setPath(location);
+// 	_state = REDIRECT;
+// }
 
 // Returns true if the client has exceeded the timeout in READING_HEADER state
 bool Client::isTimeouted() const {
