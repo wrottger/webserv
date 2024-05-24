@@ -66,6 +66,7 @@ private:
 	bool _isResponseBodyPresent;
 	size_t _responseFlags;
 	ResponseState _responseState;
+	size_t _responseHeaderSize;
 
 	enum decodeState {
 		READ_SIZE,

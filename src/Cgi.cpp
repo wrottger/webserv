@@ -644,6 +644,9 @@ int Cgi::readCgiReturnHeader() {
 		_isResponseBodyPresent = true;
 	}
 
+	// Set the size of the header
+	_responseHeaderSize = pos + 2;
+
 	if (setResponseState() < 0) {
 		return -1;
 	}
@@ -684,6 +687,7 @@ bool Cgi::isLocalPath(const std::string &path) const {
 	return false;
 }
 
+// https://datatracker.ietf.org/doc/html/rfc3875.html#section-6.2
 int Cgi::setResponseState() {
 	bool hasLocation = isHeaderFieldPresent("location");
 	bool hasContentType = isHeaderFieldPresent("content-type");
