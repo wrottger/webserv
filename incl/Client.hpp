@@ -27,12 +27,14 @@ public:
 	const std::string &getIp() const;
 	bool hasCgi() const;
 	Cgi *getCgi();
+	void setRedirect(const std::string &location);
 
 private:
 	enum State {
 		READING_HEADER,
 		CGI_RESPONSE,
 		NORMAL_RESPONSE,
+		REDIRECT,
 		FINISHED
 	};
 
