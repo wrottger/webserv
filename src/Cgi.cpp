@@ -47,8 +47,10 @@ char **Cgi::createEnviromentVariables() {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
 	}
+	envp.push_back("REDIRECT_STATUS=200");
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
+	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PATH_TRANSLATED=");
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
@@ -437,7 +439,7 @@ void Cgi::process(EventsData *eventData) {
 				// std::cout <<  _cgiToServerBuffer.c_str() << std::endl; TODO: delete debug
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
-					_cgiToServerBuffer = createErrorResponse(_errorCode);
+					_cgiToServerBuffer = generateErrorResponse	(_errorCode);
 				}
 				if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
@@ -517,4 +519,82 @@ bool Cgi::isTimedOut() {
 		return true;
 	}
 	return false;
+}
+
+std::string Cgi::generateErrorResponse(const int errorCode) {
+	std::string error_path = _config.getErrorPage(errorCode, _header);
+	std::string response;
+	response = "HTTP/1.1 ";
+	std::string message = getErrorMessage(errorCode);
+	std::stringstream errCode;
+	errCode << errorCode;
+	std::cout << "getErrorPage path: " << error_path << std::endl;
+	if (error_path.empty())
+	{
+		std::string error_html = "<HTML><body><p><strong>";
+		error_html += errCode.str();
+		error_html += " </strong>";
+		error_html += message;
+		error_html += "</p></body>";
+
+		response += errCode.str();
+		response += " ";
+		response += message + "\r\n";
+		response += "Connection: close\r\n";
+		response += "Content-Type: text/html\r\n";
+		response += "Content-Length: ";
+		std::stringstream errSize;
+		errSize << error_html.size();
+		response += errSize.str();
+		response += "\r\n\r\n";
+		response += error_html;
+	}
+	else
+	{
+		std::ifstream file(_config.getFilePath(_header, error_path).c_str());
+		if (!file.is_open())
+		{
+			std::string error_html = "<HTML><body><p><strong>";
+			error_html += "500";
+			error_html += " </strong>";
+			error_html += "Couldn't open error file";
+			error_html += "</p></body>";
+
+			response += errCode.str();
+			response += " ";
+			response += "Couldn't open error file\r\n";
+			response += "Connection: close\r\n";
+			response += "Content-Type: text/html\r\n";
+			response += "Content-Length: ";
+			std::stringstream errSize;
+			errSize << error_html.size();
+			response += errSize.str();
+			response += "\r\n\r\n";
+			response += error_html;
+			return response;
+		}
+		response += errCode.str() + " ";
+		response += message + "\r\n";
+		response += "Connection: close\r\n";
+		response += "Content-Type: text/html\r\n\r\n";
+		response += std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	}
+	LOG_DEBUG_WITH_TAG("Generated error response", "CGI::generateErrorResponse");
+	return response;
+}
+
+std::string Cgi::getErrorMessage(const int errorCode) {
+	switch (errorCode) {
+		case 500:
+			return ("Internal Server Error");
+		case 400:
+			return ("Bad request");
+		case 404:
+			return ("Not found");
+		case 405:
+			return ("Method not allowed");
+		default:
+			return ("Error");
+	}
+
 }
