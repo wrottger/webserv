@@ -426,6 +426,11 @@ void Cgi::process(EventsData *eventData) {
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
+					if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
+						LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
+					}
+					_state = FINISHED;
+					return;
 				}
 				if (_cgiResponse.sendResponse() == -1) {
 					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
@@ -441,9 +446,6 @@ void Cgi::process(EventsData *eventData) {
 					}
 					_state = FINISHED;
 				}
-				// if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
-				// 	LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
-				// }
 				_state = FINISHED;
 			}
 			break;
