@@ -1,4 +1,5 @@
 #include "Config.hpp"
+#include "Utils.hpp"
 #include "colors.hpp"
 
 void Config::parseConfigFile(std::string filename)
@@ -298,7 +299,13 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                 case ClientMaxBodySize:
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
-                        block._directives.push_back(std::make_pair(ClientMaxBodySize, (it + 1)->_value));
+                        try {
+                            std::cout << Utils::stringToNumber<size_t>((it + 1)->_value) << std::endl;
+                            block._directives.push_back(std::make_pair(ClientMaxBodySize, (it + 1)->_value));
+                        }
+                        catch (std::invalid_argument &e) {
+                            error("Syntax error: The provided value is not a positive integer within the range of size_t (0 to SIZE_MAX)", it + 1);
+                        }
                         it += 2;
                         if (it == end || it->_token != Semicolon)
                             error("Syntax error: missing semicolon after client_max_body_size directive", it - 2);
@@ -379,7 +386,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
         }
     }
     if (!root && block._locations.empty())
-        error("Syntax error: server requests cannot be handled without a port number or location block", start);
+        error("Syntax error: server requests cannot be handled without a root directive or location blocks", start);
     else if (root > 1)
         error("Syntax error: server block can only have one root directive", start);
     else if (!portFound)

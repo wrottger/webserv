@@ -33,11 +33,3 @@ std::string Utils::toString(int number) {
 	result << number;
 	return result.str();
 }
-
-// If the string is not a number, it will return 0
-int Utils::stringToNumber(const std::string& s) {
-	std::stringstream ss(s);
-	int num;
-	ss >> num;
-	return num;
-}
