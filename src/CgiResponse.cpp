@@ -200,7 +200,8 @@ int CgiResponse::parseHeader() {
 // Checks if a path is a valid HTTP path
 bool isValidHttpPath(const std::string &path) {
 	// Check if path starts with "http://" or "/"
-	if (path.substr(0, 7) != "http://" && path[0] != '/') {
+	if (path.substr(0, 7) != "http://" && path.substr(0, 8) != "https://" && path[0] != '/') {
+		LOG_DEBUG_WITH_TAG("invalid path", "CGI Response");
 		return false;
 	}
 
@@ -214,13 +215,13 @@ bool isValidHttpPath(const std::string &path) {
 	if (path.find_first_not_of(valid_chars) != std::string::npos) {
 		return false;
 	}
-
+	LOG_DEBUG_WITH_TAG("valid path", "CGI Response");
 	return true;
 }
 
 // Checks if a path is a http:// path
 bool CgiResponse::isUrlPath(const std::string &path) const {
-	if (path.find("http://") == 0) {
+	if (path.find("http://") == 0 || path.find("https://") == 0) {
 		return true;
 	}
 	return false;
