@@ -1,21 +1,6 @@
 #include "Client.hpp"
 #include "EventHandler.hpp"
 
- // TODO: Delete this function
-std::string createTestResponse() {
-	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-							   "<body><h1>Keine pull request approve fuer Freddy!</h1></body></html>";
-
-	std::ostringstream oss;
-	oss << responseBody.size();
-
-	std::string _responseHttp = "HTTP/1.1 200 OK\r\n"
-							   "Content-Type: text/html; charset=UTF-8\r\n"
-							   "Content-Length: " +
-			oss.str() + "\r\n\r\n" + responseBody;
-	return _responseHttp;
-}
-
 Client::Client() {}
 
 Client::Client(int fd, std::string ip):
@@ -48,7 +33,9 @@ void Client::process(EventsData *eventData) {
 	switch (_state) {
 		case READING_HEADER:
 			if (eventData->eventMask & EPOLLIN) {
-				readFromClient();
+				if (!isHeaderComplete()) {
+					readFromClient();
+				}
 				if (isHeaderComplete() && _header.isError() == false) {
 					if (Config::getInstance().isCGIAllowed(_header)) {
 						_state = CGI_RESPONSE;
@@ -70,7 +57,13 @@ void Client::process(EventsData *eventData) {
 				if (_cgi->isInternalRedirect()) {
 					_header.setPath(_cgi->getInternalRedirectLocation());
 					redirectReset();
-					_state = READING_HEADER;
+					if (Config::getInstance().isCGIAllowed(_header)) {
+						_state = CGI_RESPONSE;
+					} else {
+						_state = NORMAL_RESPONSE;
+						LOG_DEBUG("set State: NORMAL_RESPONSE");
+						_responseHttp = new HttpResponse(_header, _fd);
+					}
 				} else {
 					_state = FINISHED;
 				}
@@ -171,8 +164,11 @@ void Client::readFromClient() {
 }
 
 void Client::redirectReset() {
+	if (_cgi) {
+		EventHandler::getInstance().addToCleanUpList(_cgi->getEventData());
+		delete _cgi;
+	}
 	delete _responseHttp;
-	delete _cgi;
 	_responseHttp = NULL;
 	_cgi = NULL;
 	_bodyBuffer.clear();
