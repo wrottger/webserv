@@ -82,6 +82,8 @@ private:
 	int checkIfValidMethod();
 	int checkIfValidFile();
 	bool isTimedOut();
+	std::string generateErrorResponse(const int errorCode);
+	std::string getErrorMessage(const int errorCode);
 
 public:
 	Cgi(Client *client);
