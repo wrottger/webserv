@@ -379,7 +379,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
         }
     }
     if (!root && block._locations.empty())
-        error("Syntax error: server requests cannot be handled without a port number or location block", start);
+        error("Syntax error: server requests cannot be handled without a root directive or location blocks", start);
     else if (root > 1)
         error("Syntax error: server block can only have one root directive", start);
     else if (!portFound)
