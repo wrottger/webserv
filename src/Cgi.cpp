@@ -1,6 +1,7 @@
 #include "Cgi.hpp"
 #include <cstdlib>
 #include <cstring>
+#include "Utils.hpp"
 
 // TODO: Delete this function
 std::string createCgiTestResponse() {
@@ -46,8 +47,10 @@ char **Cgi::createEnviromentVariables() {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
 	}
+	envp.push_back("REDIRECT_STATUS=200");
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
+	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PATH_TRANSLATED=");
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
@@ -118,11 +121,17 @@ Cgi::Cgi(Client *client) :
 		_config(Config::getInstance()),
 		_cgiResponse(_cgiToServerBuffer, _fd),
 		_isInternalRedirect(false),
-		_InternalRedirectLocation("") {
+		_InternalRedirectLocation(""),
+		_bodyBytesRead(_requestBody.size())
+		{
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
-	_contentLength = Utils::stringToNumber(_header.getContentLength());
+	try {
+		_contentLength = Utils::stringToNumber<size_t>(_header.getContentLength());
+	} catch (std::invalid_argument &e) {
+		_contentLength = 0;
+	}
 }
 
 Cgi::~Cgi() {
@@ -197,7 +206,7 @@ int Cgi::readBody(EventsData *eventData) {
 			}
 		}
 	} else {
-		// Get leftover bodydata from headerparsing
+		// Push leftover bodydata from header to serverToCgiBuffer
 		if (_requestBody.size()) {
 			for (size_t i = 0; i < _requestBody.size(); i++) {
 				_serverToCgiBuffer.push_back(_requestBody[i]);
@@ -207,7 +216,7 @@ int Cgi::readBody(EventsData *eventData) {
 				LOG_DEBUG_WITH_TAG("Content-Length reached", "CGI");
 				_state = CREATE_CGI_PROCESS;
 				return 0;
-				// Check if the body is bigger then the content-length and send error
+				// Check if the body is bigger than the content-length and send error
 			} else if (_serverToCgiBuffer.size() > _contentLength) {
 				LOG_DEBUG_WITH_TAG("Content-Length exceeded", "CGI");
 				return -1;
@@ -280,6 +289,11 @@ int Cgi::readFromChild() {
 	ssize_t readSize = recv(_sockets[0], buffer, BUFFER_SIZE, MSG_DONTWAIT);
 	if (readSize > 0) {
 		buffer[readSize] = 0;
+		_bodyBytesRead += readSize;
+		if (_bodyBytesRead > MAX_CGI_BUFFER_SIZE) {
+			LOG_ERROR_WITH_TAG("MAX_CGI_BUFFER_SIZE exceeded", "CGI");
+			return -1;
+		}
 		_cgiToServerBuffer += buffer;
 		// std::string debug("CGI TO SERVER BUFFER");
 		// debug += _cgiToServerBuffer;
@@ -367,7 +381,7 @@ void Cgi::process(EventsData *eventData) {
 				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
 				int readBytesFromChild = readFromChild();
 				if (readBytesFromChild < 0) {
-					LOG_DEBUG_WITH_TAG("Failed to read from child", "CGI");
+					LOG_DEBUG_WITH_TAG("Error reading from child", "CGI");
 					_errorCode = 500;
 					_state = SENDING_RESPONSE;
 				} else if (readBytesFromChild == 0) {
@@ -425,7 +439,7 @@ void Cgi::process(EventsData *eventData) {
 				// std::cout << _cgiToServerBuffer.c_str() << std::endl;
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
-					_cgiToServerBuffer = createErrorResponse(_errorCode);
+					_cgiToServerBuffer = generateErrorResponse(_errorCode);
 					if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
 						LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
 					}
@@ -532,5 +546,80 @@ bool Cgi::isTimedOut() {
 	return false;
 }
 
+std::string Cgi::generateErrorResponse(const int errorCode) {
+	std::string error_path = _config.getErrorPage(errorCode, _header);
+	std::string response;
+	response = "HTTP/1.1 ";
+	std::string message = getErrorMessage(errorCode);
+	std::stringstream errCode;
+	errCode << errorCode;
+	std::cout << "getErrorPage path: " << error_path << std::endl;
+	if (error_path.empty())
+	{
+		std::string error_html = "<HTML><body><p><strong>";
+		error_html += errCode.str();
+		error_html += " </strong>";
+		error_html += message;
+		error_html += "</p></body>";
 
+		response += errCode.str();
+		response += " ";
+		response += message + "\r\n";
+		response += "Connection: close\r\n";
+		response += "Content-Type: text/html\r\n";
+		response += "Content-Length: ";
+		std::stringstream errSize;
+		errSize << error_html.size();
+		response += errSize.str();
+		response += "\r\n\r\n";
+		response += error_html;
+	}
+	else
+	{
+		std::ifstream file(_config.getFilePath(_header, error_path).c_str());
+		if (!file.is_open())
+		{
+			std::string error_html = "<HTML><body><p><strong>";
+			error_html += "500";
+			error_html += " </strong>";
+			error_html += "Couldn't open error file";
+			error_html += "</p></body>";
 
+			response += errCode.str();
+			response += " ";
+			response += "Couldn't open error file\r\n";
+			response += "Connection: close\r\n";
+			response += "Content-Type: text/html\r\n";
+			response += "Content-Length: ";
+			std::stringstream errSize;
+			errSize << error_html.size();
+			response += errSize.str();
+			response += "\r\n\r\n";
+			response += error_html;
+			return response;
+		}
+		response += errCode.str() + " ";
+		response += message + "\r\n";
+		response += "Connection: close\r\n";
+		response += "Content-Type: text/html\r\n\r\n";
+		response += std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	}
+	LOG_DEBUG_WITH_TAG("Generated error response", "CGI::generateErrorResponse");
+	return response;
+}
+
+std::string Cgi::getErrorMessage(const int errorCode) {
+	switch (errorCode) {
+		case 500:
+			return ("Internal Server Error");
+		case 400:
+			return ("Bad request");
+		case 404:
+			return ("Not found");
+		case 405:
+			return ("Method not allowed");
+		default:
+			return ("Error");
+	}
+
+}

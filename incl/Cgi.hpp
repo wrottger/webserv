@@ -60,6 +60,8 @@ private:
 	CgiResponse _cgiResponse;
 	bool _isInternalRedirect;
 	std::string _InternalRedirectLocation;
+	size_t _bodyBytesRead;
+
 
 
 	enum decodeState {
@@ -85,6 +87,8 @@ private:
 	int checkIfValidMethod();
 	int checkIfValidFile();
 	bool isTimedOut();
+	std::string generateErrorResponse(const int errorCode);
+	std::string getErrorMessage(const int errorCode);
 
 
 public:
