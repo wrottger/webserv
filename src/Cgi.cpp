@@ -1,6 +1,7 @@
 #include "Cgi.hpp"
 #include <cstdlib>
 #include <cstring>
+#include "Utils.hpp"
 
 // TODO: Delete this function
 std::string createCgiTestResponse() {
@@ -121,7 +122,11 @@ Cgi::Cgi(Client *client) :
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
-	_contentLength = Utils::stringToNumber(_header.getContentLength());
+	try {
+		_contentLength = Utils::stringToNumber<size_t>(_header.getContentLength());
+	} catch (std::invalid_argument &e) {
+		_contentLength = 0;
+	}
 }
 
 Cgi::~Cgi() {

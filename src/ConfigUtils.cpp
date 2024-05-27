@@ -513,7 +513,11 @@ std::string Config::getDir(const HttpHeader &header) {
 }
 
 size_t Config::getMaxBodySize(const HttpHeader &header) {
-	return Utils::stringToNumber(getDirectiveValue(header, ClientMaxBodySize));
+	try {
+        return Utils::stringToNumber<size_t>(getDirectiveValue(header, ClientMaxBodySize));
+    } catch (std::invalid_argument &e) {
+        return 0;
+    }
 }
 
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
