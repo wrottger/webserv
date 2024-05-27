@@ -281,9 +281,9 @@ int Cgi::readFromChild() {
 	if (readSize > 0) {
 		buffer[readSize] = 0;
 		_cgiToServerBuffer += buffer;
-		std::string debug("CGI TO SERVER BUFFER");
-		debug += _cgiToServerBuffer;
-		LOG_DEBUG_WITH_TAG(debug, "CGI");
+		// std::string debug("CGI TO SERVER BUFFER");
+		// debug += _cgiToServerBuffer;
+		// LOG_DEBUG_WITH_TAG(debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
 		LOG_DEBUG_WITH_TAG("READING DONE", "CGI");
 		return 0;
@@ -422,7 +422,7 @@ void Cgi::process(EventsData *eventData) {
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
-				std::cout << _cgiToServerBuffer.c_str() << std::endl;
+				// std::cout << _cgiToServerBuffer.c_str() << std::endl;
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
 					_cgiToServerBuffer = createErrorResponse(_errorCode);
@@ -433,8 +433,9 @@ void Cgi::process(EventsData *eventData) {
 					return;
 				}
 				if (_cgiResponse.sendResponse() == -1) {
-					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
-					_state = FINISHED;
+					LOG_ERROR_WITH_TAG("Failed to send cgiobject response", "CGI");
+					_errorCode = 500;
+					break;
 				}
 				if (_cgiResponse.isFinished()) {
 					if (_cgiResponse.isInternalRedirect()) {
@@ -446,7 +447,7 @@ void Cgi::process(EventsData *eventData) {
 					}
 					_state = FINISHED;
 				}
-				_state = FINISHED;
+				// _state = FINISHED;
 			}
 			break;
 		case FINISHED:
@@ -531,11 +532,5 @@ bool Cgi::isTimedOut() {
 	return false;
 }
 
-// std::string getUntilWhitespace(const std::string &str) const{
-// 	size_t pos = str.find_first_of(' \t\n\r\f\v');
-// 	if (pos != std::string::npos) {
-// 		return str.substr(0, pos);
-// 	}
-// 	return str;
-// }
+
 

@@ -41,7 +41,7 @@ class CgiResponse {
 		bool isLocalPath(const std::string &path) const;
 		int sendHeader();
 		int sendBody();
-		std::string createResponseHeader();
+		void createResponseHeader();
 
 		CgiResponse();
 		CgiResponse(const CgiResponse &other);

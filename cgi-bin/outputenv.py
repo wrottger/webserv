@@ -6,8 +6,8 @@ import time
 content_length = int(os.getenv('CONTENT_LENGTH', 0))
 buffer = sys.stdin.read(content_length)
 
-print("HTTP/1.0 200 OK")
-print("Content-type: text/html")
+print("status: 200 OK")
+print("content-type: text/html")
 print()
 print("<html><head>")
 print("<title>Hello CGI Program</title>")
@@ -20,4 +20,4 @@ for key, value in os.environ.items():
 print("</pre>")
 print(buffer)
 print("</body></html>")
-
+print()
