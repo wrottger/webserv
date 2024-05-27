@@ -27,14 +27,12 @@ public:
 	const std::string &getIp() const;
 	bool hasCgi() const;
 	Cgi *getCgi();
-	void setRedirect(const std::string &location);
 
 private:
 	enum State {
 		READING_HEADER,
 		CGI_RESPONSE,
 		NORMAL_RESPONSE,
-		REDIRECT,
 		FINISHED
 	};
 
@@ -46,9 +44,11 @@ private:
 	bool isHeaderComplete() const;
 	std::time_t getLastModified() const;
 	void readFromClient();
+	void redirectReset();
+	
 	HttpHeader _header;
 	HttpResponse *_responseHttp;
-	Cgi *_responseCgi;
+	Cgi *_cgi;
 	std::time_t _lastModified;
 	int _fd;
 	bool _canBeDeleted;

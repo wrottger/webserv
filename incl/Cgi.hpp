@@ -1,6 +1,7 @@
 #ifndef CGI_HPP
 #define CGI_HPP
 
+#include "CgiResponse.hpp"
 #include "Client.hpp"
 #include "Config.hpp"
 #include "EventHandler.hpp"
@@ -38,14 +39,6 @@ private:
 		FINISHED,
 	};
 
-	enum ResponseState {
-		NO_RESPONSE,
-		DOCUMENT_RESPONSE,
-		LOCAL_REDIRECT,
-		CLIENT_REDIRECT,
-		CLIENT_REDIRECT_WITH_BODY
-	};
-
 	Client *_client;
 	HttpChunkedDecoder _chunkedDecoder;
 	const HttpHeader &_header;
@@ -63,10 +56,11 @@ private:
 	pid_t _childPid;
 	EventsData *_eventData;
 	size_t _bytesSendToCgi;
-	std::map<std::string, std::string> _responseHeaders;
-	bool _isResponseBodyPresent;
-	ResponseState _responseState;
-	size_t _responseHeaderSize;
+	Config &_config;
+	CgiResponse _cgiResponse;
+	bool _isInternalRedirect;
+	std::string _InternalRedirectLocation;
+
 
 	enum decodeState {
 		READ_SIZE,
@@ -79,7 +73,6 @@ private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
-	Config &_config;
 	char **createEnviromentVariables();
 	char **createArguments();
 	void executeCgi();
@@ -92,14 +85,7 @@ private:
 	int checkIfValidMethod();
 	int checkIfValidFile();
 	bool isTimedOut();
-	bool isValidStatusCode(const std::string &statusCode) const;
-	bool isValidContentType(const std::string &line) const;
-	int addHeaderField(const std::string &line);
-	bool isHeaderFieldPresent(const std::string &key) const;
-	int readCgiReturnHeader();
-	int setResponseState();
-	bool isUrlPath(const std::string &path) const;
-	bool isLocalPath(const std::string &path) const;
+
 
 public:
 	Cgi(Client *client);
@@ -109,6 +95,8 @@ public:
 	int getErrorCode() const;
 	void process(EventsData *eventData);
 	EventsData *getEventData() const;
+	bool isInternalRedirect() const;
+	std::string getInternalRedirectLocation() const;
 };
 
 #endif

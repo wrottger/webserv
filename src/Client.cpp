@@ -20,20 +20,19 @@ Client::Client() {}
 
 Client::Client(int fd, std::string ip):
 		_responseHttp(NULL),
-		_responseCgi(NULL),
+		_cgi(NULL),
 		_lastModified(0),
 		_fd(fd),
 		_canBeDeleted(false),
 		_state(READING_HEADER),
 		_ip(ip) {
 	updateTime();
-	_responseHttp = NULL;
 }
 
 Client::~Client() {
 	LOG_DEBUG_WITH_TAG("Client destructor called", "Client");
 	delete _responseHttp;
-	delete _responseCgi;
+	delete _cgi;
 }
 
 int Client::getFd() {
@@ -62,13 +61,19 @@ void Client::process(EventsData *eventData) {
 			}
 			break;
 		case CGI_RESPONSE:
-			if (_responseCgi == NULL) {
-				_responseCgi = new Cgi(this);
+			if (_cgi == NULL) {
+				_cgi = new Cgi(this);
 				LOG_DEBUG("Creating new Cgi object");
 			}
-			_responseCgi->process(eventData);
-			if (_responseCgi->isFinished()) {
-				_state = FINISHED;
+			_cgi->process(eventData);
+			if (_cgi->isFinished()) {
+				if (_cgi->isInternalRedirect()) {
+					_header.setPath(_cgi->getInternalRedirectLocation());
+					redirectReset();
+					_state = READING_HEADER;
+				} else {
+					_state = FINISHED;
+				}
 			}
 			break;
 		case NORMAL_RESPONSE:
@@ -80,10 +85,6 @@ void Client::process(EventsData *eventData) {
 					_responseHttp->write();
 				}
 			}
-			break;
-		case REDIRECT:
-			delete _responseHttp;
-			delete _responseCgi;
 			break;
 		case FINISHED:
 			_canBeDeleted = true;
@@ -123,12 +124,12 @@ const std::string& Client::getIp() const{
 
 // Returns true if the client has a CGI response
 bool Client::hasCgi() const {
-	return _responseCgi != NULL;
+	return _cgi != NULL;
 }
 
 // Returns the CGI response
 Cgi *Client::getCgi() {
-	return _responseCgi;
+	return _cgi;
 }
 
 // void Client::setRedirect(const std::string &location) {
@@ -167,4 +168,12 @@ void Client::readFromClient() {
 		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
 		LOG_BUFFER(bufferDebug);		//TODO: DELETE DEBUG
 	}
+}
+
+void Client::redirectReset() {
+	delete _responseHttp;
+	delete _cgi;
+	_responseHttp = NULL;
+	_cgi = NULL;
+	_bodyBuffer.clear();
 }
