@@ -7,24 +7,29 @@
 class HttpResponse
 {
     public:
-		HttpResponse(HttpHeader &header, int fds);
-		~HttpResponse();
+        HttpResponse();
+		HttpResponse(HttpHeader header, int fds);
         size_t readBuffer(const char* buffer);
         void write();
         bool finished();
+        bool isBodyFinished();
 
     private:
-        HttpResponse();
-        HttpResponse(const HttpResponse &src);
-        HttpResponse &operator=(const HttpResponse &src);
-		std::string generateErrorResponse(const std::string &message);
+        HttpResponse operator=(HttpResponse other);
+        HttpResponse(const HttpResponse&);
+		void generateDirListing();
+		std::string generateErrorResponse(const HttpError &error);
+		HttpError setupGetResponse();
 
-        HttpHeader & header;
-        int fds;
+        HttpHeader header;
         Config &config;
-        HttpError error;
+        std::string host;
+        std::string path;
+        int fds;
         bool isChunked;
         bool isFinished;
+        bool isError;
+        bool bodyFinished;
         std::string response;
 
         // CHUNKED response
@@ -32,5 +37,12 @@ class HttpResponse
         char chunkedBuffer[1025];
         std::string chunks;
         size_t bufferIndex;
+
+        struct fileInfo {
+            std::string name;
+            std::string size;
+            std::string date;
+        } typedef fileInfo;
+        int listDir(std::string dir, std::vector<fileInfo> &files);
 };
 #endif // HTTPRESPONSE_HPP
