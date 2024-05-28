@@ -3,46 +3,15 @@
 #include <cstring>
 #include "Utils.hpp"
 
-// TODO: Delete this function
-std::string createCgiTestResponse() {
-	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-							   "<body><h1>Kein pull request approve fuer Freddy!</h1></body></html>";
-
-	std::ostringstream oss;
-	oss << responseBody.size();
-
-	std::string _responseHttp = "HTTP/1.1 200 OK\r\n"
-								"Content-Type: text/html; charset=UTF-8\r\n"
-								"Content-Length: " +
-			oss.str() + "\r\n\r\n" + responseBody;
-	return _responseHttp;
-}
-
-// TODO: Delete this function
-std::string Cgi::createErrorResponse(int errorCode) {
-	std::string responseBody = "<!DOCTYPE html><html><head><title>Error</title></head>"
-							   "<body><h1>Error " +
-			Utils::toString(errorCode) + "</h1></body></html>";
-
-	std::ostringstream oss;
-	oss << responseBody.size();
-
-	std::string responseHttp = "HTTP/1.1 " + Utils::toString(errorCode) + " Error\r\n"
-																		  "Content-Type: text/html; charset=UTF-8\r\n"
-																		  "Content-Length: " +
-			oss.str() + "\r\n\r\n" + responseBody;
-	return responseHttp;
-}
-
 // Creates the environment variables for the CGI script
 char **Cgi::createEnviromentVariables() {
 	std::vector<std::string> envp;
 
 	envp.push_back("AUTH_TYPE=");
 	if (_header.isTransferEncodingChunked())
-		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_serverToCgiBuffer.size())); // FIXME: When it was unchunked it should be the size after decoding
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_serverToCgiBuffer.size()));
 	else
-		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength));
 	if (_header.isInHeader("content-type")) {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
@@ -152,11 +121,6 @@ bool Cgi::isFinished() const {
 	return _state == FINISHED;
 }
 
-// Returns the error code of the CGI process
-int Cgi::getErrorCode() const {
-	return _errorCode;
-}
-
 // Executes the CGI script
 int Cgi::executeChild() {
 	close(_sockets[0]); // Close parent's end of the socket pair
@@ -262,10 +226,6 @@ int Cgi::readBody(EventsData *eventData) {
 					_state = FINISHED;
 				}
 			}
-			// else {
-			// 	// _state = CREATE_CGI_PROCESS;
-			// 	LOG_DEBUG_WITH_TAG("Waiting for body", "CGI");
-			// }
 		}
 	}
 	LOG_DEBUG_WITH_TAG("Read body chunk done", "CGI");
@@ -294,9 +254,6 @@ int Cgi::sendToChild() {
 		_errorCode = 500;
 		return -1;
 	}
-	// for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
-	// 	_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
-	// }
 	return 0;
 }
 
@@ -313,9 +270,6 @@ int Cgi::readFromChild() {
 			return -1;
 		}
 		_cgiToServerBuffer += buffer;
-		// std::string debug("CGI TO SERVER BUFFER");
-		// debug += _cgiToServerBuffer;
-		// LOG_DEBUG_WITH_TAG(debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
 		LOG_DEBUG_WITH_TAG("READING DONE", "CGI");
 		return 0;
@@ -384,7 +338,6 @@ void Cgi::process(EventsData *eventData) {
 			_state = SENDING_TO_CHILD;
 			break;
 		case SENDING_TO_CHILD:
-			// LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
 				if (sendToChild() == 1) {
@@ -393,7 +346,6 @@ void Cgi::process(EventsData *eventData) {
 			}
 			break;
 		case READING_FROM_CHILD:
-			// LOG_DEBUG_WITH_TAG("READING_FROM_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
 				int readBytesFromChild = readFromChild();
@@ -406,12 +358,10 @@ void Cgi::process(EventsData *eventData) {
 					_state = WAITING_FOR_CHILD;
 				}
 			}
-			// LOG_DEBUG_WITH_TAG("checking for timeout", "CGI");
 			if (isTimedOut()) {
 				LOG_DEBUG_WITH_TAG("Timeout reading from child", "CGI");
 				kill(_childPid, SIGKILL); // Force quit the child process
 				_state = WAITING_FOR_CHILD;
-				// _errorCode = 500;
 			}
 			break;
 		case WAITING_FOR_CHILD:
@@ -441,12 +391,9 @@ void Cgi::process(EventsData *eventData) {
 					_errorCode = 500;
 				}
 			}
-			// _state = SENDING_RESPONSE;
 			if (isTimedOut()) {
 				LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
 				kill(_childPid, SIGKILL); // Force quit the child process
-				// _state = SENDING_RESPONSE;
-				// _errorCode = 500;
 			}
 			break;
 		case SENDING_RESPONSE:
@@ -478,7 +425,6 @@ void Cgi::process(EventsData *eventData) {
 					}
 					_state = FINISHED;
 				}
-				// _state = FINISHED;
 			}
 			break;
 		case FINISHED:
