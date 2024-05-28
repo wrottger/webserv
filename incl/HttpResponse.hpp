@@ -13,6 +13,8 @@ class HttpResponse
         void write();
         bool finished();
         bool isBodyFinished();
+		static bool isFolder(const std::string &path);
+		static bool isFile(const std::string &path);
 
     private:
         HttpResponse operator=(HttpResponse other);
@@ -21,7 +23,7 @@ class HttpResponse
 		std::string generateErrorResponse(const HttpError &error);
 		HttpError setupGetResponse();
 
-        HttpHeader header;
+		HttpHeader header;
         Config &config;
         std::string host;
         std::string path;

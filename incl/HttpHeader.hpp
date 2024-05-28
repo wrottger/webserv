@@ -12,6 +12,7 @@ public:
     const std::map<std::string, std::string> &getHeaders() const;
     const std::string &getMethod() const;
     const std::string &getPath() const;
+    void setPath(const std::string &path);
     const std::string &getFileExtension() const;
     const std::string &getQuery() const;
     int getPort() const;
@@ -21,7 +22,6 @@ public:
     bool isTransferEncodingChunked() const;
     std::string getContentLength() const;
     // std::map<std::string, std::string> getHeaders() const;
-    void setPath(const std::string &path);
 
     HttpError getError() const;
     bool isError() const;

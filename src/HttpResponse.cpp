@@ -8,7 +8,7 @@
 #include "Config.hpp"
 #include "Utils.hpp"
 
-static bool isFolder(const std::string &path)
+bool HttpResponse::isFolder(const std::string &path)
 {
 	struct stat s;
 	if (stat(path.c_str(), &s) == 0)
@@ -19,7 +19,7 @@ static bool isFolder(const std::string &path)
 	return false;
 }
 
-static bool isFile(const std::string &path)
+bool HttpResponse::isFile(const std::string &path)
 {
 	struct	stat s;
 	if (stat(path.c_str(), &s) == 0)
@@ -53,7 +53,7 @@ HttpError HttpResponse::setupGetResponse()
 		if (config.getDirectiveValue(header, Config::Index).size() != 0)
 		{
 			LOG_DEBUG("returning index file");
-			std::string filePath = config.getFilePath(header) + config.getDirectiveValue(header, Config::Index);
+			std::string filePath = config.getFilePath(header);
 			getFile.open(filePath.c_str());
 			if (getFile.fail())
 			{
@@ -75,6 +75,10 @@ HttpError HttpResponse::setupGetResponse()
 			LOG_DEBUG("returning listing");
 			generateDirListing();
 			return HttpError();
+		}
+		else
+		{
+			return HttpError(403, "Forbidden");
 		}
 	}
 	else
@@ -223,7 +227,11 @@ int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 	{
 		struct stat fileStat;
 		fileInfo fileInf;
-		std::string filename = dir + "/" + dirp->d_name;
+		std::string filename;
+		if (!dir.empty() && dir[dir.length() - 1] != '/')
+			filename = dir + "/" + dirp->d_name;
+		else
+		 	filename = dir + dirp->d_name;
 		LOG_DEBUG_WITH_TAG(filename, "full path");
 		if (stat(filename.c_str(), &fileStat) == -1)
 		{

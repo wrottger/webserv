@@ -1,6 +1,8 @@
 #include "HttpHeader.hpp"
 #include "HttpError.hpp"
 #include "Logger.hpp"
+#include "Config.hpp"
+#include "HttpResponse.hpp"
 #include <string.h>
 #include <algorithm>
 #include <cstdlib>
@@ -56,6 +58,14 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
             message.port = std::strtol(message.headers.find("host")->second.substr(message.headers.find("host")->second.find(":") + 1).c_str(), NULL, 10);
             message.headers["host"] = message.host;
         }
+		Config &config = Config::getInstance();
+		LOG_DEBUG(message.path);
+		LOG_DEBUG_WITH_TAG(std::string(config.getDir(*this)).c_str(), "getDirPath");
+		LOG_DEBUG_WITH_TAG(std::string(config.getDirectiveValue(*this, Config::Index)).c_str(), "INDEX directive");
+		if (HttpResponse::isFolder(config.getDir(*this)) && config.getDirectiveValue(*this, Config::Index).size())
+		{
+			message.path += "/" + config.getDirectiveValue(*this, Config::Index);
+		}
         LOG_DEBUG(message.path);
         LOG_DEBUG(message.query);
         LOG_DEBUG(message.host);
@@ -70,6 +80,10 @@ const std::map<std::string, std::string> &HttpHeader::getHeaders() const {
 const std::string &HttpHeader::getMethod() const { return message.method; }
 
 const std::string &HttpHeader::getPath() const { return message.path; }
+
+void HttpHeader::setPath(const std::string &path) {
+	message.path = path;
+}
 
 const std::string &HttpHeader::getQuery() const { return message.query; }
 
@@ -92,10 +106,6 @@ std::string HttpHeader::getContentLength() const {
 		return contentLength->second;
 	}
 	return "";
-}
-
-void HttpHeader::setPath(const std::string &path) {
-	message.path = path;
 }
 
 bool HttpHeader::isInHeader(const std::string &name) const {
