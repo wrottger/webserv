@@ -122,8 +122,13 @@ Cgi::Cgi(Client *client) :
 		_cgiResponse(_cgiToServerBuffer, _fd),
 		_isInternalRedirect(false),
 		_InternalRedirectLocation(""),
-		_bodyBytesRead(_requestBody.size())
-		{
+		_bodyBytesRead(_requestBody.size()),
+		_maxBodySize(Config::getInstance().getMaxBodySize(_header)) {
+			if (_requestBody.size() > _maxBodySize) {
+				_errorCode = 413;
+				LOG_DEBUG_WITH_TAG("Request body too large", "CGI");
+				_state = SENDING_RESPONSE;
+			}
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
@@ -200,6 +205,12 @@ int Cgi::readBody(EventsData *eventData) {
 				for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
 					_requestBody.push_back(buffer[i]);
 				}
+				if (_requestBody.size() > _maxBodySize) {
+					_errorCode = 413;
+					LOG_DEBUG_WITH_TAG("Request body too large", "CGI");
+					_state = SENDING_RESPONSE;
+					return 0;
+				}
 			} else if (readSize == -1 || readSize == 0) {
 				LOG_DEBUG_WITH_TAG("Reading body read 0 or -1", "CGI");
 				_state = FINISHED;
@@ -233,6 +244,12 @@ int Cgi::readBody(EventsData *eventData) {
 					buffer[readSize] = 0;
 					for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
 						_serverToCgiBuffer.push_back(buffer[i]);
+					}
+					if (_serverToCgiBuffer.size() > _maxBodySize) {
+						_errorCode = 413;
+						LOG_DEBUG_WITH_TAG("Request body too large", "CGI");
+						_state = SENDING_RESPONSE;
+						return 0;
 					}
 					// Check if the body is bigger then the content-length
 					if (_contentLength && _serverToCgiBuffer.size() > _contentLength) {
@@ -353,7 +370,6 @@ void Cgi::process(EventsData *eventData) {
 				_errorCode = 400;
 				LOG_DEBUG_WITH_TAG("Failed to read body", "CGI");
 				_state = SENDING_RESPONSE;
-				break;
 			}
 			break;
 		case CREATE_CGI_PROCESS:
@@ -553,7 +569,7 @@ std::string Cgi::generateErrorResponse(const int errorCode) {
 	std::string message = getErrorMessage(errorCode);
 	std::stringstream errCode;
 	errCode << errorCode;
-	// std::cout << "getErrorPage path: " << error_path << std::endl;
+	std::cout << "getErrorPage path: " << error_path << std::endl;
 	if (error_path.empty())
 	{
 		std::string error_html = "<HTML><body><p><strong>";

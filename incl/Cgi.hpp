@@ -61,6 +61,7 @@ private:
 	bool _isInternalRedirect;
 	std::string _InternalRedirectLocation;
 	size_t _bodyBytesRead;
+	size_t _maxBodySize;
 
 
 
