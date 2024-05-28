@@ -581,6 +581,8 @@ std::string Cgi::getErrorMessage(const int errorCode) {
 			return ("Not found");
 		case 405:
 			return ("Method not allowed");
+		case 413:
+			return ("Request Entity Too Large");
 		default:
 			return ("Error");
 	}
