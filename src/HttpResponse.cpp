@@ -76,6 +76,10 @@ HttpError HttpResponse::setupGetResponse()
 			generateDirListing();
 			return HttpError();
 		}
+		else
+		{
+			return HttpError(403, "Forbidden");
+		}
 	}
 	else
 	{
