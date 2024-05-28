@@ -576,7 +576,7 @@ std::string Cgi::generateErrorResponse(const int errorCode) {
 	}
 	else
 	{
-		std::ifstream file(_config.getFilePath(_header, error_path).c_str());
+		std::ifstream file(error_path.c_str());
 		if (!file.is_open())
 		{
 			std::string error_html = "<HTML><body><p><strong>";
