@@ -22,7 +22,6 @@ public:
     bool isTransferEncodingChunked() const;
     std::string getContentLength() const;
     // std::map<std::string, std::string> getHeaders() const;
-    void setPath(const std::string &path);
 
     HttpError getError() const;
     bool isError() const;
