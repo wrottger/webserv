@@ -44,9 +44,11 @@ private:
 	bool isHeaderComplete() const;
 	std::time_t getLastModified() const;
 	void readFromClient();
+	void redirectReset();
+	
 	HttpHeader _header;
 	HttpResponse *_responseHttp;
-	Cgi *_responseCgi;
+	Cgi *_cgi;
 	std::time_t _lastModified;
 	int _fd;
 	bool _canBeDeleted;

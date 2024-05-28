@@ -52,6 +52,7 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PATH_TRANSLATED=");
+	envp.push_back("UPLOAD_PATH=" + Config::getInstance().getDir(_header) + Config::getInstance().getDirectiveValue(_header, Config::UploadDir));
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
 	envp.push_back("REMOTE_HOST=" + _clientIp);
@@ -118,9 +119,17 @@ Cgi::Cgi(Client *client) :
 		_childPid(0),
 		_eventData(NULL),
 		_bytesSendToCgi(0),
+		_config(Config::getInstance()),
+		_cgiResponse(_cgiToServerBuffer, _fd),
+		_isInternalRedirect(false),
+		_InternalRedirectLocation(""),
 		_bodyBytesRead(_requestBody.size()),
-		_config(Config::getInstance())
-		{
+		_maxBodySize(Config::getInstance().getMaxBodySize(_header)) {
+			if (_requestBody.size() > _maxBodySize) {
+				_errorCode = 413;
+				LOG_DEBUG_WITH_TAG("Request body too large", "CGI");
+				_state = SENDING_RESPONSE;
+			}
 	_sockets[0] = -1;
 	_sockets[1] = -1;
 	LOG_DEBUG_WITH_TAG("Cgi constructor called", "CGI");
@@ -188,14 +197,20 @@ int Cgi::readBody(EventsData *eventData) {
 			_state = CREATE_CGI_PROCESS;
 			return 0;
 		} else if (decoderStatus == 1 && eventData->eventMask & EPOLLIN) {
-				// Read the rest body from the socket
-				_requestBody.clear();
-				char buffer[BUFFER_SIZE + 1];
-				ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
+			// Read the rest body from the socket
+			_requestBody.clear();
+			char buffer[BUFFER_SIZE + 1];
+			ssize_t readSize = read(_fd, buffer, BUFFER_SIZE);
 			if (readSize > 0) {
 				buffer[readSize] = 0;
 				for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
 					_requestBody.push_back(buffer[i]);
+				}
+				if (_requestBody.size() > _maxBodySize) {
+					_errorCode = 413;
+					LOG_DEBUG_WITH_TAG("Request body too large", "CGI");
+					_state = SENDING_RESPONSE;
+					return 0;
 				}
 			} else if (readSize == -1 || readSize == 0) {
 				LOG_DEBUG_WITH_TAG("Reading body read 0 or -1", "CGI");
@@ -231,6 +246,12 @@ int Cgi::readBody(EventsData *eventData) {
 					for (size_t i = 0; i < static_cast<size_t>(readSize); i++) {
 						_serverToCgiBuffer.push_back(buffer[i]);
 					}
+					if (_serverToCgiBuffer.size() > _maxBodySize) {
+						_errorCode = 413;
+						LOG_DEBUG_WITH_TAG("Request body too large", "CGI");
+						_state = SENDING_RESPONSE;
+						return 0;
+					}
 					// Check if the body is bigger then the content-length
 					if (_contentLength && _serverToCgiBuffer.size() > _contentLength) {
 						return -1;
@@ -240,7 +261,7 @@ int Cgi::readBody(EventsData *eventData) {
 				} else if (readSize == -1 || readSize == 0) {
 					_state = FINISHED;
 				}
-			} 
+			}
 			// else {
 			// 	// _state = CREATE_CGI_PROCESS;
 			// 	LOG_DEBUG_WITH_TAG("Waiting for body", "CGI");
@@ -292,11 +313,11 @@ int Cgi::readFromChild() {
 			return -1;
 		}
 		_cgiToServerBuffer += buffer;
-		std::string debug("CGI TO SERVER BUFFER");
-		debug += _cgiToServerBuffer;
-		LOG_DEBUG_WITH_TAG( debug, "CGI");
+		// std::string debug("CGI TO SERVER BUFFER");
+		// debug += _cgiToServerBuffer;
+		// LOG_DEBUG_WITH_TAG(debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
-		LOG_DEBUG_WITH_TAG( "READING DONE", "CGI");
+		LOG_DEBUG_WITH_TAG("READING DONE", "CGI");
 		return 0;
 	}
 	return readSize;
@@ -350,7 +371,6 @@ void Cgi::process(EventsData *eventData) {
 				_errorCode = 400;
 				LOG_DEBUG_WITH_TAG("Failed to read body", "CGI");
 				_state = SENDING_RESPONSE;
-				break;
 			}
 			break;
 		case CREATE_CGI_PROCESS:
@@ -381,8 +401,7 @@ void Cgi::process(EventsData *eventData) {
 					LOG_DEBUG_WITH_TAG("Error reading from child", "CGI");
 					_errorCode = 500;
 					_state = SENDING_RESPONSE;
-				}
-				else if (readBytesFromChild == 0) {
+				} else if (readBytesFromChild == 0) {
 					LOG_DEBUG_WITH_TAG("Finished to read from child", "CGI");
 					_state = WAITING_FOR_CHILD;
 				}
@@ -403,8 +422,7 @@ void Cgi::process(EventsData *eventData) {
 				LOG_ERROR_WITH_TAG(strerror(errno), "CGI");
 				_state = SENDING_RESPONSE;
 				_errorCode = 500;
-			}
-			else if (waitPidReturn > 0) {
+			} else if (waitPidReturn > 0) {
 				if (WIFEXITED(status)) {
 					int exit_status = WEXITSTATUS(status);
 					std::string exit_status_str = "Child exited with status " + Utils::toString(exit_status);
@@ -417,8 +435,7 @@ void Cgi::process(EventsData *eventData) {
 						_state = SENDING_RESPONSE;
 						_errorCode = 500;
 					}
-				} 
-				else if (WIFSIGNALED(status)) {
+				} else if (WIFSIGNALED(status)) {
 					LOG_DEBUG_WITH_TAG("Child signaled", "CGI");
 					_state = SENDING_RESPONSE;
 					_errorCode = 500;
@@ -426,25 +443,42 @@ void Cgi::process(EventsData *eventData) {
 			}
 			// _state = SENDING_RESPONSE;
 			if (isTimedOut()) {
-					LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
-					kill(_childPid, SIGKILL); // Force quit the child process
-					// _state = SENDING_RESPONSE;
-					// _errorCode = 500;
-				}
+				LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
+				kill(_childPid, SIGKILL); // Force quit the child process
+				// _state = SENDING_RESPONSE;
+				// _errorCode = 500;
+			}
 			break;
 		case SENDING_RESPONSE:
 			LOG_DEBUG_WITH_TAG("SENDING_RESPONSE", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CLIENT) {
 				LOG_DEBUG_WITH_TAG("Sending response", "CGI");
-				// std::cout <<  _cgiToServerBuffer.c_str() << std::endl; TODO: delete debug
+				// std::cout << _cgiToServerBuffer.c_str() << std::endl;
 				if (_errorCode != 0) {
 					LOG_DEBUG_WITH_TAG("Error response triggered", "CGI");
-					_cgiToServerBuffer = generateErrorResponse	(_errorCode);
+					_cgiToServerBuffer = generateErrorResponse(_errorCode);
+					if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
+						LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
+					}
+					_state = FINISHED;
+					return;
 				}
-				if (send(_fd, _cgiToServerBuffer.c_str(), _cgiToServerBuffer.size(), 0) < 0) {
-					LOG_ERROR_WITH_TAG("Failed to send response", "CGI");
+				if (_cgiResponse.sendResponse() == -1) {
+					LOG_ERROR_WITH_TAG("Failed to send cgiobject response", "CGI");
+					_errorCode = 500;
+					break;
 				}
-				_state = FINISHED;
+				if (_cgiResponse.isFinished()) {
+					if (_cgiResponse.isInternalRedirect()) {
+						LOG_DEBUG_WITH_TAG("Internal redirect", "CGI");
+						_isInternalRedirect = true;
+						_InternalRedirectLocation = _cgiResponse.getInternalRedirectLocation();
+					} else {
+						LOG_DEBUG_WITH_TAG("Finished sending response", "CGI");
+					}
+					_state = FINISHED;
+				}
+				// _state = FINISHED;
 			}
 			break;
 		case FINISHED:
@@ -458,9 +492,16 @@ EventsData *Cgi::getEventData() const {
 	return _eventData;
 }
 
+bool Cgi::isInternalRedirect() const {
+	return _isInternalRedirect;
+}
+
+std::string Cgi::getInternalRedirectLocation() const {
+	return _InternalRedirectLocation;
+}
+
 // Creates the CGI process, socket connection and registers the event
 int Cgi::createCgiProcess() {
-
 	//test if folder then try to open
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, _sockets) < 0) {
@@ -514,6 +555,7 @@ int Cgi::checkIfValidFile() {
 	return 0;
 }
 
+// Checks if the CGI process timed out
 bool Cgi::isTimedOut() {
 	if (std::time(0) - _timeCreated >= CGI_TIMEOUT) {
 		return true;
@@ -551,7 +593,7 @@ std::string Cgi::generateErrorResponse(const int errorCode) {
 	}
 	else
 	{
-		std::ifstream file(_config.getFilePath(_header, error_path).c_str());
+		std::ifstream file(error_path.c_str());
 		if (!file.is_open())
 		{
 			std::string error_html = "<HTML><body><p><strong>";

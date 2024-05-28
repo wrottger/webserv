@@ -1,6 +1,6 @@
-print("HTTP/1.0 200 OK")
-print("Content-Type: text/html")    # HTML is following
-print()                             # blank line, end of headers
+print("Status: 200 OK")
+print("Content-Type: text/html\r")
+print("\r")
 print("<TITLE>CGI script output</TITLE>")
 print("<H1>This is my first CGI script</H1>")
 print("Hello, world!")

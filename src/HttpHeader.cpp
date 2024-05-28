@@ -108,6 +108,10 @@ std::string HttpHeader::getContentLength() const {
 	return "";
 }
 
+void HttpHeader::setPath(const std::string &path) {
+	message.path = path;
+}
+
 bool HttpHeader::isInHeader(const std::string &name) const {
 	return message.headers.find(name) != message.headers.end();
 }
