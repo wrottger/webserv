@@ -523,7 +523,7 @@ int Cgi::createCgiProcess() {
 int Cgi::checkIfValidFile() {
 	LOG_DEBUG_WITH_TAG("Checking file", "CGI");
 	std::ifstream getFile;
-	std::string filePath = _config.getFilePath(_header) + _config.getDirectiveValue(_header, Config::Index);
+	std::string filePath = _config.getFilePath(_header);
 	getFile.open(filePath.c_str());
 	LOG_DEBUG_WITH_TAG(filePath.c_str(), "CGI");
 	if (getFile.fail()) {
