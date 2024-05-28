@@ -93,7 +93,7 @@ bool CgiResponse::isValidContentType(const std::string &line) const {
 		// No colon found or the colon is the first character
 		return false;
 	}
-	if (line.substr(0, colonPos) != "Content-Type") {
+	if (Utils::toLowerString(line.substr(0, colonPos)) != "content-type") {
 		return false;
 	}
 	if (line.substr(colonPos + 1, 1) != " ") {
@@ -176,9 +176,9 @@ int CgiResponse::parseHeader() {
 		return 0;
 		LOG_DEBUG_WITH_TAG("Empty CGI return buffer", "CGI");
 	}
-	size_t pos = _cgiBuffer.find("\n\n");
+	size_t pos = _cgiBuffer.find("\r\n\r\n");
 	if (pos == std::string::npos) {
-		LOG_DEBUG_WITH_TAG("Invalid return value (Missing: \n\n)", "CGI");
+		LOG_DEBUG_WITH_TAG("Invalid return value (Missing: \r\n\r\n)", "CGI");
 		return 0;
 	}
 	std::string header = _cgiBuffer.substr(0, pos);
@@ -186,6 +186,10 @@ int CgiResponse::parseHeader() {
 	std::string line;
 	std::getline(headerStream, line);
 	while (line.empty() == false) {
+		if (line.find_last_of("\r") != line.size() - 1) {
+			return -1;
+		}
+		line = line.substr(0, line.size() - 1);
 		if (addHeaderField(line) == -1) {
 			LOG_DEBUG_WITH_TAG(line, "CGI LINE");
 			return 0;
