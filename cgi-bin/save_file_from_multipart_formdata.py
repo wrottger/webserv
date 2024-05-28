@@ -2,13 +2,13 @@ import cgi
 import os
 
 form = cgi.FieldStorage()
-print("Status: 200 OK")
-print("Content-type: text/html")
-print()
+print("status: 200 OK")
+print("content-type: text/html\r")
+print("\r")
 print('<html>')
 print('<body>')
 file_uploaded = False
-save_path = os.path.join("/home", os.getenv("USER"), "sgoinfre")
+save_path = os.getenv("UPLOAD_PATH")
 
 # Iterate over all fields in the form
 for key in form.keys():
@@ -47,3 +47,4 @@ for key in form.keys():
 print(f'<p>File "{fn}" was uploaded successfully</p>')
 print('</body>')
 print('</html>')
+print()

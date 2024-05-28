@@ -52,6 +52,7 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PATH_TRANSLATED=");
+	envp.push_back("UPLOAD_PATH=" + Config::getInstance().getDir(_header) + Config::getInstance().getDirectiveValue(_header, Config::UploadDir));
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
 	envp.push_back("REMOTE_HOST=" + _clientIp);
