@@ -17,32 +17,32 @@ CgiResponse::~CgiResponse() {}
 
 int CgiResponse::sendResponse() {
 	if (parseResponse() < 0) {
-		LOG_ERROR_WITH_TAG("parse Failed", "CGI");
+		LOG_ERROR_WITH_TAG("parse Failed", "CGI Response");
 		return -1;
 	}
 	if (_headerSent == false && _state != LOCAL_REDIRECT) {
 		if (sendHeader() < 0) {
-			LOG_ERROR_WITH_TAG("sendHeader CGI", "CGI");
+			LOG_ERROR_WITH_TAG("sendHeader CGI", "CGI Response");
 			return -1;
 		}
-		LOG_DEBUG_WITH_TAG("send okay", "CGI");
+		LOG_DEBUG_WITH_TAG("send okay", "CGI Response");
 		return 0;
 	}
-	LOG_DEBUG_WITH_TAG("going for the switch", "CGI");
+	LOG_DEBUG_WITH_TAG("going for the switch", "CGI Response");
 	if (!_isResponseBodyPresent) {
 		_bodySent = true;
-		LOG_DEBUG_WITH_TAG("no body present", "CGI");
+		LOG_DEBUG_WITH_TAG("no body present", "CGI Response");
 	}
 	switch (_state) {
 		case DOCUMENT_RESPONSE:
 			std::cout << "Response body size: " << _responseBodySize << std::endl;
 			if (_bodySent == false) {
 				if (sendBody() == -1) {
-					LOG_DEBUG_WITH_TAG("send body failed", "CGI");
+					LOG_DEBUG_WITH_TAG("send body failed", "CGI Response");
 					return -1;
 				}
 			} else {
-				LOG_DEBUG_WITH_TAG("send body finished", "CGI");
+				LOG_DEBUG_WITH_TAG("send body finished", "CGI Response");
 				_state = FINISHED;
 			}
 			break;
@@ -63,9 +63,9 @@ int CgiResponse::sendResponse() {
 			}
 			break;
 		case FINISHED:
-			LOG_ERROR_WITH_TAG("Response already sent (THIS SHOULD NOT TRIGGER)", "CGI");
+			LOG_ERROR_WITH_TAG("Response already sent (THIS SHOULD NOT TRIGGER)", "CGI Response");
 		default:
-			LOG_DEBUG_WITH_TAG("breakyboy", "CGI");
+			LOG_DEBUG_WITH_TAG("breakyboy", "CGI Response");
 			break;
 	}
 	return 0;
@@ -164,8 +164,10 @@ bool CgiResponse::isHeaderFieldPresent(const std::string &key) const {
 	// 	std::cout << it->first << ": " << it->second << std::endl;
 	// }
 	if (_responseHeaders.find(lowerCaseKey) != _responseHeaders.end()) {
+		LOG_DEBUG_WITH_TAG("Header field is present", "CGI Response");
 		return true;
 	}
+	LOG_DEBUG_WITH_TAG("Header field is not present", "CGI Response");
 	return false;
 }
 
@@ -174,11 +176,11 @@ bool CgiResponse::isHeaderFieldPresent(const std::string &key) const {
 int CgiResponse::parseHeader() {
 	if (_cgiBuffer.empty()) {
 		return 0;
-		LOG_DEBUG_WITH_TAG("Empty CGI return buffer", "CGI");
+		LOG_DEBUG_WITH_TAG("Empty CGI return buffer", "CGI Response");
 	}
 	size_t pos = _cgiBuffer.find("\r\n\r\n");
 	if (pos == std::string::npos) {
-		LOG_DEBUG_WITH_TAG("Invalid return value (Missing: \r\n\r\n)", "CGI");
+		LOG_DEBUG_WITH_TAG("Invalid return value (Missing: \r\n\r\n)", "CGI Response");
 		return 0;
 	}
 	std::string header = _cgiBuffer.substr(0, pos);
@@ -277,7 +279,7 @@ int CgiResponse::sendHeader() {
 	ssize_t bytesSent = send(_fd, _responseHeader.c_str() + _headerBytesSend, _responseHeader.size() - _headerBytesSend, MSG_DONTWAIT);
 	std::cout << "bytesSent Header: " << bytesSent << std::endl;
 	if (bytesSent < 0) {
-		LOG_ERROR_WITH_TAG("Failed to send response header", "CGI");
+		LOG_ERROR_WITH_TAG("Failed to send response header", "CGI Response");
 		return -1;
 	}
 	_headerBytesSend += bytesSent;
@@ -295,7 +297,7 @@ int CgiResponse::sendBody() {
 	std::cout << "_responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << " _responseBodySize.size(): " << _responseBodySize  << " _responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << std::endl;
 	std::cout << "bytesSent body: " << bytesSent << std::endl;
 	if (bytesSent < 0) {
-		LOG_ERROR_WITH_TAG("Failed to send response body", "CGI");
+		LOG_ERROR_WITH_TAG("Failed to send response body", "CGI Response");
 		return -1;
 	}
 	_bodyBytesSend += bytesSent;
