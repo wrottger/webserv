@@ -71,6 +71,10 @@ const std::string &HttpHeader::getMethod() const { return message.method; }
 
 const std::string &HttpHeader::getPath() const { return message.path; }
 
+void HttpHeader::setPath(const std::string &path) {
+	message.path = path;
+}
+
 const std::string &HttpHeader::getQuery() const { return message.query; }
 
 int HttpHeader::getPort() const {

@@ -275,7 +275,7 @@ void HttpResponse::generateDirListing()
 	for (size_t i = 0; i < files.size(); i++)
 	{
 		listing += "<tr><td><a href=\"";
-		listing += files[i].name;
+		listing += "./" + header.getPath() + "/" + files[i].name;
 		listing += "\">";
 		listing += files[i].name;
 		listing += "</a></td><td>";
