@@ -2,7 +2,7 @@ import cgi
 import os
 
 form = cgi.FieldStorage()
-print("HTTP/1.1 200 OK")
+print("Status: 200 OK")
 print("Content-type: text/html")
 print()
 print('<html>')
