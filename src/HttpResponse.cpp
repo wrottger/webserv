@@ -300,8 +300,8 @@ size_t HttpResponse::readBuffer(const char *buffer) {
 }
 
 void HttpResponse::write() {
-	LOG_DEBUG("HTTPRESPONSE");
-	LOG_DEBUG(response.c_str());
+	// LOG_DEBUG("HTTPRESPONSE");
+	// LOG_DEBUG(response.c_str());
 	if (isFinished)
 	{
 		LOG_INFO("HttpResponse::write isFinished");
@@ -311,14 +311,14 @@ void HttpResponse::write() {
 	if (header.getMethod() == "GET" && !isError) {
 		if (response.size())
 		{
-			LOG_DEBUG("HttpResponse sending response buffer");
+			// LOG_DEBUG("HttpResponse sending response buffer");
 			// sending headers
 			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
 			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
 		} else if (getFile.is_open()) {
 			// sending file
-			LOG_DEBUG("HttpResponse reading chunk from file");
+			// LOG_DEBUG("HttpResponse reading chunk from file");
 			getFile.read(chunkedBuffer, 1023);
 			if (getFile.gcount() == 0)
 			{

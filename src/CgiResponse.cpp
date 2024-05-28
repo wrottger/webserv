@@ -66,7 +66,9 @@ int CgiResponse::sendResponse() {
 			LOG_ERROR_WITH_TAG("Response already sent (THIS SHOULD NOT TRIGGER)", "CGI Response");
 			break;
 		default:
+			std::cout << "breakyboy" << _state << std::endl;
 			LOG_DEBUG_WITH_TAG("breakyboy", "CGI Response");
+			_state = FINISHED;
 			break;
 	}
 	return 0;
