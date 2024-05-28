@@ -45,4 +45,5 @@ class HttpResponse
         } typedef fileInfo;
         int listDir(std::string dir, std::vector<fileInfo> &files);
 };
+
 #endif // HTTPRESPONSE_HPP

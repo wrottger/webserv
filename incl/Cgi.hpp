@@ -1,27 +1,29 @@
 #ifndef CGI_HPP
 #define CGI_HPP
 
+#include "CgiResponse.hpp"
 #include "Client.hpp"
 #include "Config.hpp"
 #include "EventHandler.hpp"
 #include "EventsData.hpp"
+#include "HttpChunkedDecoder.hpp"
 #include "Logger.hpp"
+#include "Utils.hpp"
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #include <wait.h>
+#include <cctype>
 #include <ctime>
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Utils.hpp"
-#include <signal.h>
-#include "HttpChunkedDecoder.hpp"
 
 #define SEND_SIZE 8192
-#define CGI_TIMEOUT 3
+#define CGI_TIMEOUT 10
 #define MAX_CGI_BUFFER_SIZE 1024 * 1024
 
 class Cgi {
@@ -54,7 +56,12 @@ private:
 	pid_t _childPid;
 	EventsData *_eventData;
 	size_t _bytesSendToCgi;
+	Config &_config;
+	CgiResponse _cgiResponse;
+	bool _isInternalRedirect;
+	std::string _InternalRedirectLocation;
 	size_t _bodyBytesRead;
+	size_t _maxBodySize;
 
 
 
@@ -69,7 +76,6 @@ private:
 	Cgi();
 	Cgi(const Cgi &other);
 	Cgi &operator=(const Cgi &other);
-	Config &_config;
 	char **createEnviromentVariables();
 	char **createArguments();
 	void executeCgi();
@@ -85,6 +91,7 @@ private:
 	std::string generateErrorResponse(const int errorCode);
 	std::string getErrorMessage(const int errorCode);
 
+
 public:
 	Cgi(Client *client);
 	~Cgi();
@@ -93,6 +100,8 @@ public:
 	int getErrorCode() const;
 	void process(EventsData *eventData);
 	EventsData *getEventData() const;
+	bool isInternalRedirect() const;
+	std::string getInternalRedirectLocation() const;
 };
 
 #endif

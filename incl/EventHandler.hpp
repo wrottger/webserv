@@ -23,6 +23,7 @@ public:
 	static EventHandler &getInstance();
 	void start();
 	EventsData *registerEvent(int fd, EventType type, Client *client);
+	void addToCleanUpList(EventsData *eventData);
 
 private:
 	int _epollFd;
@@ -42,7 +43,6 @@ private:
 	void unregisterEvent(int fd);
 	void unregisterEvent(EventsData *eventData);
 	void addToCleanUpList(int fd);
-	void addToCleanUpList(EventsData *eventData);
 	void removeInactiveClients();
 	void processCleanUpList();
 	void acceptNewClient(EventsData *eventData);
