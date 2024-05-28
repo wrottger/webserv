@@ -47,7 +47,6 @@ private:
 	int _fd;
 	size_t _contentLength;
 	std::string _cgiToServerBuffer;
-	size_t _currentCgiToServerBufferSize;
 	time_t _timeCreated;
 	int _sockets[2];
 	int _errorCode;
@@ -97,7 +96,6 @@ public:
 	~Cgi();
 
 	bool isFinished() const;
-	int getErrorCode() const;
 	void process(EventsData *eventData);
 	EventsData *getEventData() const;
 	bool isInternalRedirect() const;

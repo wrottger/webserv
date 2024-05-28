@@ -18,16 +18,16 @@ char **Cgi::createEnviromentVariables() {
 	}
 	envp.push_back("REDIRECT_STATUS=200");
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
-	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
+	envp.push_back("PATH_INFO=" + _config.getFilePath(_header));
+	envp.push_back("SCRIPT_FILENAME=" + _config.getFilePath(_header));
 	envp.push_back("PATH_TRANSLATED=");
-	envp.push_back("UPLOAD_PATH=" + Config::getInstance().getDir(_header) + Config::getInstance().getDirectiveValue(_header, Config::UploadDir));
+	envp.push_back("UPLOAD_PATH=" + _config.getDir(_header) + _config.getDirectiveValue(_header, Config::UploadDir));
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
 	envp.push_back("REMOTE_HOST=" + _clientIp);
 	// envp.push_back("REMOTE_IDENT=");
 	envp.push_back("REQUEST_METHOD=" + _header.getMethod());
-	envp.push_back("SCRIPT_NAME=" + Config::getInstance().getCgiScriptPath(_header));
+	envp.push_back("SCRIPT_NAME=" + _config.getCgiScriptPath(_header));
 	envp.push_back("SERVER_NAME=" + _header.getHost());
 	envp.push_back("SERVER_PORT=" + Utils::toString(_header.getPort()));
 	envp.push_back("SERVER_PROTOCOL=HTTP/1.1");
@@ -53,12 +53,12 @@ char **Cgi::createEnviromentVariables() {
 
 // Creates the arguments for the CGI script
 char **Cgi::createArguments() {
-	std::string interpreterPath = Config::getInstance().getCgiInterpreterPath(_header);
+	std::string interpreterPath = _config.getCgiInterpreterPath(_header);
 	if (interpreterPath.empty()) {
 		perror("Failed to get interpreter path");
 		exit(255);
 	}
-	std::string scriptPath = Config::getInstance().getCgiScriptPath(_header);
+	std::string scriptPath = _config.getCgiScriptPath(_header);
 	if (scriptPath.empty()) {
 		perror("Failed to get script path");
 		exit(255);
@@ -81,7 +81,6 @@ Cgi::Cgi(Client *client) :
 		_requestBody(_client->getBodyBuffer()),
 		_clientIp(_client->getIp()),
 		_fd(_client->getFd()),
-		_currentCgiToServerBufferSize(0),
 		_timeCreated(0),
 		_errorCode(0),
 		_state(CHECK_METHOD),
@@ -128,7 +127,7 @@ int Cgi::executeChild() {
 	dup2(_sockets[1], STDOUT_FILENO);
 	close(_sockets[1]); // Close child's end of the socket pair
 
-	std::string dir = Config::getInstance().getCgiDir(_header);
+	std::string dir = _config.getCgiDir(_header);
 	const char *cgiDir = dir.c_str();
 	if (chdir(cgiDir) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to change directory", "CGI");
@@ -283,14 +282,14 @@ int Cgi::checkIfValidMethod() {
 	// it is not only checking if method is valid, its also seeting state
 	LOG_DEBUG_WITH_TAG("Checking method", "CGI");
 	if (_header.getMethod() == "GET") {
-		if (!Config::getInstance().isMethodAllowed(_header, "GET")) {
+		if (!_config.isMethodAllowed(_header, "GET")) {
 			LOG_DEBUG_WITH_TAG("GET Method not allowed", "CGI");
 			return -1;
 		}
 		LOG_DEBUG_WITH_TAG("GET method called", "CGI");
 		_state = CREATE_CGI_PROCESS;
 	} else if (_header.getMethod() == "POST") {
-		if (!Config::getInstance().isMethodAllowed(_header, "POST")) {
+		if (!_config.isMethodAllowed(_header, "POST")) {
 			LOG_DEBUG_WITH_TAG("POST Method not allowed", "CGI");
 			return -1;
 		}
