@@ -64,6 +64,7 @@ int CgiResponse::sendResponse() {
 			break;
 		case FINISHED:
 			LOG_ERROR_WITH_TAG("Response already sent (THIS SHOULD NOT TRIGGER)", "CGI");
+			break;
 		default:
 			LOG_DEBUG_WITH_TAG("breakyboy", "CGI");
 			break;
@@ -186,10 +187,9 @@ int CgiResponse::parseHeader() {
 	std::string line;
 	std::getline(headerStream, line);
 	while (line.empty() == false) {
-		if (line.find_last_of("\r") != line.size() - 1) {
-			return -1;
+		if (line[line.size() - 1] == '\r') {
+			line = line.substr(0, line.size() - 1);
 		}
-		line = line.substr(0, line.size() - 1);
 		if (addHeaderField(line) == -1) {
 			LOG_DEBUG_WITH_TAG(line, "CGI LINE");
 			return 0;
@@ -198,7 +198,7 @@ int CgiResponse::parseHeader() {
 			break;
 	}
 
-	return pos + 2;
+	return pos + 4;
 }
 
 // Checks if a path is a valid HTTP path
@@ -360,6 +360,8 @@ int CgiResponse::parseResponse() {
 		LOG_DEBUG_WITH_TAG("already parsed", "CGI Response");
 		return 0;
 	}
+	LOG_DEBUG("CGI BUFFER");
+	std::cout << _cgiBuffer << std::endl;
 	_responseHeaderSize = parseHeader();
 	if (_responseHeaderSize == 0) {
 		LOG_DEBUG_WITH_TAG("parse Header failed", "CGI Response");
