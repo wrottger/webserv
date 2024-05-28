@@ -8,7 +8,7 @@
 #include "Config.hpp"
 #include "Utils.hpp"
 
-static bool isFolder(const std::string &path)
+bool HttpResponse::isFolder(const std::string &path)
 {
 	struct stat s;
 	if (stat(path.c_str(), &s) == 0)
@@ -19,7 +19,7 @@ static bool isFolder(const std::string &path)
 	return false;
 }
 
-static bool isFile(const std::string &path)
+bool HttpResponse::isFile(const std::string &path)
 {
 	struct	stat s;
 	if (stat(path.c_str(), &s) == 0)
@@ -227,7 +227,11 @@ int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 	{
 		struct stat fileStat;
 		fileInfo fileInf;
-		std::string filename = dir + "/" + dirp->d_name;
+		std::string filename;
+		if (!dir.empty() && dir[dir.length() - 1] != '/')
+			filename = dir + "/" + dirp->d_name;
+		else
+		 	filename = dir + dirp->d_name;
 		LOG_DEBUG_WITH_TAG(filename, "full path");
 		if (stat(filename.c_str(), &fileStat) == -1)
 		{
@@ -279,7 +283,7 @@ void HttpResponse::generateDirListing()
 	for (size_t i = 0; i < files.size(); i++)
 	{
 		listing += "<tr><td><a href=\"";
-		listing += "./" + header.getPath() + "/" + files[i].name;
+		listing += files[i].name;
 		listing += "\">";
 		listing += files[i].name;
 		listing += "</a></td><td>";
