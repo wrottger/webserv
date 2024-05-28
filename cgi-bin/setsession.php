@@ -15,7 +15,7 @@
 	<?php
 		if (isset($_SESSION["example"])) {
 			echo "<p>Session variable 'example' is set to: " . $_SESSION["example"] . "</p>";
-			echo "<p><a href='sessiontest2.php'>Go to sessiontest2.php</a></p>";
+			echo "<p><a href='readsession.php'>Go to readsession.php</a></p>";
 		} else {
 			echo "<p>Session variable 'example' is not set.</p>";
 		}

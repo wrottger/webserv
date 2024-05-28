@@ -188,10 +188,10 @@ int CgiResponse::parseHeader() {
 	std::string line;
 	std::getline(headerStream, line);
 	while (line.empty() == false) {
-		if (line.find_last_of("\r") != line.size() - 1) {
-			return -1;
-		}
-		line = line.substr(0, line.size() - 1);
+		// if (line.find_last_of("\r") != line.size() - 1) {
+		// 	return -1;
+		// }
+		// line = line.substr(0, line.size() - 1);
 		if (addHeaderField(line) == -1) {
 			LOG_DEBUG_WITH_TAG(line, "CGI LINE");
 			return 0;
