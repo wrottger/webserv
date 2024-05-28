@@ -246,7 +246,7 @@ std::string Config::getErrorPage(int code, const HttpHeader& header)
         {
             size_t pos = config._serverBlocks[l.first]._locations[l.second]._directives[i].second.find(' ');
             if (codeStr == config._serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(0, pos))
-                return config._serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(pos + 1);
+                return config.getDirectiveValue(header, Root) + config._serverBlocks[l.first]._locations[l.second]._directives[i].second.substr(pos + 1);
         }
     }
     for (size_t i = 0; i != config._serverBlocks[l.first]._directives.size(); i++) // iterate through server block directives
@@ -255,7 +255,7 @@ std::string Config::getErrorPage(int code, const HttpHeader& header)
         {
             size_t pos = config._serverBlocks[l.first]._directives[i].second.find(' ');
             if (codeStr == config._serverBlocks[l.first]._directives[i].second.substr(0, pos))
-                return config._serverBlocks[l.first]._directives[i].second.substr(pos + 1);
+                return config.getDirectiveValue(header, Root) + config._serverBlocks[l.first]._directives[i].second.substr(pos + 1);
         }
     }
     return "";
@@ -507,11 +507,17 @@ std::string Config::getFilePath(const HttpHeader &header, std::string path)
 
 std::string Config::getDir(const HttpHeader &header) {
 	std::string path = getFilePath(header);
+    if (path.empty())
+        return "";
     return path.substr(0, path.find_last_of("/"));
 }
 
 size_t Config::getMaxBodySize(const HttpHeader &header) {
-	return Utils::stringToNumber(getDirectiveValue(header, ClientMaxBodySize));
+	try {
+        return Utils::stringToNumber<size_t>(getDirectiveValue(header, ClientMaxBodySize));
+    } catch (std::invalid_argument &e) {
+        return 0;
+    }
 }
 
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)

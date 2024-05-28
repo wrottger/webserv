@@ -186,7 +186,7 @@ std::string HttpResponse::generateErrorResponse(const HttpError &error) {
 	}
 	else
 	{
-		std::ifstream file(config.getFilePath(header, error_path).c_str());
+		std::ifstream file(error_path.c_str());
 		if (!file.is_open())
 		{
 			std::string error_html = "<HTML><body><p><strong>";

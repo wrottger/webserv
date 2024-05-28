@@ -54,6 +54,7 @@ private:
 	pid_t _childPid;
 	EventsData *_eventData;
 	size_t _bytesSendToCgi;
+	size_t _bodyBytesRead;
 
 
 
@@ -81,6 +82,8 @@ private:
 	int checkIfValidMethod();
 	int checkIfValidFile();
 	bool isTimedOut();
+	std::string generateErrorResponse(const int errorCode);
+	std::string getErrorMessage(const int errorCode);
 
 public:
 	Cgi(Client *client);
