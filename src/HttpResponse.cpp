@@ -53,7 +53,7 @@ HttpError HttpResponse::setupGetResponse()
 		if (config.getDirectiveValue(header, Config::Index).size() != 0)
 		{
 			LOG_DEBUG("returning index file");
-			std::string filePath = config.getFilePath(header) + config.getDirectiveValue(header, Config::Index);
+			std::string filePath = config.getFilePath(header);
 			getFile.open(filePath.c_str());
 			if (getFile.fail())
 			{
