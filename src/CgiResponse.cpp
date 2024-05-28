@@ -181,7 +181,7 @@ int CgiResponse::parseHeader() {
 	}
 	size_t pos = _cgiBuffer.find("\r\n\r\n");
 	if (pos == std::string::npos) {
-		LOG_DEBUG_WITH_TAG("Invalid return value (Missing: \r\n\r\n)", "CGI Response");
+		LOG_DEBUG_WITH_TAG("Invalid return value (Missing: \\r\\n\\r\\n)", "CGI Response");
 		return 0;
 	}
 	std::string header = _cgiBuffer.substr(0, pos);
