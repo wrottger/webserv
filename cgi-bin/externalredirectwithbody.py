@@ -6,9 +6,9 @@ import cgitb
 cgitb.enable()  # for troubleshooting
 
 print("status: 302 Found")
-print("Content-Type: text/html")
-print("Location: https://www.new-url.com")
-print() # to end the CGI response headers
+print("Content-Type: text/html\r")
+print("Location: https://www.new-url.com\r")
+print("\r") # to end the CGI response headers
 
 print("<html>")
 print("<head>")

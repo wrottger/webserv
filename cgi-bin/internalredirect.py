@@ -5,5 +5,5 @@ import cgitb
 
 cgitb.enable()  # for troubleshooting
 
-print("Location: /test/index.html")
-print() # to end the CGI response headers
+print("Location: /test/index.html\r")
+print("\r") # to end the CGI response headers
