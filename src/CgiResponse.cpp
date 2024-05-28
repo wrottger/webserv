@@ -35,7 +35,7 @@ int CgiResponse::sendResponse() {
 	}
 	switch (_state) {
 		case DOCUMENT_RESPONSE:
-			std::cout << "Response body size: " << _responseBodySize << std::endl;
+			// std::cout << "Response body size: " << _responseBodySize << std::endl;
 			if (_bodySent == false) {
 				if (sendBody() == -1) {
 					LOG_DEBUG_WITH_TAG("send body failed", "CGI Response");
@@ -277,7 +277,7 @@ std::string CgiResponse::getInternalRedirectLocation() const {
 
 int CgiResponse::sendHeader() {
 	ssize_t bytesSent = send(_fd, _responseHeader.c_str() + _headerBytesSend, _responseHeader.size() - _headerBytesSend, MSG_DONTWAIT);
-	std::cout << "bytesSent Header: " << bytesSent << std::endl;
+	// std::cout << "bytesSent Header: " << bytesSent << std::endl;
 	if (bytesSent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to send response header", "CGI Response");
 		return -1;
@@ -291,11 +291,11 @@ int CgiResponse::sendHeader() {
 
 int CgiResponse::sendBody() {
 	ssize_t bytesSent = send(_fd, _cgiBuffer.c_str() + _responseHeaderSize + _bodyBytesSend, _responseBodySize - _bodyBytesSend, MSG_DONTWAIT);
-	std::cout << "_cgiBuffer.c_str(): " << _cgiBuffer.c_str() << std::endl;
-	std::string test(_cgiBuffer.c_str() + _responseHeaderSize + _bodyBytesSend, _responseHeader.size() - _responseHeaderSize - _bodyBytesSend);
-	std::cout << "test string: " << test << std::endl;
-	std::cout << "_responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << " _responseBodySize.size(): " << _responseBodySize  << " _responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << std::endl;
-	std::cout << "bytesSent body: " << bytesSent << std::endl;
+	// std::cout << "_cgiBuffer.c_str(): " << _cgiBuffer.c_str() << std::endl;
+	// std::string test(_cgiBuffer.c_str() + _responseHeaderSize + _bodyBytesSend, _responseHeader.size() - _responseHeaderSize - _bodyBytesSend);
+	// std::cout << "test string: " << test << std::endl;
+	// std::cout << "_responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << " _responseBodySize.size(): " << _responseBodySize  << " _responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << std::endl;
+	// std::cout << "bytesSent body: " << bytesSent << std::endl;
 	if (bytesSent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to send response body", "CGI Response");
 		return -1;
@@ -363,7 +363,7 @@ int CgiResponse::parseResponse() {
 		return 0;
 	}
 	LOG_DEBUG("CGI BUFFER");
-	std::cout << _cgiBuffer << std::endl;
+	// std::cout << _cgiBuffer << std::endl;
 	_responseHeaderSize = parseHeader();
 	if (_responseHeaderSize == 0) {
 		LOG_DEBUG_WITH_TAG("parse Header failed", "CGI Response");
