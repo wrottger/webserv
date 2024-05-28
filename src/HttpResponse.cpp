@@ -314,6 +314,10 @@ void HttpResponse::write() {
 			LOG_DEBUG("HttpResponse sending response buffer");
 			// sending headers
 			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
+			if (sentBytes == -1) {
+				isFinished = true;
+				return;
+			}
 			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
 		} else if (getFile.is_open()) {
