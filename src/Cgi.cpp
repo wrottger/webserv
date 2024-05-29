@@ -66,7 +66,7 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("SERVER_PORT=" + Utils::toString(_header.getPort()));
 	envp.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	envp.push_back("SERVER_SOFTWARE=WebServ/1.0");
-	envp.push_back("HTTP_REFERER=http://" + _header.getHost() + ":" + Utils::toString(_header.getPort()) + "/");
+	// envp.push_back("HTTP_REFERER=http://" + _header.getHost() + ":" + Utils::toString(_header.getPort()) + "/");
 
 	for (std::map<std::string, std::string>::const_iterator it = _header.getHeaders().begin(); it != _header.getHeaders().end(); ++it) {
 		std::string key = it->first;
