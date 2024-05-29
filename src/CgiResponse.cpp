@@ -36,6 +36,7 @@ int CgiResponse::sendResponse() {
 	switch (_state) {
 		case DOCUMENT_RESPONSE:
 			// std::cout << "Response body size: " << _responseBodySize << std::endl;
+			std::cout << "response: " << _cgiBuffer << std::endl;
 			if (_bodySent == false) {
 				if (sendBody() == -1) {
 					LOG_DEBUG_WITH_TAG("send body failed", "CGI Response");

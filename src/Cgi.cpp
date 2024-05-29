@@ -49,8 +49,9 @@ char **Cgi::createEnviromentVariables() {
 	}
 	envp.push_back("REDIRECT_STATUS=200");
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
-	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
+	// envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
+	envp.push_back("PATH_INFO=");
+	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getDirectiveValue(_header, Config::Index));
 	envp.push_back("PATH_TRANSLATED=");
 	envp.push_back("UPLOAD_PATH=" + Config::getInstance().getDir(_header) + Config::getInstance().getDirectiveValue(_header, Config::UploadDir));
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
@@ -58,17 +59,23 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("REMOTE_HOST=" + _clientIp);
 	// envp.push_back("REMOTE_IDENT=");
 	envp.push_back("REQUEST_METHOD=" + _header.getMethod());
-	envp.push_back("SCRIPT_NAME=" + Config::getInstance().getCgiScriptPath(_header));
-	envp.push_back("SERVER_NAME=" + _header.getHost());
+	envp.push_back("SCRIPT_NAME=" + _header.getPath());
+	envp.push_back("SERVER_NAME=" + _header.getHost() + ":" + Utils::toString(_header.getPort()));
+	// envp.push_back("SERVER_NAME=" + _header.getHost());
 	envp.push_back("SERVER_PORT=" + Utils::toString(_header.getPort()));
 	envp.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	envp.push_back("SERVER_SOFTWARE=WebServ/1.0");
+	envp.push_back("HTTP_REFERER=http://" + _header.getHost() + ":" + Utils::toString(_header.getPort()) + "/");
 
 	for (std::map<std::string, std::string>::const_iterator it = _header.getHeaders().begin(); it != _header.getHeaders().end(); ++it) {
 		std::string key = it->first;
 		std::transform(key.begin(), key.end(), key.begin(), ::toupper);
 		std::replace(key.begin(), key.end(), '-', '_');
+		if (key == "HOST") {
+			envp.push_back("HTTP_" + key + "=" + it->second + ":" + Utils::toString(_header.getPort()));
+		} else {
 		envp.push_back("HTTP_" + key + "=" + it->second);
+		}
 	}
 
 	char **result = new char *[envp.size() + 1];
@@ -297,6 +304,11 @@ int Cgi::sendToChild() {
 	// for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
 	// 	_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
 	// }
+	std::cout << "_serverToCgiBuffer: " << std::endl;
+	for(size_t i = 0; i < _serverToCgiBuffer.size(); i++) {
+		std::cout << _serverToCgiBuffer[i];
+	}
+	std::cout << std::endl;
 	return 0;
 }
 
@@ -313,9 +325,9 @@ int Cgi::readFromChild() {
 			return -1;
 		}
 		_cgiToServerBuffer += buffer;
-		// std::string debug("CGI TO SERVER BUFFER");
-		// debug += _cgiToServerBuffer;
-		// LOG_DEBUG_WITH_TAG(debug, "CGI");
+		std::string debug("CGI TO SERVER BUFFER");
+		debug += _cgiToServerBuffer;
+		LOG_DEBUG_WITH_TAG(debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
 		LOG_DEBUG_WITH_TAG("READING DONE", "CGI");
 		return 0;
