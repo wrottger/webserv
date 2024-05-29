@@ -25,7 +25,6 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
 	envp.push_back("REMOTE_HOST=" + _clientIp);
-	// envp.push_back("REMOTE_IDENT=");
 	envp.push_back("REQUEST_METHOD=" + _header.getMethod());
 	envp.push_back("SCRIPT_NAME=" + _config.getCgiScriptPath(_header));
 	envp.push_back("SERVER_NAME=" + _header.getHost());
