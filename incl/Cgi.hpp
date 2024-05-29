@@ -23,7 +23,7 @@
 #include <vector>
 
 #define SEND_SIZE 8192
-#define CGI_TIMEOUT 10
+#define CGI_TIMEOUT 30
 #define MAX_CGI_BUFFER_SIZE 200000000
 
 class Cgi {
