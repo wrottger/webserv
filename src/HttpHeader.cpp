@@ -240,7 +240,10 @@ void HttpHeader::States::path(char c, HttpMessage& message, StateHandler& nextSt
     } else if (c == '#') {
         nextState.func = fragment;
     } else if (isPchar(c) || c == '/' || c == '.' || c == ',') {
-       message.path += c;
+		if (!message.path.empty() && c == '/' && message.path[message.path.size() - 1] == '/')
+			return;
+		else
+       		message.path += c;
     } else {
         throw HttpError(400, "Invalid character in path: " + std::string(1, c));
     }
