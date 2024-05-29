@@ -283,7 +283,11 @@ void HttpResponse::generateDirListing()
 	for (size_t i = 0; i < files.size(); i++)
 	{
 		listing += "<tr><td><a href=\"";
-		listing += files[i].name;
+		std::string path = header.getPath();
+		if (!path.empty() && path[path.length() - 1] != '/')
+			listing += path + "/" + files[i].name;
+		else
+		 	listing += path + files[i].name;
 		listing += "\">";
 		listing += files[i].name;
 		listing += "</a></td><td>";
