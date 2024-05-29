@@ -570,7 +570,6 @@ std::string Cgi::generateErrorResponse(const int errorCode) {
 	std::string message = getErrorMessage(errorCode);
 	std::stringstream errCode;
 	errCode << errorCode;
-	std::cout << "getErrorPage path: " << error_path << std::endl;
 	if (error_path.empty())
 	{
 		std::string error_html = "<HTML><body><p><strong>";

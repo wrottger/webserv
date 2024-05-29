@@ -59,10 +59,10 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
             message.headers["host"] = message.host;
         }
 		Config &config = Config::getInstance();
-		LOG_DEBUG(message.path);
+		LOG_DEBUG_WITH_TAG(message.path, "message.path");
 		LOG_DEBUG_WITH_TAG(std::string(config.getDir(*this)).c_str(), "getDirPath");
 		LOG_DEBUG_WITH_TAG(std::string(config.getDirectiveValue(*this, Config::Index)).c_str(), "INDEX directive");
-		if (HttpResponse::isFolder(config.getDir(*this)) && config.getDirectiveValue(*this, Config::Index).size())
+		if (HttpResponse::isFolder(config.getFilePath(*this)) && config.getDirectiveValue(*this, Config::Index).size())
 		{
 			message.path += "/" + config.getDirectiveValue(*this, Config::Index);
 		}
