@@ -49,8 +49,8 @@ char **Cgi::createEnviromentVariables() {
 	}
 	envp.push_back("REDIRECT_STATUS=200");
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
-	// envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
-	envp.push_back("PATH_INFO=");
+	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
+	// envp.push_back("PATH_INFO=");
 	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PHP_SELF=" + _header.getPath());
 	envp.push_back("PATH_TRANSLATED=");
