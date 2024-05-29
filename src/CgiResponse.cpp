@@ -35,8 +35,6 @@ int CgiResponse::sendResponse() {
 	}
 	switch (_state) {
 		case DOCUMENT_RESPONSE:
-			// std::cout << "Response body size: " << _responseBodySize << std::endl;
-			std::cout << "response: " << _cgiBuffer << std::endl;
 			if (_bodySent == false) {
 				if (sendBody() == -1) {
 					LOG_DEBUG_WITH_TAG("send body failed", "CGI Response");
@@ -67,7 +65,6 @@ int CgiResponse::sendResponse() {
 			LOG_ERROR_WITH_TAG("Response already sent (THIS SHOULD NOT TRIGGER)", "CGI Response");
 			break;
 		default:
-			std::cout << "breakyboy" << _state << std::endl;
 			LOG_DEBUG_WITH_TAG("breakyboy", "CGI Response");
 			_state = FINISHED;
 			break;
@@ -126,12 +123,10 @@ int CgiResponse::addHeaderField(const std::string &line) {
 	if (colonPos == std::string::npos || colonPos == 0) {
 		return -1;
 	}
-	// std::cout << "toLower: " << line.substr(0, colonPos) << " colonPos: " << colonPos << std::endl;
 	std::string key = Utils::toLowerString(line.substr(0, colonPos));
 	std::string value = line.substr(colonPos + 1);
 	value = value.substr(value.find_first_not_of(' '), value.find_last_not_of(' ') + 1);
 	// Don't add the header field if the value is empty
-	// std::cout << "value: " << value << " key: " << key << std::endl;
 	if (value.empty()) {
 		return 0;
 	}
@@ -162,11 +157,6 @@ int CgiResponse::addHeaderField(const std::string &line) {
 // Checks if a header field is present case-insensitively
 bool CgiResponse::isHeaderFieldPresent(const std::string &key) const {
 	std::string lowerCaseKey = Utils::toLowerString(key);
-	// std::cout << "key: " << lowerCaseKey << std::endl;
-	std::map<std::string, std::string>::const_iterator it;
-	// for (it = this->_responseHeaders.begin(); it != this->_responseHeaders.end(); ++it) {
-	// 	std::cout << it->first << ": " << it->second << std::endl;
-	// }
 	if (_responseHeaders.find(lowerCaseKey) != _responseHeaders.end()) {
 		LOG_DEBUG_WITH_TAG("Header field is present", "CGI Response");
 		return true;
@@ -280,7 +270,6 @@ std::string CgiResponse::getInternalRedirectLocation() const {
 
 int CgiResponse::sendHeader() {
 	ssize_t bytesSent = send(_fd, _responseHeader.c_str() + _headerBytesSend, _responseHeader.size() - _headerBytesSend, MSG_DONTWAIT);
-	// std::cout << "bytesSent Header: " << bytesSent << std::endl;
 	if (bytesSent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to send response header", "CGI Response");
 		return -1;
@@ -294,11 +283,6 @@ int CgiResponse::sendHeader() {
 
 int CgiResponse::sendBody() {
 	ssize_t bytesSent = send(_fd, _cgiBuffer.c_str() + _responseHeaderSize + _bodyBytesSend, _responseBodySize - _bodyBytesSend, MSG_DONTWAIT);
-	// std::cout << "_cgiBuffer.c_str(): " << _cgiBuffer.c_str() << std::endl;
-	// std::string test(_cgiBuffer.c_str() + _responseHeaderSize + _bodyBytesSend, _responseHeader.size() - _responseHeaderSize - _bodyBytesSend);
-	// std::cout << "test string: " << test << std::endl;
-	// std::cout << "_responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << " _responseBodySize.size(): " << _responseBodySize  << " _responseHeaderSize: " << _responseHeaderSize << " _bodyBytesSend: " << _bodyBytesSend << std::endl;
-	// std::cout << "bytesSent body: " << bytesSent << std::endl;
 	if (bytesSent < 0) {
 		LOG_ERROR_WITH_TAG("Failed to send response body", "CGI Response");
 		return -1;
@@ -317,7 +301,6 @@ int CgiResponse::setState() {
 	bool hasContentType = isHeaderFieldPresent("content-type");
 	bool hasStatus = isHeaderFieldPresent("status");
 
-	// std::cout << "cgibuffer: " << _cgiBuffer << std::endl;
 	if (hasLocation) {
 		if (!isValidHttpPath(_responseHeaders["location"])) {
 			LOG_DEBUG_WITH_TAG("no valid http path", "CGI Response");
@@ -369,7 +352,6 @@ int CgiResponse::parseResponse() {
 		return 0;
 	}
 	LOG_DEBUG("CGI BUFFER");
-	// std::cout << _cgiBuffer << std::endl;
 	_responseHeaderSize = parseHeader();
 	if (_responseHeaderSize == 0) {
 		LOG_DEBUG_WITH_TAG("parse Header failed", "CGI Response");

@@ -3,46 +3,15 @@
 #include <cstring>
 #include "Utils.hpp"
 
-// TODO: Delete this function
-std::string createCgiTestResponse() {
-	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-							   "<body><h1>Kein pull request approve fuer Freddy!</h1></body></html>";
-
-	std::ostringstream oss;
-	oss << responseBody.size();
-
-	std::string _responseHttp = "HTTP/1.1 200 OK\r\n"
-								"Content-Type: text/html; charset=UTF-8\r\n"
-								"Content-Length: " +
-			oss.str() + "\r\n\r\n" + responseBody;
-	return _responseHttp;
-}
-
-// TODO: Delete this function
-std::string Cgi::createErrorResponse(int errorCode) {
-	std::string responseBody = "<!DOCTYPE html><html><head><title>Error</title></head>"
-							   "<body><h1>Error " +
-			Utils::toString(errorCode) + "</h1></body></html>";
-
-	std::ostringstream oss;
-	oss << responseBody.size();
-
-	std::string responseHttp = "HTTP/1.1 " + Utils::toString(errorCode) + " Error\r\n"
-																		  "Content-Type: text/html; charset=UTF-8\r\n"
-																		  "Content-Length: " +
-			oss.str() + "\r\n\r\n" + responseBody;
-	return responseHttp;
-}
-
 // Creates the environment variables for the CGI script
 char **Cgi::createEnviromentVariables() {
 	std::vector<std::string> envp;
 
 	envp.push_back("AUTH_TYPE=");
 	if (_header.isTransferEncodingChunked())
-		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_serverToCgiBuffer.size())); // FIXME: When it was unchunked it should be the size after decoding
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_serverToCgiBuffer.size()));
 	else
-		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength)); // FIXME: When it was unchunked it should be the size after decoding
+		envp.push_back("CONTENT_LENGTH=" + Utils::toString(_contentLength));
 	if (_header.isInHeader("content-type")) {
 		std::string contentType = _header.getHeader("content-type");
 		envp.push_back("CONTENT_TYPE=" + contentType);
@@ -50,23 +19,19 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("REDIRECT_STATUS=200");
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
-	// envp.push_back("PATH_INFO=");
 	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PHP_SELF=" + _header.getPath());
 	envp.push_back("PATH_TRANSLATED=");
-	envp.push_back("UPLOAD_PATH=" + Config::getInstance().getDir(_header) + Config::getInstance().getDirectiveValue(_header, Config::UploadDir));
+	envp.push_back("UPLOAD_PATH=" + _config.getDir(_header) + _config.getDirectiveValue(_header, Config::UploadDir));
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
 	envp.push_back("REMOTE_ADDR=" + _clientIp);
 	envp.push_back("REMOTE_HOST=" + _clientIp);
-	// envp.push_back("REMOTE_IDENT=");
 	envp.push_back("REQUEST_METHOD=" + _header.getMethod());
 	envp.push_back("SCRIPT_NAME=" + _header.getPath());
 	envp.push_back("SERVER_NAME=" + _header.getHost() + ":" + Utils::toString(_header.getPort()));
-	// envp.push_back("SERVER_NAME=" + _header.getHost());
 	envp.push_back("SERVER_PORT=" + Utils::toString(_header.getPort()));
 	envp.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	envp.push_back("SERVER_SOFTWARE=WebServ/1.0");
-	// envp.push_back("HTTP_REFERER=http://" + _header.getHost() + ":" + Utils::toString(_header.getPort()) + "/");
 
 	for (std::map<std::string, std::string>::const_iterator it = _header.getHeaders().begin(); it != _header.getHeaders().end(); ++it) {
 		std::string key = it->first;
@@ -92,13 +57,12 @@ char **Cgi::createEnviromentVariables() {
 
 // Creates the arguments for the CGI script
 char **Cgi::createArguments() {
-	std::string interpreterPath = Config::getInstance().getCgiInterpreterPath(_header);
+	std::string interpreterPath = _config.getCgiInterpreterPath(_header);
 	if (interpreterPath.empty()) {
 		perror("Failed to get interpreter path");
 		exit(255);
 	}
-	std::string scriptPath = Config::getInstance().getCgiScriptPath(_header);
-	// std::cout << "_scriptPath: " << scriptPath << std::endl;
+	std::string scriptPath = _config.getCgiScriptPath(_header);
 	if (scriptPath.empty()) {
 		perror("Failed to get script path");
 		exit(255);
@@ -121,7 +85,6 @@ Cgi::Cgi(Client *client) :
 		_requestBody(_client->getBodyBuffer()),
 		_clientIp(_client->getIp()),
 		_fd(_client->getFd()),
-		_currentCgiToServerBufferSize(0),
 		_timeCreated(0),
 		_errorCode(0),
 		_state(CHECK_METHOD),
@@ -151,19 +114,11 @@ Cgi::Cgi(Client *client) :
 
 Cgi::~Cgi() {
 	LOG_DEBUG_WITH_TAG("Cgi destructor called", "CGI");
-	// if (_sockets[0] != -1) {
-	// 	close(_sockets[0]);
-	// }
 }
 
 // Returns true if the CGI process is finished
 bool Cgi::isFinished() const {
 	return _state == FINISHED;
-}
-
-// Returns the error code of the CGI process
-int Cgi::getErrorCode() const {
-	return _errorCode;
 }
 
 // Executes the CGI script
@@ -173,7 +128,7 @@ int Cgi::executeChild() {
 	dup2(_sockets[1], STDOUT_FILENO);
 	close(_sockets[1]); // Close child's end of the socket pair
 
-	std::string dir = Config::getInstance().getCgiDir(_header);
+	std::string dir = _config.getCgiDir(_header);
 	const char *cgiDir = dir.c_str();
 	if (chdir(cgiDir) < 0) {
 		LOG_ERROR_WITH_TAG("Failed to change directory", "CGI");
@@ -271,10 +226,6 @@ int Cgi::readBody(EventsData *eventData) {
 					_state = FINISHED;
 				}
 			}
-			// else {
-			// 	// _state = CREATE_CGI_PROCESS;
-			// 	LOG_DEBUG_WITH_TAG("Waiting for body", "CGI");
-			// }
 		}
 	}
 	LOG_DEBUG_WITH_TAG("Read body chunk done", "CGI");
@@ -285,8 +236,6 @@ int Cgi::readBody(EventsData *eventData) {
 // return 1 if finished or no buffer return 0 if data was send, and -1 on error
 int Cgi::sendToChild() {
 	ssize_t sent;
-	// if (_serverToCgiBuffer.empty()) {
-	// 	return 1;
 	if ((_bytesSendToCgi) == _serverToCgiBuffer.size()) {
 		return 1;
 	}
@@ -303,14 +252,6 @@ int Cgi::sendToChild() {
 		_errorCode = 500;
 		return -1;
 	}
-	// for (size_t i = 0; i < static_cast<size_t>(sent); i++) {
-	// 	_serverToCgiBuffer.erase(_serverToCgiBuffer.begin());
-	// }
-	std::cout << "_serverToCgiBuffer: " << std::endl;
-	for(size_t i = 0; i < _serverToCgiBuffer.size(); i++) {
-		std::cout << _serverToCgiBuffer[i];
-	}
-	std::cout << std::endl;
 	return 0;
 }
 
@@ -327,9 +268,6 @@ int Cgi::readFromChild() {
 			return -1;
 		}
 		_cgiToServerBuffer += buffer;
-		std::string debug("CGI TO SERVER BUFFER");
-		debug += _cgiToServerBuffer;
-		LOG_DEBUG_WITH_TAG(debug, "CGI");
 	} else if (readSize == -1 || readSize == 0) {
 		LOG_DEBUG_WITH_TAG("READING DONE", "CGI");
 		return 0;
@@ -343,14 +281,14 @@ int Cgi::checkIfValidMethod() {
 	// it is not only checking if method is valid, its also seeting state
 	LOG_DEBUG_WITH_TAG("Checking method", "CGI");
 	if (_header.getMethod() == "GET") {
-		if (!Config::getInstance().isMethodAllowed(_header, "GET")) {
+		if (!_config.isMethodAllowed(_header, "GET")) {
 			LOG_DEBUG_WITH_TAG("GET Method not allowed", "CGI");
 			return -1;
 		}
 		LOG_DEBUG_WITH_TAG("GET method called", "CGI");
 		_state = CREATE_CGI_PROCESS;
 	} else if (_header.getMethod() == "POST") {
-		if (!Config::getInstance().isMethodAllowed(_header, "POST")) {
+		if (!_config.isMethodAllowed(_header, "POST")) {
 			LOG_DEBUG_WITH_TAG("POST Method not allowed", "CGI");
 			return -1;
 		}
@@ -398,7 +336,6 @@ void Cgi::process(EventsData *eventData) {
 			_state = SENDING_TO_CHILD;
 			break;
 		case SENDING_TO_CHILD:
-			// LOG_DEBUG_WITH_TAG("SENDING_TO_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLOUT && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Sending to child", "CGI");
 				if (sendToChild() == 1) {
@@ -407,7 +344,6 @@ void Cgi::process(EventsData *eventData) {
 			}
 			break;
 		case READING_FROM_CHILD:
-			// LOG_DEBUG_WITH_TAG("READING_FROM_CHILD", "CGI");
 			if (eventData->eventMask & EPOLLIN && eventData->eventType == CGI) {
 				LOG_DEBUG_WITH_TAG("Reading from child", "CGI");
 				int readBytesFromChild = readFromChild();
@@ -420,12 +356,10 @@ void Cgi::process(EventsData *eventData) {
 					_state = WAITING_FOR_CHILD;
 				}
 			}
-			// LOG_DEBUG_WITH_TAG("checking for timeout", "CGI");
 			if (isTimedOut()) {
 				LOG_DEBUG_WITH_TAG("Timeout reading from child", "CGI");
 				kill(_childPid, SIGKILL); // Force quit the child process
 				_state = WAITING_FOR_CHILD;
-				// _errorCode = 500;
 			}
 			break;
 		case WAITING_FOR_CHILD:
@@ -455,12 +389,9 @@ void Cgi::process(EventsData *eventData) {
 					_errorCode = 500;
 				}
 			}
-			// _state = SENDING_RESPONSE;
 			if (isTimedOut()) {
 				LOG_DEBUG_WITH_TAG("Timeout waiting for child", "CGI");
 				kill(_childPid, SIGKILL); // Force quit the child process
-				// _state = SENDING_RESPONSE;
-				// _errorCode = 500;
 			}
 			break;
 		case SENDING_RESPONSE:
@@ -492,7 +423,6 @@ void Cgi::process(EventsData *eventData) {
 					}
 					_state = FINISHED;
 				}
-				// _state = FINISHED;
 			}
 			break;
 		case FINISHED:
@@ -540,11 +470,11 @@ int Cgi::createCgiProcess() {
 		close(_sockets[0]);
 		close(_sockets[1]);
 		return -1;
-		// Parent process
-	} else if (_childPid != 0) {
+	} else if (_childPid != 0) // Parent process
+	{
 		close(_sockets[1]); // Close child's end of the socket pair
-		// Child process
-	} else {
+	} else // Child process
+	{
 		executeChild();
 	}
 	return 0;
@@ -648,6 +578,8 @@ std::string Cgi::getErrorMessage(const int errorCode) {
 			return ("Not found");
 		case 405:
 			return ("Method not allowed");
+		case 413:
+			return ("Request Entity Too Large");
 		default:
 			return ("Error");
 	}

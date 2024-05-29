@@ -125,11 +125,6 @@ Cgi *Client::getCgi() {
 	return _cgi;
 }
 
-// void Client::setRedirect(const std::string &location) {
-// 	// _header.setPath(location);
-// 	_state = REDIRECT;
-// }
-
 // Returns true if the client has exceeded the timeout in READING_HEADER state
 bool Client::isTimeouted() const {
 	if (((std::time(0) - _lastModified) > CLIENT_TIMEOUT) && _state == READING_HEADER)
@@ -158,8 +153,6 @@ void Client::readFromClient() {
 			for (; parsedSize < static_cast<size_t>(bytes_received); parsedSize++)
 				_bodyBuffer.push_back(buffer[parsedSize]);
 		}
-		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
-		LOG_BUFFER(bufferDebug);		//TODO: DELETE DEBUG
 	}
 }
 
