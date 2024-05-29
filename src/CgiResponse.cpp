@@ -332,7 +332,10 @@ int CgiResponse::setState() {
 				if (_responseHeaders["status"] == "302 Found") {
 					_state = CLIENT_REDIRECT_WITH_BODY;
 					LOG_DEBUG_WITH_TAG("client redirect with body", "CGI Response");
+				} else {
+					_state = DOCUMENT_RESPONSE;
 				}
+				return 0;
 			} else {
 				LOG_DEBUG_WITH_TAG("wrong external redirect", "CGI Response");
 				return -1;

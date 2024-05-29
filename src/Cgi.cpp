@@ -51,7 +51,8 @@ char **Cgi::createEnviromentVariables() {
 	envp.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	// envp.push_back("PATH_INFO=" + Config::getInstance().getFilePath(_header));
 	envp.push_back("PATH_INFO=");
-	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getDirectiveValue(_header, Config::Index));
+	envp.push_back("SCRIPT_FILENAME=" + Config::getInstance().getFilePath(_header));
+	envp.push_back("PHP_SELF=" + _header.getPath());
 	envp.push_back("PATH_TRANSLATED=");
 	envp.push_back("UPLOAD_PATH=" + Config::getInstance().getDir(_header) + Config::getInstance().getDirectiveValue(_header, Config::UploadDir));
 	envp.push_back("QUERY_STRING=" + _header.getQuery());
@@ -97,6 +98,7 @@ char **Cgi::createArguments() {
 		exit(255);
 	}
 	std::string scriptPath = Config::getInstance().getCgiScriptPath(_header);
+	// std::cout << "_scriptPath: " << scriptPath << std::endl;
 	if (scriptPath.empty()) {
 		perror("Failed to get script path");
 		exit(255);
