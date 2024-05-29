@@ -57,10 +57,11 @@ public:
 	std::string getFilePath(const HttpHeader &header);
     std::string getFilePath(const HttpHeader &header, std::string Path);
 	std::string getDir(const HttpHeader &header);
+	Config::LocationBlock& getLocationBlock(std::pair<size_t, size_t> l);
 	size_t getMaxBodySize(const HttpHeader &header);
 	static std::vector<int> getPorts(std::vector<ServerBlock> &_serverBlocks);
 	const std::vector<Node> &getNodes(void) const;
-	std::vector<ServerBlock> &getServerBlocks(void);
+	std::vector<Config::ServerBlock>& getServerBlocks(void);
 
 	// Checkers
 	bool isValidPath(const std::string &path);
