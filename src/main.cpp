@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 	Logging::Logger::getInstance().startLogging();
 	LOG_INFO("Server started");
-	// LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
+	LOG_SET_LOG_LEVEL(Logging::DISABLE_LOG);
 	// LOG_DISABLE_CONSOLE_LOGGING();
 	// LOG_SET_LOG_TARGET(Logging::LOG_TO_FILE);
 	EventHandler::getInstance().start();
