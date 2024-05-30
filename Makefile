@@ -1,7 +1,7 @@
 NAME = webserv
 CXX = c++
 
-CXXFLAGS = -Wall -Wextra -Werror -g -std=c++98 -Iincl
+CXXFLAGS = -Wall -Wextra -Werror -pedantic -g -std=c++98 -Iincl
 SCRS = $(wildcard src/*.cpp)
 OBJS = $(addprefix objs/, $(notdir $(SCRS:.cpp=.o)))
 

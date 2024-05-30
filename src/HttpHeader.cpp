@@ -96,7 +96,7 @@ const std::string &HttpHeader::getHost() const {
 	return message.host;
 }
 
-// Richtig schlechte Funktion, die verbrannt gehört, SEGVAULTING
+// Richtig schlechte Funktion, die verbrannt gehört, SEGFAULTING
 const std::string &HttpHeader::getHeader(const std::string &name) const {
 	return message.headers.find(name)->second;
 }

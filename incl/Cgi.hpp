@@ -36,7 +36,7 @@ private:
 		WAITING_FOR_CHILD,
 		SENDING_TO_CHILD,
 		SENDING_RESPONSE,
-		FINISHED,
+		FINISHED
 	};
 
 	Client *_client;
