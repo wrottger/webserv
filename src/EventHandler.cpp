@@ -30,24 +30,42 @@ void EventHandler::start() {
 	signal(SIGPIPE, SIG_IGN);
 
 	while (true) {
-		epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, -1);
-		if (epollTriggerCount == -1) {
-			LOG_ERROR("epoll_wait failed.");
-			continue;
-		}
-		for (int n = 0; n < epollTriggerCount; ++n) {
-			_currentEvent = static_cast<EventsData *>(events[n].data.ptr);
-			_currentEvent->eventMask = events[n].events;
-			EventType type = _currentEvent->eventType;
-			Client *client = static_cast<Client *>(_currentEvent->objectPointer);
-			if (type == LISTENING) {
-				acceptNewClient(_currentEvent);
+		try {
+			processCleanUpList();
+			epollTriggerCount = epoll_wait(_epollFd, events, MAX_EVENTS, -1);
+			if (epollTriggerCount == -1) {
+				LOG_ERROR("epoll_wait failed.");
 				continue;
-			} else if (type == CLIENT || type == CGI) {
-				client->process(_currentEvent);
 			}
+			for (int n = 0; n < epollTriggerCount; ++n) {
+				_currentEvent = static_cast<EventsData *>(events[n].data.ptr);
+				_currentEvent->eventMask = events[n].events;
+				EventType type = _currentEvent->eventType;
+				Client *client = static_cast<Client *>(_currentEvent->objectPointer);
+				if (type == LISTENING) {
+					acceptNewClient(_currentEvent);
+					continue;
+				} else if (type == CLIENT || type == CGI) {
+					client->process(_currentEvent);
+				}
+			}
+			removeInactiveClients();
+		} catch (std::exception &e) {
+			std::cerr << "Exception: " << e.what() << std::endl;
+			std::cerr << "Removing all clients." << std::endl;
+			removeAllClients();
+		} catch (...) {
+			std::cerr << "Unknown exception: Removing all clients." << std::endl;
+			removeAllClients();
 		}
-		removeInactiveClients();
+	}
+}
+
+void EventHandler::removeAllClients() {
+	for (std::list<EventsData *>::iterator it = _eventDataList.begin(); it != _eventDataList.end(); it++) {
+		if ((*it)->eventType != LISTENING) {
+			addToCleanUpList(*it);
+		}
 	}
 }
 
@@ -128,7 +146,6 @@ EventsData* EventHandler::registerEvent(int fd, EventType type, Client *client) 
 void EventHandler::unregisterEvent(EventsData *eventData) {
 	if (epoll_ctl(_epollFd, EPOLL_CTL_DEL, eventData->fd, NULL) == -1) {
 		// perror("epoll_ctl");
-		std::cerr << "Fd: " << eventData->fd << std::endl; // TODO: DELETE
 		LOG_ERROR("UnregisterEvent: epoll DEL failed.");
 	}
 	std::list<EventsData *>::iterator it = std::find(_eventDataList.begin(),  _eventDataList.end(), eventData);
