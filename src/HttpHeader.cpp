@@ -28,7 +28,7 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         for (; requestLine[i] != '\0' && state.func != States::headerFinished; i++)
         {
             request_size++;
-            if (request_size > 8192) // TODO check against config
+            if (request_size > 8192)
             {
                 LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
                 throw HttpError(413, "Request Entity Too Large");
@@ -47,11 +47,14 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         LOG_DEBUG_WITH_TAG("header parsing finished", "HttpHeader::parseBuffer");
         message.path = percentDecode(message.path);
         complete = true;
+		// check required host
         if (message.headers.count("host") == 0)
         {
             LOG_INFO_WITH_TAG("host header not found", "HttpHeader::parseBuffer");
             parseError = HttpError(400, "Host header is required");
+			return i;
         }
+		// take host and port apart
         if (message.headers.find("host")->second.find(":") != std::string::npos)
         {
             message.host = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
@@ -59,16 +62,14 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
             message.headers["host"] = message.host;
         }
 		Config &config = Config::getInstance();
-		LOG_DEBUG_WITH_TAG(message.path, "message.path");
-		LOG_DEBUG_WITH_TAG(std::string(config.getDir(*this)).c_str(), "getDirPath");
-		LOG_DEBUG_WITH_TAG(std::string(config.getDirectiveValue(*this, Config::Index)).c_str(), "INDEX directive");
+		// add index file to path
 		if (HttpResponse::isFolder(config.getFilePath(*this)) && config.getDirectiveValue(*this, Config::Index).size())
 		{
 			message.path += "/" + config.getDirectiveValue(*this, Config::Index);
 		}
-        LOG_DEBUG(message.path);
-        LOG_DEBUG(message.query);
-        LOG_DEBUG(message.host);
+        LOG_DEBUG_WITH_TAG(message.path, "PATH");
+        LOG_DEBUG_WITH_TAG(message.query, "QUERY");
+        LOG_DEBUG_WITH_TAG(message.host, "HOST");
     }
     return i;
 }
