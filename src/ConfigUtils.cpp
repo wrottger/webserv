@@ -520,6 +520,13 @@ size_t Config::getMaxBodySize(const HttpHeader &header) {
     }
 }
 
+Config::LocationBlock& Config::getLocationBlock(std::pair<size_t, size_t> l)
+{
+    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
+        throw std::runtime_error("");
+    return _serverBlocks[l.first]._locations[l.second];
+}
+
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
 {
 	std::stringstream ss;

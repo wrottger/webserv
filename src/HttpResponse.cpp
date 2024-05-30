@@ -134,14 +134,24 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 	{
 		std::string filePath = config.getFilePath(header);
 		LOG_DEBUG("DELETE request");
-		if (!config.isDirectiveAllowed(header, Config::AllowedMethods, "DELETE"))
-			error = HttpError(405, "Method Not Allowed");
-		else if (remove(filePath.c_str()) != 0) {
-			error = HttpError(500, "Couldn't delete file");
+		try {
+			Config &config = Config::getInstance();
+			if (!config.isDirectiveAllowed(header, Config::AllowedMethods, "DELETE") ||
+				config.getLocationBlock(config.getInstance().getClosestPathMatch(header))._path == header.getPath()) // prevent DELETE on root
+			{
+				error = HttpError(405, "Method Not Allowed");
+			}
+			else if (remove(filePath.c_str()) != 0) {
+				error = HttpError(500, "Couldn't delete file");
+			}
+			else {
+				response += "200 OK\r\n\r\n";
+				response += "<html><body><h1>File deleted</h1></body></html>\r\n";
+			}
 		}
-		else {
-			response += "200 OK\r\n\r\n";
-			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
+		catch (std::exception &e)
+		{
+			error = HttpError(405, "Method Not Allowed");
 		}
 	}
 	else
@@ -254,50 +264,63 @@ void HttpResponse::generateDirListing()
 	response += "200 OK\r\n";
 	response += "Connection: close\r\n";
 	response += "Content-Type: text/html\r\n";
-	std::string listing = "<!DOCTYPE html>"
-							"<html>"
-							"<head>"
-							"<style>"
-							"#files {"
-							"font-family: Arial, Helvetica, sans-serif;"
-							"border-collapse: collapse;"
-							"width: 100%;"
-							"}"
-							"#files td, #files th {"
-							"border: 1px solid #ddd;"
-							"padding: 8px;"
-							"}"
-							"#files tr:nth-child(even){background-color: #f2f2f2;}"
-							"#files tr:hover {background-color: #ddd;}"
-							"#files th {"
-							"padding-top: 12px;"
-							"padding-bottom: 12px;"
-							"text-align: left;"
-							"background-color: #04AA6D;"
-							"color: white;"
-							"}"
-							"</style>"
-							"</head>";
-	listing += "<body><h2>Directory listing</h2><table id=\"files\">";
-	listing += "<tr><th>Filename</th><th>Size (bytes)</th><th>Time of last data modification</th></tr>";
-	for (size_t i = 0; i < files.size(); i++)
-	{
-		listing += "<tr><td><a href=\"";
-		std::string path = header.getPath();
-		if (!path.empty() && path[path.length() - 1] != '/')
-			listing += path + "/" + files[i].name;
-		else
-		 	listing += path + files[i].name;
-		listing += "\">";
-		listing += files[i].name;
-		listing += "</a></td><td>";
+std::string listing = "<!DOCTYPE html>"
+                      "<html>"
+                      "<head>"
+                      "<style>"
+                      "#files {"
+                      "font-family: Arial, Helvetica, sans-serif;"
+                      "border-collapse: collapse;"
+                      "width: 100%;"
+                      "}"
+                      "#files td, #files th {"
+                      "border: 1px solid #ddd;"
+                      "padding: 8px;"
+                      "}"
+                      "#files tr:nth-child(even){background-color: #f2f2f2;}"
+                      "#files tr:hover {background-color: #ddd;}"
+                      "#files th {"
+                      "padding-top: 12px;"
+                      "padding-bottom: 12px;"
+                      "text-align: left;"
+                      "background-color: #04AA6D;"
+                      "color: white;"
+                      "}"
+                      "</style>"
+                      "</head>";
+listing += "<body><h2>Directory listing</h2><table id=\"files\"><tr><th>Name</th><th>Size</th><th>Date</th><th>Action</th></tr>";
 
-		listing += files[i].size;
-		listing += "</td><td>";
-		listing += files[i].date;
-		listing += "</td></tr>";
-	}
-	listing += "</table></body></html>";
+for (size_t i = 0; i < files.size(); i++)
+{
+    listing += "<tr><td><a href=\"";
+    listing += files[i].name;
+    listing += "\">";
+    listing += files[i].name;
+    listing += "</a></td><td>";
+    listing += files[i].size;
+    listing += "</td><td>";
+    listing += files[i].date;
+    listing += "</td><td>";
+    listing += "<button onclick=\"deleteFile('";
+    listing += files[i].name;
+    listing += "')\">Delete</button>";
+    listing += "</td></tr>";
+}
+listing += "</table><script>"
+            "function deleteFile(fileName) {"
+            "fetch(fileName, { method: 'DELETE' })"
+            ".then(response => {"
+            "if (response.ok) {"
+            "location.reload();" // Add this line
+            "} else {"
+            "alert('Delete not allowed');"
+            "}"
+            "})"
+            ".catch(() => {"
+            "alert('Delete not allowed');"
+            "});"
+            "}"
+            "</script></body></html>";
 	response += "Content-Type: text/html\r\n";
 	response += "Content-Length: ";
 	response += Utils::toString(listing.size());

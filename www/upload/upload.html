@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Files</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('https://auth.42.fr/auth/resources/yyzrk/login/students/img/bkgrnd.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+        .container {
+            max-width: 800px;
+            padding: 20px;
+            text-align: center;
+            color: rgb(255, 255, 255);
+        }
+        .image {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            filter: invert(1);
+        }
+        a {
+            color: aqua;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-upload-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-upload-row input[type="file"] {
+            order: 1;
+        }
+        .file-upload-row span {
+            order: 2;
+        }
+        .file-upload-row input[type="submit"] {
+            order: 3;
+            margin-top: 10px;
+        }
+        #fileList {
+            margin-top: 20px;
+        }
+        .fileItem {
+            margin-bottom: 10px;
+        }
+        #tableContainer {
+            width: 100%; /* Adjust as needed */
+            height: 700px; /* Adjust as needed */
+            overflow: auto;
+        }
+        
+        table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        th {
+            position: sticky;
+            top: 0;
+            background: rgb(0, 178, 181);
+            color: rgb(255, 255, 255);
+        }
+        
+        td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            white-space: nowrap;
+        }
+    </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Upload Files</h2>
+            <form id="uploadForm" action="/cgi-bin/save_file_from_multipart_formdata.py" method="post" enctype="multipart/form-data">
+                <div class="file-upload-row">
+                    <input type="file" id="files" name="files" multiple>
+                    <span id="fileCount">No files selected</span>
+                    <input type="submit" value="Upload">
+                </div>
+            </form>
+            <div id="tableContainer">
+                <table id="fileTable"></table>
+            </div>
+        </div>
+        <script>
+           document.getElementById('files').addEventListener('change', function(e) {
+    var table = document.getElementById('fileTable');
+    table.innerHTML = '';
+    var thead = table.createTHead();
+    var headerRow = thead.insertRow();
+    var headers = ['Select', 'File Name', 'File Size', 'Content Type'];
+    for (var i = 0; i < headers.length; i++) {
+        var th = document.createElement('th');
+        th.textContent = headers[i];
+        headerRow.appendChild(th);
+    }
+    var files = e.target.files;
+    for (var i = 0; i < files.length; i++) {
+        var row = table.insertRow();
+        var cell1 = row.insertCell();
+        var cell2 = row.insertCell();
+        var cell3 = row.insertCell();
+        var cell4 = row.insertCell();
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkbox.addEventListener('change', updateCounter);
+        cell1.appendChild(checkbox);
+        cell2.textContent = files[i].name;
+        cell3.textContent = formatFileSize(files[i].size);
+        cell4.textContent = files[i].type;
+    }
+    updateCounter();
+});
+
+function formatFileSize(size) {
+    var units = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+    var i = 0;
+    while (size >= 1024) {
+        size /= 1024;
+        i++;
+    }
+    return size.toFixed(2) + ' ' + units[i];
+}
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var files = document.getElementById('files').files;
+    var formData = new FormData();
+    var checkboxes = document.querySelectorAll('#fileTable input[type="checkbox"]');
+    var selectedFiles = 0;
+    for (var i = 0; i < checkboxes.length; i++) {
+        if (checkboxes[i].checked) {
+            formData.append('files', files[i]);
+            selectedFiles++;
+        }
+    }
+    if (selectedFiles === 0) {
+        alert('No files selected for upload.');
+        return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/cgi-bin/save_file_from_multipart_formdata.py', true);
+    xhr.onreadystatechange = function() {
+        console.log('HTTP status code:', xhr.status);
+
+        if (xhr.readyState === 4) { // 4 means the request is done.
+            if (xhr.status === 200) {
+                alert('Files uploaded successfully.');
+            }
+            else if (xhr.status === 500) {
+                alert('Unable to upload files due to server error.');
+            }
+            else if (xhr.status === 413) {
+                alert('Unable to upload files due to file size limit.');
+            }
+            else {
+                alert('Unable to upload files due to HTTP error:' + xhr.status);
+            }
+        }
+    };
+    xhr.send(formData);
+});
+        
+            function updateCounter() {
+                var checkboxes = document.querySelectorAll('#fileTable input[type="checkbox"]');
+                var count = 0;
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (checkboxes[i].checked) {
+                        count++;
+                    }
+                }
+                document.getElementById('fileCount').textContent = count + ' files selected';
+            }
+        </script>
+    </body>
+    </html>
