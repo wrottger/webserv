@@ -180,7 +180,9 @@ std::string HttpResponse::generateErrorResponse(const HttpError &error) {
 		error_html += errCode.str();
 		error_html += " </strong>";
 		error_html += message;
-		error_html += "</p></body>";
+		error_html += "</p></body>\n";
+		
+		error_html += "</HTML>\n";
 
 		response += errCode.str();
 		response += " ";
