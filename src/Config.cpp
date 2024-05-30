@@ -300,7 +300,6 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         try {
-                            std::cout << Utils::stringToNumber<size_t>((it + 1)->_value) << std::endl;
                             block._directives.push_back(std::make_pair(ClientMaxBodySize, (it + 1)->_value));
                         }
                         catch (std::invalid_argument &e) {
