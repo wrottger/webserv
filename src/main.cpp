@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
 	}
 	if (!config.isLoaded())
 		return 1;
-	config.printProgressBar(1, 1);
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 	Logging::Logger::getInstance().startLogging();
 	LOG_INFO("Server started");
