@@ -181,7 +181,7 @@ std::string HttpResponse::generateErrorResponse(const HttpError &error) {
 		error_html += " </strong>";
 		error_html += message;
 		error_html += "</p></body>\n";
-		
+
 		error_html += "</HTML>\n";
 
 		response += errCode.str();
@@ -294,8 +294,14 @@ listing += "<body><h2>Directory listing</h2><table id=\"files\"><tr><th>Name</th
 
 for (size_t i = 0; i < files.size(); i++)
 {
+	std::string path = header.getPath();
+	std::string name;
+	if (!path.empty() && path[path.length() - 1] != '/')
+		name = path + "/" + files[i].name;
+	else
+		name = path + files[i].name;
     listing += "<tr><td><a href=\"";
-    listing += files[i].name;
+    listing += name;
     listing += "\">";
     listing += files[i].name;
     listing += "</a></td><td>";
@@ -304,7 +310,7 @@ for (size_t i = 0; i < files.size(); i++)
     listing += files[i].date;
     listing += "</td><td>";
     listing += "<button onclick=\"deleteFile('";
-    listing += files[i].name;
+    listing += name;
     listing += "')\">Delete</button>";
     listing += "</td></tr>";
 }
@@ -313,7 +319,7 @@ listing += "</table><script>"
             "fetch(fileName, { method: 'DELETE' })"
             ".then(response => {"
             "if (response.ok) {"
-            "location.reload();" // Add this line
+            "location.reload();"
             "} else {"
             "alert('Delete not allowed');"
             "}"
