@@ -101,6 +101,9 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(const HttpHeader& header)
             break;
         }
     }
+	if (serverMatch == std::numeric_limits<size_t>::max()) {
+		serverMatch = 0;
+	}
     // location block matching
     for (size_t location = 0; location != config._serverBlocks[serverMatch]._locations.size(); location++)
     {
@@ -165,6 +168,9 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string& route, const 
             break;
         }
     }
+	if (serverMatch == std::numeric_limits<size_t>::max()) {
+		serverMatch = 0;
+	}
     // location block matching
     for (size_t location = 0; location != config._serverBlocks[serverMatch]._locations.size(); location++)
     {
