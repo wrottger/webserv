@@ -171,6 +171,34 @@ void Config::parseScopes(void)
     }
 }
 
+void Config::addServerBlock(ServerBlock& newBlock, std::vector<Node>::iterator start)
+{
+    static std::map<std::pair<std::string, std::string>, bool> hostPortMap;
+    std::string serverName;
+    std::vector<std::string> ports;
+
+    for (std::vector<std::pair<TokenType, std::string> >::iterator it = newBlock._directives.begin(); it != newBlock._directives.end(); it++) {
+        switch (it->first) {
+            case ServerName:
+                serverName = it->second;
+                break;
+            case Port:
+                ports.push_back(it->second);
+                break;
+            default:
+                break;
+        }
+    }
+    for (std::vector<std::string>::iterator it = ports.begin(); it != ports.end(); it++) {
+        std::pair<std::string, std::string> hostPortPair(serverName, *it);
+        if (hostPortMap.find(hostPortPair) != hostPortMap.end()) {
+            error("Duplicate server name and port combination", start);
+        }
+        hostPortMap[hostPortPair] = true;
+    }
+    _serverBlocks.push_back(newBlock);
+}
+
 void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
 {
     while (it != end)
@@ -187,11 +215,10 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
                     it++;
                 if (start + 1 == it)
                     error("Syntax error: incomplete server block", start);
-                start++;
                 // parse the server block and add it to the vector of server blocks
-                ServerBlock serverBlock = parseServerBlock(start, it);
+                ServerBlock serverBlock = parseServerBlock(start + 1, it);
                 if (serverBlock._directives.size())
-                    _serverBlocks.push_back(serverBlock);
+                    addServerBlock(serverBlock, start);
                 else
                     error("Syntax error: incomplete server block", start);
                 continue;
@@ -205,7 +232,7 @@ void Config::buildAST(std::vector<Node>::iterator it, std::vector<Node>::iterato
 }
 
 // This method is supposed to parse the server block and its directives;
-Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, std::vector<Node>::iterator& end)
+Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator it, std::vector<Node>::iterator end)
 {
     ServerBlock block;
     std::vector<Node>::iterator start = it - 1;
@@ -398,7 +425,7 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator& it, st
     return block;
 }
 
-Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator& start, std::vector<Node>::iterator& end)
+Config::LocationBlock Config::parseLocationBlock(std::vector<Node>::iterator start, std::vector<Node>::iterator end)
 {
     LocationBlock block;
     std::vector<Node>::iterator it = start;

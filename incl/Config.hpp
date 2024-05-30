@@ -84,10 +84,10 @@ public:
 	void parseTokens(void);
 	void error(const std::string &msg, const std::vector<Node>::iterator &it);
 	void sortVector(std::vector<Node> &vec);
-	void addServerBlock(ServerBlock &newBlock, std::vector<Node>::iterator &start);
+	void addServerBlock(ServerBlock &newBlock, std::vector<Node>::iterator start);
 	void printProgressBar(size_t progress, size_t total);
-	ServerBlock parseServerBlock(std::vector<Node>::iterator &start, std::vector<Node>::iterator &end);
-	LocationBlock parseLocationBlock(std::vector<Node>::iterator &start, std::vector<Node>::iterator &end);
+	ServerBlock parseServerBlock(std::vector<Node>::iterator start, std::vector<Node>::iterator end);
+	LocationBlock parseLocationBlock(std::vector<Node>::iterator start, std::vector<Node>::iterator end);
 	std::vector<TokenInfo> slice(std::string in, std::vector<char> delim);
 
 private:
