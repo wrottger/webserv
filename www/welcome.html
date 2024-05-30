@@ -30,6 +30,23 @@
         a {
             color: aqua;
         }
+        button {
+        background-color: #14cbd2;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        transition-duration: 0.4s;
+    }
+
+        button:hover {
+        background-color: #12c0c6;
+        }
     </style>
 </head>
 <body>
@@ -39,6 +56,9 @@
         <p>We're glad you're here to evaluate our project. We've worked hard on the Webserv project and we're excited to share it with you.</p>
         <p>Please take your time to explore the project and let us know if you have any questions or feedback. We appreciate your time and input!</p>
         <p>Check out our project on GitHub: <a href="https://github.com/wrottger/webserv" target="_blank">Webserv</a></p>
+        <button onclick="window.location.href='upload'">Upload files</button>
+        <button onclick="window.location.href='file-uploads'">List uploaded files</button>
+        <button onclick="window.location.href='cgi-bin'">List CGI scripts</button>
     </div>
 </body>
 </html>
