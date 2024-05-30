@@ -1,6 +1,8 @@
 #include "HttpHeader.hpp"
 #include "HttpError.hpp"
 #include "Logger.hpp"
+#include "Config.hpp"
+#include "HttpResponse.hpp"
 #include <string.h>
 #include <algorithm>
 #include <cstdlib>
@@ -26,7 +28,7 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         for (; requestLine[i] != '\0' && state.func != States::headerFinished; i++)
         {
             request_size++;
-            if (request_size > 8192) // TODO check against config
+            if (request_size > 8192)
             {
                 LOG_INFO_WITH_TAG("Request Entity Too Large", "HttpHeader::parseBuffer");
                 throw HttpError(413, "Request Entity Too Large");
@@ -45,20 +47,29 @@ size_t HttpHeader::parseBuffer(const char *requestLine) {
         LOG_DEBUG_WITH_TAG("header parsing finished", "HttpHeader::parseBuffer");
         message.path = percentDecode(message.path);
         complete = true;
+		// check required host
         if (message.headers.count("host") == 0)
         {
             LOG_INFO_WITH_TAG("host header not found", "HttpHeader::parseBuffer");
             parseError = HttpError(400, "Host header is required");
+			return i;
         }
+		// take host and port apart
         if (message.headers.find("host")->second.find(":") != std::string::npos)
         {
             message.host = message.headers.find("host")->second.substr(0, message.headers.find("host")->second.find(":"));
             message.port = std::strtol(message.headers.find("host")->second.substr(message.headers.find("host")->second.find(":") + 1).c_str(), NULL, 10);
             message.headers["host"] = message.host;
         }
-        LOG_DEBUG(message.path);
-        LOG_DEBUG(message.query);
-        LOG_DEBUG(message.host);
+		Config &config = Config::getInstance();
+		// add index file to path
+		if (HttpResponse::isFolder(config.getFilePath(*this)) && config.getDirectiveValue(*this, Config::Index).size())
+		{
+			message.path += "/" + config.getDirectiveValue(*this, Config::Index);
+		}
+        LOG_DEBUG_WITH_TAG(message.path, "PATH");
+        LOG_DEBUG_WITH_TAG(message.query, "QUERY");
+        LOG_DEBUG_WITH_TAG(message.host, "HOST");
     }
     return i;
 }
@@ -71,6 +82,10 @@ const std::string &HttpHeader::getMethod() const { return message.method; }
 
 const std::string &HttpHeader::getPath() const { return message.path; }
 
+void HttpHeader::setPath(const std::string &path) {
+	message.path = path;
+}
+
 const std::string &HttpHeader::getQuery() const { return message.query; }
 
 int HttpHeader::getPort() const {
@@ -81,7 +96,7 @@ const std::string &HttpHeader::getHost() const {
 	return message.host;
 }
 
-// Richtig schlechte Funktion, die verbrannt gehört, SEGVAULTING
+// Richtig schlechte Funktion, die verbrannt gehört, SEGFAULTING
 const std::string &HttpHeader::getHeader(const std::string &name) const {
 	return message.headers.find(name)->second;
 }
@@ -226,7 +241,10 @@ void HttpHeader::States::path(char c, HttpMessage& message, StateHandler& nextSt
     } else if (c == '#') {
         nextState.func = fragment;
     } else if (isPchar(c) || c == '/' || c == '.' || c == ',') {
-       message.path += c;
+		if (!message.path.empty() && c == '/' && message.path[message.path.size() - 1] == '/')
+			return;
+		else
+       		message.path += c;
     } else {
         throw HttpError(400, "Invalid character in path: " + std::string(1, c));
     }

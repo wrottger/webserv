@@ -8,7 +8,7 @@
 #include "Config.hpp"
 #include "Utils.hpp"
 
-static bool isFolder(const std::string &path)
+bool HttpResponse::isFolder(const std::string &path)
 {
 	struct stat s;
 	if (stat(path.c_str(), &s) == 0)
@@ -19,7 +19,7 @@ static bool isFolder(const std::string &path)
 	return false;
 }
 
-static bool isFile(const std::string &path)
+bool HttpResponse::isFile(const std::string &path)
 {
 	struct	stat s;
 	if (stat(path.c_str(), &s) == 0)
@@ -53,7 +53,7 @@ HttpError HttpResponse::setupGetResponse()
 		if (config.getDirectiveValue(header, Config::Index).size() != 0)
 		{
 			LOG_DEBUG("returning index file");
-			std::string filePath = config.getFilePath(header) + config.getDirectiveValue(header, Config::Index);
+			std::string filePath = config.getFilePath(header);
 			getFile.open(filePath.c_str());
 			if (getFile.fail())
 			{
@@ -75,6 +75,10 @@ HttpError HttpResponse::setupGetResponse()
 			LOG_DEBUG("returning listing");
 			generateDirListing();
 			return HttpError();
+		}
+		else
+		{
+			return HttpError(403, "Forbidden");
 		}
 	}
 	else
@@ -130,14 +134,24 @@ HttpResponse::HttpResponse(HttpHeader header, int fds) :
 	{
 		std::string filePath = config.getFilePath(header);
 		LOG_DEBUG("DELETE request");
-		if (!config.isDirectiveAllowed(header, Config::AllowedMethods, "DELETE"))
-			error = HttpError(405, "Method Not Allowed");
-		else if (remove(filePath.c_str()) != 0) {
-			error = HttpError(500, "Couldn't delete file");
+		try {
+			Config &config = Config::getInstance();
+			if (!config.isDirectiveAllowed(header, Config::AllowedMethods, "DELETE") ||
+				config.getLocationBlock(config.getInstance().getClosestPathMatch(header))._path == header.getPath()) // prevent DELETE on root
+			{
+				error = HttpError(405, "Method Not Allowed");
+			}
+			else if (remove(filePath.c_str()) != 0) {
+				error = HttpError(500, "Couldn't delete file");
+			}
+			else {
+				response += "200 OK\r\n\r\n";
+				response += "<html><body><h1>File deleted</h1></body></html>\r\n";
+			}
 		}
-		else {
-			response += "200 OK\r\n\r\n";
-			response += "<html><body><h1>File deleted</h1></body></html>\r\n";
+		catch (std::exception &e)
+		{
+			error = HttpError(405, "Method Not Allowed");
 		}
 	}
 	else
@@ -166,7 +180,9 @@ std::string HttpResponse::generateErrorResponse(const HttpError &error) {
 		error_html += errCode.str();
 		error_html += " </strong>";
 		error_html += message;
-		error_html += "</p></body>";
+		error_html += "</p></body>\n";
+
+		error_html += "</HTML>\n";
 
 		response += errCode.str();
 		response += " ";
@@ -223,7 +239,11 @@ int HttpResponse::listDir(std::string dir, std::vector<fileInfo> &files)
 	{
 		struct stat fileStat;
 		fileInfo fileInf;
-		std::string filename = dir + "/" + dirp->d_name;
+		std::string filename;
+		if (!dir.empty() && dir[dir.length() - 1] != '/')
+			filename = dir + "/" + dirp->d_name;
+		else
+		 	filename = dir + dirp->d_name;
 		LOG_DEBUG_WITH_TAG(filename, "full path");
 		if (stat(filename.c_str(), &fileStat) == -1)
 		{
@@ -246,46 +266,69 @@ void HttpResponse::generateDirListing()
 	response += "200 OK\r\n";
 	response += "Connection: close\r\n";
 	response += "Content-Type: text/html\r\n";
-	std::string listing = "<!DOCTYPE html>"
-							"<html>"
-							"<head>"
-							"<style>"
-							"#files {"
-							"font-family: Arial, Helvetica, sans-serif;"
-							"border-collapse: collapse;"
-							"width: 100%;"
-							"}"
-							"#files td, #files th {"
-							"border: 1px solid #ddd;"
-							"padding: 8px;"
-							"}"
-							"#files tr:nth-child(even){background-color: #f2f2f2;}"
-							"#files tr:hover {background-color: #ddd;}"
-							"#files th {"
-							"padding-top: 12px;"
-							"padding-bottom: 12px;"
-							"text-align: left;"
-							"background-color: #04AA6D;"
-							"color: white;"
-							"}"
-							"</style>"
-							"</head>";
-	listing += "<body><h2>Directory listing</h2><table id=\"files\">";
-	listing += "<tr><th>Filename</th><th>Size (bytes)</th><th>Time of last data modification</th></tr>";
-	for (size_t i = 0; i < files.size(); i++)
-	{
-		listing += "<tr><td><a href=\"";
-		listing += files[i].name;
-		listing += "\">";
-		listing += files[i].name;
-		listing += "</a></td><td>";
+std::string listing = "<!DOCTYPE html>"
+                      "<html>"
+                      "<head>"
+                      "<style>"
+                      "#files {"
+                      "font-family: Arial, Helvetica, sans-serif;"
+                      "border-collapse: collapse;"
+                      "width: 100%;"
+                      "}"
+                      "#files td, #files th {"
+                      "border: 1px solid #ddd;"
+                      "padding: 8px;"
+                      "}"
+                      "#files tr:nth-child(even){background-color: #f2f2f2;}"
+                      "#files tr:hover {background-color: #ddd;}"
+                      "#files th {"
+                      "padding-top: 12px;"
+                      "padding-bottom: 12px;"
+                      "text-align: left;"
+                      "background-color: #04AA6D;"
+                      "color: white;"
+                      "}"
+                      "</style>"
+                      "</head>";
+listing += "<body><h2>Directory listing</h2><table id=\"files\"><tr><th>Name</th><th>Size</th><th>Date</th><th>Action</th></tr>";
 
-		listing += files[i].size;
-		listing += "</td><td>";
-		listing += files[i].date;
-		listing += "</td></tr>";
-	}
-	listing += "</table></body></html>";
+for (size_t i = 0; i < files.size(); i++)
+{
+	std::string path = header.getPath();
+	std::string name;
+	if (!path.empty() && path[path.length() - 1] != '/')
+		name = path + "/" + files[i].name;
+	else
+		name = path + files[i].name;
+    listing += "<tr><td><a href=\"";
+    listing += name;
+    listing += "\">";
+    listing += files[i].name;
+    listing += "</a></td><td>";
+    listing += files[i].size;
+    listing += "</td><td>";
+    listing += files[i].date;
+    listing += "</td><td>";
+    listing += "<button onclick=\"deleteFile('";
+    listing += name;
+    listing += "')\">Delete</button>";
+    listing += "</td></tr>";
+}
+listing += "</table><script>"
+            "function deleteFile(fileName) {"
+            "fetch(fileName, { method: 'DELETE' })"
+            ".then(response => {"
+            "if (response.ok) {"
+            "location.reload();"
+            "} else {"
+            "alert('Delete not allowed');"
+            "}"
+            "})"
+            ".catch(() => {"
+            "alert('Delete not allowed');"
+            "});"
+            "}"
+            "</script></body></html>";
 	response += "Content-Type: text/html\r\n";
 	response += "Content-Length: ";
 	response += Utils::toString(listing.size());
@@ -300,8 +343,8 @@ size_t HttpResponse::readBuffer(const char *buffer) {
 }
 
 void HttpResponse::write() {
-	LOG_DEBUG("HTTPRESPONSE");
-	LOG_DEBUG(response.c_str());
+	// LOG_DEBUG("HTTPRESPONSE");
+	// LOG_DEBUG(response.c_str());
 	if (isFinished)
 	{
 		LOG_INFO("HttpResponse::write isFinished");
@@ -311,14 +354,18 @@ void HttpResponse::write() {
 	if (header.getMethod() == "GET" && !isError) {
 		if (response.size())
 		{
-			LOG_DEBUG("HttpResponse sending response buffer");
+			// LOG_DEBUG("HttpResponse sending response buffer");
 			// sending headers
 			ssize_t sentBytes =  send(fds, response.c_str(), response.size(), MSG_DONTWAIT);
+			if (sentBytes == -1) {
+				isFinished = true;
+				return;
+			}
 			if (sentBytes >= 0)
 				response = response.substr(sentBytes);
 		} else if (getFile.is_open()) {
 			// sending file
-			LOG_DEBUG("HttpResponse reading chunk from file");
+			// LOG_DEBUG("HttpResponse reading chunk from file");
 			getFile.read(chunkedBuffer, 1023);
 			if (getFile.gcount() == 0)
 			{

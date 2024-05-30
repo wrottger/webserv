@@ -1,39 +1,23 @@
 #include "Client.hpp"
 #include "EventHandler.hpp"
 
- // TODO: Delete this function
-std::string createTestResponse() {
-	std::string responseBody = "<!DOCTYPE html><html><head><title>Hello World</title></head>"
-							   "<body><h1>Keine pull request approve fuer Freddy!</h1></body></html>";
-
-	std::ostringstream oss;
-	oss << responseBody.size();
-
-	std::string _responseHttp = "HTTP/1.1 200 OK\r\n"
-							   "Content-Type: text/html; charset=UTF-8\r\n"
-							   "Content-Length: " +
-			oss.str() + "\r\n\r\n" + responseBody;
-	return _responseHttp;
-}
-
 Client::Client() {}
 
 Client::Client(int fd, std::string ip):
 		_responseHttp(NULL),
-		_responseCgi(NULL),
+		_cgi(NULL),
 		_lastModified(0),
 		_fd(fd),
 		_canBeDeleted(false),
 		_state(READING_HEADER),
 		_ip(ip) {
 	updateTime();
-	_responseHttp = NULL;
 }
 
 Client::~Client() {
 	LOG_DEBUG_WITH_TAG("Client destructor called", "Client");
 	delete _responseHttp;
-	delete _responseCgi;
+	delete _cgi;
 }
 
 int Client::getFd() {
@@ -49,9 +33,11 @@ void Client::process(EventsData *eventData) {
 	switch (_state) {
 		case READING_HEADER:
 			if (eventData->eventMask & EPOLLIN) {
-				readFromClient();
-				if (isHeaderComplete() && _header.isError() == false) {
-					if (Config::getInstance().isCGIAllowed(_header)) {
+				if (!isHeaderComplete()) {
+					readFromClient();
+				}
+				if (isHeaderComplete()) {
+					if (!_header.isError() && Config::getInstance().isCGIAllowed(_header)) {
 						_state = CGI_RESPONSE;
 					} else {
 						_state = NORMAL_RESPONSE;
@@ -62,13 +48,25 @@ void Client::process(EventsData *eventData) {
 			}
 			break;
 		case CGI_RESPONSE:
-			if (_responseCgi == NULL) {
-				_responseCgi = new Cgi(this);
+			if (_cgi == NULL) {
+				_cgi = new Cgi(this);
 				LOG_DEBUG("Creating new Cgi object");
 			}
-			_responseCgi->process(eventData);
-			if (_responseCgi->isFinished()) {
-				_state = FINISHED;
+			_cgi->process(eventData);
+			if (_cgi->isFinished()) {
+				if (_cgi->isInternalRedirect()) {
+					_header.setPath(_cgi->getInternalRedirectLocation());
+					redirectReset();
+					if (Config::getInstance().isCGIAllowed(_header)) {
+						_state = CGI_RESPONSE;
+					} else {
+						_state = NORMAL_RESPONSE;
+						LOG_DEBUG("set State: NORMAL_RESPONSE");
+						_responseHttp = new HttpResponse(_header, _fd);
+					}
+				} else {
+					_state = FINISHED;
+				}
 			}
 			break;
 		case NORMAL_RESPONSE:
@@ -119,12 +117,12 @@ const std::string& Client::getIp() const{
 
 // Returns true if the client has a CGI response
 bool Client::hasCgi() const {
-	return _responseCgi != NULL;
+	return _cgi != NULL;
 }
 
 // Returns the CGI response
 Cgi *Client::getCgi() {
-	return _responseCgi;
+	return _cgi;
 }
 
 // Returns true if the client has exceeded the timeout in READING_HEADER state
@@ -155,7 +153,16 @@ void Client::readFromClient() {
 			for (; parsedSize < static_cast<size_t>(bytes_received); parsedSize++)
 				_bodyBuffer.push_back(buffer[parsedSize]);
 		}
-		std::string bufferDebug(buffer); //TODO: DELETE DEBUG
-		LOG_BUFFER(bufferDebug);		//TODO: DELETE DEBUG
 	}
+}
+
+void Client::redirectReset() {
+	if (_cgi) {
+		EventHandler::getInstance().addToCleanUpList(_cgi->getEventData());
+		delete _cgi;
+	}
+	delete _responseHttp;
+	_responseHttp = NULL;
+	_cgi = NULL;
+	_bodyBuffer.clear();
 }

@@ -10,12 +10,6 @@ void Config::parseConfigFile(std::string filename)
         throw std::runtime_error(RBOLD("Error: Unable to open file " + filename));
     }
 
-    //get file size for progress bar
-    std::streampos originalPosition = _fileStream.tellg();
-    _fileStream.seekg(0, std::ios::end);
-    _fileSize = _fileStream.tellg();
-    _fileStream.seekg(originalPosition);
-    
     //initialize tokens
     _tokens["server"] = Server;
     _tokens["location"] = Location;
@@ -89,7 +83,6 @@ void Config::scanTokens(std::ifstream &file)
             else if (j == _tokens.end()) //all other tokens are considered data
                 _nodes.push_back(Node(Data, out[i].token, out[i].position, n));
         }
-        printProgressBar(file.tellg(), _fileSize);
     }
     this->sortVector(_nodes); // sorts the vector of nodes by order of line number and offset in the config file
 }
@@ -327,7 +320,6 @@ Config::ServerBlock Config::parseServerBlock(std::vector<Node>::iterator it, std
                     if (it + 1 != end && (it + 1)->_token == Data)
                     {
                         try {
-                            std::cout << Utils::stringToNumber<size_t>((it + 1)->_value) << std::endl;
                             block._directives.push_back(std::make_pair(ClientMaxBodySize, (it + 1)->_value));
                         }
                         catch (std::invalid_argument &e) {

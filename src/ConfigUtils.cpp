@@ -101,6 +101,9 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(const HttpHeader& header)
             break;
         }
     }
+	if (serverMatch == std::numeric_limits<size_t>::max()) {
+		serverMatch = 0;
+	}
     // location block matching
     for (size_t location = 0; location != config._serverBlocks[serverMatch]._locations.size(); location++)
     {
@@ -165,6 +168,9 @@ std::pair<size_t, size_t> Config::getClosestPathMatch(std::string& route, const 
             break;
         }
     }
+	if (serverMatch == std::numeric_limits<size_t>::max()) {
+		serverMatch = 0;
+	}
     // location block matching
     for (size_t location = 0; location != config._serverBlocks[serverMatch]._locations.size(); location++)
     {
@@ -520,24 +526,16 @@ size_t Config::getMaxBodySize(const HttpHeader &header) {
     }
 }
 
+Config::LocationBlock& Config::getLocationBlock(std::pair<size_t, size_t> l)
+{
+    if (l.first == std::numeric_limits<size_t>::max() || l.second == std::numeric_limits<size_t>::max())
+        throw std::runtime_error("");
+    return _serverBlocks[l.first]._locations[l.second];
+}
+
 void Config::error(const std::string &msg, const std::vector<Node>::iterator& it)
 {
 	std::stringstream ss;
 	ss << msg << " at row " << it->_line + 1 << ", column " << it->_offset + 1;
 	throw std::runtime_error(RBOLD(ss.str()));
-}
-
-void Config::printProgressBar(size_t progress, size_t total)
-{
-    const int barWidth = 70;
-
-    std::cout << "[";
-    int pos = barWidth * progress / total;
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) std::cout << "=";
-        else if (i == pos) std::cout << ">";
-        else std::cout << " ";
-    }
-    std::cout << "] " << int(progress * 100.0 / total) << " %\r";
-    std::cout.flush();
 }

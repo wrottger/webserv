@@ -6,17 +6,21 @@ SocketHandling::SocketHandling(std::vector<Config::ServerBlock> &config) : _conf
 {
 	std::vector<int> ports = Config::getPorts(config);
 	size_t portCount = ports.size();
-	try {
+	// try {
 		for (size_t i = 0; i < portCount; i++) {
-			setUpSocket(ports[i]);
+			try {
+				setUpSocket(ports[i]);
+			} catch (const std::runtime_error& e) {
+				std::cerr << e.what() << "Port: " << ports[i] << std::endl;
+			}
 		}
 		setUpEpoll();
-	} catch (const std::runtime_error& e) {
-		for (size_t i = 0; i < _openFds.size(); i++) {
-			close(_openFds[i]);
-		}
-		std::cerr << e.what() << std::endl;
-	}
+	// } catch (const std::runtime_error& e) {
+		// for (size_t i = 0; i < _openFds.size(); i++) {
+		// 	close(_openFds[i]);
+		// }
+	// 	std::cerr << e.what() << std::endl;
+	// }
 }
 
 SocketHandling::SocketHandling(SocketHandling const &other) : _config(other._config){}
@@ -35,7 +39,7 @@ void SocketHandling::setUpSocket(int port)
 		throw std::runtime_error("SetUpSocket: socket failed.");
 	}
 
-	if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+	if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
 		throw std::runtime_error("SetUpSocket: Setsockopt failed.");
 	}
 

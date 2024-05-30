@@ -3,7 +3,6 @@
 #include "Logger.hpp"
 #include "SocketHandling.hpp"
 #include "colors.hpp"
-#include "utest.h"
 #include <netinet/in.h>
 #include <sys/epoll.h> // für epoll_create1()
 #include <sys/socket.h>
@@ -16,8 +15,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
-UTEST_STATE();
 
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
@@ -33,7 +30,6 @@ int main(int argc, char *argv[]) {
 	}
 	if (!config.isLoaded())
 		return 1;
-	config.printProgressBar(1, 1);
 	std::cout << GBOLD("\nConfig file loaded successfully") << std::endl;
 	Logging::Logger::getInstance().startLogging();
 	LOG_INFO("Server started");

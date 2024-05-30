@@ -33,3 +33,21 @@ std::string Utils::toString(int number) {
 	result << number;
 	return result.str();
 }
+
+// If the string is not a number, it will return 0
+int Utils::stringToNumber(const std::string& s) {
+	std::stringstream ss(s);
+	int num;
+	ss >> num;
+	return num;
+}
+
+char Utils::toLower(char c) {
+	return std::tolower(static_cast<unsigned char>(c));
+}
+
+std::string Utils::toLowerString(const std::string& str) {
+	std::string result = str;
+	std::transform(result.begin(), result.end(), result.begin(), Utils::toLower);
+	return result;
+}
